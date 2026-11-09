@@ -54,7 +54,7 @@ class DirectApplicationWorkItemAssignmentTest {
     Instant when = Instant.parse("2026-08-28T10:00:00Z");
     fixture
         .given()
-        .events(created(id, when), new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when))
+        .events(created(id, when), new ApplicationReadyForManualAssessmentEvent(id, 1L, when))
         .when()
         .command(new DirectWorkItemAssignmentCommand(id, caseworkerId, 0L, "{}", "Assigned", when))
         .then()
@@ -68,7 +68,7 @@ class DirectApplicationWorkItemAssignmentTest {
     Instant when = Instant.parse("2026-08-28T10:00:00Z");
     fixture
         .given()
-        .events(created(id, when), new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when))
+        .events(created(id, when), new ApplicationReadyForManualAssessmentEvent(id, 1L, when))
         .when()
         .command(new DirectWorkItemAssignmentCommand(id, caseworkerId, 1L, "{}", "", when))
         .then()
@@ -77,7 +77,7 @@ class DirectApplicationWorkItemAssignmentTest {
 
     fixture
         .given()
-        .events(created(id, when), new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when))
+        .events(created(id, when), new ApplicationReadyForManualAssessmentEvent(id, 1L, when))
         .when()
         .command(new DirectWorkItemUnassignmentCommand(id, 0L, "{}", "", when))
         .then()
@@ -93,7 +93,7 @@ class DirectApplicationWorkItemAssignmentTest {
 
     ApplicationAggregate active = new ApplicationAggregate();
     active.on(created(id, when));
-    active.on(new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when));
+    active.on(new ApplicationReadyForManualAssessmentEvent(id, 1L, when));
     active.on(new WorkItemAssigned(id, WorkItemType.APPLICATION, id, 1L, 1L, caseworkerId, when));
     assertThatThrownBy(
             () ->
@@ -134,6 +134,6 @@ class DirectApplicationWorkItemAssignmentTest {
 
   private ApplicationCreatedEvent created(UUID id, Instant occurredAt) {
     return new ApplicationCreatedEvent(
-        id, 0L, "hash", "APPLICATION_SUBMITTED", 1, occurredAt, Erasable.erased(), null, "LAA-123");
+        id, "hash", "APPLICATION_SUBMITTED", 1, occurredAt, Erasable.erased(), null, "LAA-123");
   }
 }

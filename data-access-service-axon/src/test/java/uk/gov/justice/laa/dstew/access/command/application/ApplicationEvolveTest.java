@@ -11,7 +11,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
@@ -26,12 +25,9 @@ import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 /** Unit tests for {@link ApplicationEvolve} decision-fold behaviour. */
 class ApplicationEvolveTest {
 
-  @ParameterizedTest
-  @NullSource
-  @ValueSource(longs = 3L)
-  void givenDocumentUploadVersion_whenApplied_thenAdvancesOnlyReferencedDataVersion(Long version) {
+  @Test
+  void givenDocumentUpload_whenApplied_thenRecordsDocumentWithoutAdvancingApplicationVersion() {
     ApplicationState state = new ApplicationState();
-    state.applicationDataVersion = 2L;
     state.applicationVersion = 7L;
     ApplicationEvolve.apply(
         state,
@@ -43,16 +39,14 @@ class ApplicationEvolveTest {
             12L,
             "application/pdf",
             "checksum",
-            "CIVIL_APPLY",
-            version));
+            "CIVIL_APPLY"));
 
-    assertThat(state.applicationDataVersion).isEqualTo(version == null ? 2L : version);
     assertThat(state.applicationVersion).isEqualTo(7L);
     assertThat(state.uploadedDocuments.getFirst().deleted()).isFalse();
   }
 
   @Test
-  void givenLegacySerializedUpload_whenDeserialized_thenPreservesDataVersion() throws Exception {
+  void givenLegacySerializedUpload_whenDeserialized_thenFoldsDocument() throws Exception {
     String json =
         """
         {"applicationId":"00000000-0000-0000-0000-000000000001",
@@ -66,12 +60,9 @@ class ApplicationEvolveTest {
             .findAndRegisterModules()
             .readValue(json, ApplicationDocumentUploadedEvent.class);
     ApplicationState state = new ApplicationState();
-    state.applicationDataVersion = 2L;
 
     ApplicationEvolve.apply(state, event);
 
-    assertThat(event.applicationDataVersion()).isNull();
-    assertThat(state.applicationDataVersion).isEqualTo(2L);
     assertThat(state.uploadedDocuments).hasSize(1);
     assertThat(state.uploadedDocuments.getFirst().documentType()).isEqualTo("INVOICE");
   }
@@ -127,7 +118,7 @@ class ApplicationEvolveTest {
     state.applicationId = applicationId;
     ApplicationDecisionMadeEvent event =
         new ApplicationDecisionMadeEvent(
-            applicationId, 1L, 1L, "GRANTED", AutoGrantedState.AUTOGRANTED, Instant.now());
+            applicationId, 1L, "GRANTED", AutoGrantedState.AUTOGRANTED, Instant.now());
 
     ApplicationEvolve.apply(state, event);
 
@@ -141,7 +132,7 @@ class ApplicationEvolveTest {
     state.applicationId = applicationId;
     ApplicationDecisionMadeEvent event =
         new ApplicationDecisionMadeEvent(
-            applicationId, 1L, 1L, "REFUSED", AutoGrantedState.MANUAL, Instant.now());
+            applicationId, 1L, "REFUSED", AutoGrantedState.MANUAL, Instant.now());
 
     ApplicationEvolve.apply(state, event);
 
@@ -157,7 +148,7 @@ class ApplicationEvolveTest {
     ApplicationEvolve.apply(
         state,
         new ApplicationDecisionMadeEvent(
-            UUID.randomUUID(), 2L, 2L, overallDecision, AutoGrantedState.MANUAL, Instant.now()));
+            UUID.randomUUID(), 2L, overallDecision, AutoGrantedState.MANUAL, Instant.now()));
 
     assertThat(state.status).isEqualTo(expectedStatus);
   }
@@ -170,7 +161,7 @@ class ApplicationEvolveTest {
     ApplicationEvolve.apply(
         state,
         new ApplicationDecisionMadeEvent(
-            UUID.randomUUID(), 2L, 2L, null, AutoGrantedState.MANUAL, Instant.now()));
+            UUID.randomUUID(), 2L, null, AutoGrantedState.MANUAL, Instant.now()));
 
     assertThat(state.status).isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED.getValue());
   }
@@ -233,9 +224,9 @@ class ApplicationEvolveTest {
             Erasable.of(List.of())));
     ApplicationCreatedEvent created =
         ApplicationDecider.decideSubmitDraft(
-            applicationId, 0L, "fingerprint", applicationCreationDetails(applicationId));
+            applicationId, "fingerprint", applicationCreationDetails(applicationId));
     ApplicationEvolve.apply(state, created);
-    ApplicationEvolve.apply(state, new NoteCreatedEvent(applicationId, 1L, noteAt, "note"));
+    ApplicationEvolve.apply(state, new NoteCreatedEvent(applicationId, noteAt, "note"));
 
     assertThat(state.getCreatedAt()).isEqualTo(draftStartedAt);
     assertThat(state.getSubmittedAt()).isEqualTo(created.occurredAt());
@@ -273,13 +264,12 @@ class ApplicationEvolveTest {
             "application/pdf",
             "checksum",
             "CIVIL_APPLY",
-            null,
             ".pdf",
             "client-report.pdf"));
     ApplicationEvolve.apply(
         state,
         ApplicationDecider.decideSubmitDraft(
-            applicationId, 0L, "fingerprint", applicationCreationDetails(applicationId)));
+            applicationId, "fingerprint", applicationCreationDetails(applicationId)));
 
     assertThat(state.content.value().documentFilenames())
         .containsEntry(documentId, "client-report.pdf");
@@ -298,16 +288,15 @@ class ApplicationEvolveTest {
     ApplicationState state = new ApplicationState();
 
     ApplicationEvolve.apply(
-        state, ApplicationDecider.decideSubmitDraft(applicationId, 0L, "fingerprint", details));
+        state, ApplicationDecider.decideSubmitDraft(applicationId, "fingerprint", details));
     ApplicationEvolve.apply(
-        state, new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, at));
-    ApplicationEvolve.apply(state, new NoteCreatedEvent(applicationId, 2L, at, "note"));
+        state, new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, at));
+    ApplicationEvolve.apply(state, new NoteCreatedEvent(applicationId, at, "note"));
     ApplicationEvolve.apply(
         state,
         new ApplicationDecisionMadeEvent(
             applicationId,
             2L,
-            3L,
             "GRANTED",
             AutoGrantedState.MANUAL,
             at,
@@ -321,7 +310,6 @@ class ApplicationEvolveTest {
         new ApplicationDecisionMadeEvent(
             applicationId,
             3L,
-            4L,
             "REFUSED",
             AutoGrantedState.MANUAL,
             at,

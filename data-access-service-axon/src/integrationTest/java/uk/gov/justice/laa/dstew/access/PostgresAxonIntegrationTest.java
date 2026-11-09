@@ -475,7 +475,7 @@ class PostgresAxonIntegrationTest {
     ResponseEntity<Void> response = patchSubmitted(applicationId, submitted);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    ApplicationReadModel projected = projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
+    ApplicationReadModel projected = projectionAwaiter.awaitApplication(applicationId);
     assertThat(projected.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
     assertThat(projected.getAutoGranted()).isEqualTo(AutoGrantedState.PENDING);
     assertThat(
@@ -488,7 +488,7 @@ class PostgresAxonIntegrationTest {
             event -> {
               assertThat(event.get("payload_type").toString()).endsWith("ApplicationUpdated");
               assertThat(event.get("payload").toString())
-                  .contains("applicationDataVersion", "APPLICATION_SUBMITTED")
+                  .contains("applicationVersion", "APPLICATION_SUBMITTED")
                   .doesNotContain(
                       "applicationContent", "proceedings", "individuals", "LAA-123", "Ada");
             });
@@ -583,7 +583,7 @@ class PostgresAxonIntegrationTest {
             Void.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    ApplicationReadModel decided = projectionAwaiter.awaitApplicationVersion(applicationId, 2L);
+    ApplicationReadModel decided = projectionAwaiter.awaitApplication(applicationId);
     assertThat(decided.getDecisionStatus()).isEqualTo("REFUSED");
     assertThat(decided.getAutoGranted()).isEqualTo(AutoGrantedState.MANUAL);
     assertThat(decided.getMeritsDecisions().get(proceedingId).justification())
@@ -597,7 +597,7 @@ class PostgresAxonIntegrationTest {
                 + "WHERE e.aggregate_identifier = ? AND e.sequence_number = 3",
             applicationId.toString());
     assertThat(decisionEvent.get("payload").toString())
-        .contains("applicationDataVersion", "REFUSED")
+        .contains("applicationVersion", "REFUSED")
         .doesNotContain("Insufficient evidence", "The evidence did not meet the test");
     assertThat(
             objectMapper
@@ -668,7 +668,7 @@ class PostgresAxonIntegrationTest {
             Void.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    ApplicationReadModel granted = projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
+    ApplicationReadModel granted = projectionAwaiter.awaitApplication(applicationId);
     assertThat(granted.getAutoGranted()).isEqualTo(AutoGrantedState.AUTOGRANTED);
     assertThat(granted.getDecisionStatus()).isEqualTo("GRANTED");
     assertThat(granted.getMeritsDecisions()).containsKey(proceedingId);
@@ -694,7 +694,7 @@ class PostgresAxonIntegrationTest {
             Void.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    ApplicationReadModel ready = projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
+    ApplicationReadModel ready = projectionAwaiter.awaitApplication(applicationId);
     assertThat(ready.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
     assertThat(ready.getAutoGranted()).isEqualTo(AutoGrantedState.MANUAL);
     assertThat(
@@ -708,7 +708,7 @@ class PostgresAxonIntegrationTest {
               assertThat(event.get("payload_type").toString())
                   .endsWith("ApplicationReadyForManualAssessment");
               assertThat(event.get("payload").toString())
-                  .contains("applicationDataVersion")
+                  .contains("applicationVersion")
                   .doesNotContain("applicationContent", "LAA-123");
             });
   }
@@ -753,7 +753,7 @@ class PostgresAxonIntegrationTest {
             new HttpEntity<>(request, headers()),
             Void.class);
     assertThat(decisionResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    projectionAwaiter.awaitApplicationVersion(applicationId, 2L);
+    projectionAwaiter.awaitApplication(applicationId);
 
     ResponseEntity<Map<String, Object>> certificateResponse =
         restTemplate.exchange(
@@ -1179,7 +1179,7 @@ class PostgresAxonIntegrationTest {
       executor.shutdown();
     }
 
-    assertThat(projectionAwaiter.awaitApplicationVersion(applicationId, 2L).getApplicationVersion())
+    assertThat(projectionAwaiter.awaitApplication(applicationId).getApplicationVersion())
         .isEqualTo(2L);
     assertThat(
             jdbcTemplate.queryForObject(
@@ -1218,7 +1218,7 @@ class PostgresAxonIntegrationTest {
       executor.shutdown();
     }
 
-    assertThat(projectionAwaiter.awaitApplicationVersion(applicationId, 1L).getAutoGranted())
+    assertThat(projectionAwaiter.awaitApplication(applicationId).getAutoGranted())
         .isEqualTo(AutoGrantedState.MANUAL);
     assertThat(
             jdbcTemplate.queryForObject(
@@ -1241,7 +1241,7 @@ class PostgresAxonIntegrationTest {
             Void.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
+    projectionAwaiter.awaitApplication(applicationId);
   }
 
   private UUID assignForManualDecision(UUID applicationId) {
@@ -1254,7 +1254,7 @@ class PostgresAxonIntegrationTest {
             Void.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(projectionAwaiter.awaitApplicationVersion(applicationId, 1L).getCaseworkerId())
+    assertThat(projectionAwaiter.awaitApplication(applicationId).getCaseworkerId())
         .isEqualTo(caseworkerId);
     return caseworkerId;
   }
@@ -1428,8 +1428,8 @@ class PostgresAxonIntegrationTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
 
-    // applicationDataVersion advances to 1; applicationVersion stays at 0
-    ApplicationReadModel model = projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
+    // A note does not advance applicationVersion
+    ApplicationReadModel model = projectionAwaiter.awaitApplication(applicationId);
     assertThat(model.getApplicationVersion()).isEqualTo(0L);
 
     // NoteCreatedEvent is thin — note text must not appear in the event stream
@@ -1439,7 +1439,7 @@ class PostgresAxonIntegrationTest {
                     + " WHERE aggregate_identifier = ? AND sequence_number = 1",
                 String.class,
                 applicationId.toString()))
-        .contains("applicationDataVersion")
+        .contains("occurredAt")
         .doesNotContain("Integration test note");
 
     awaitHistoryTypes(applicationId, "APPLICATION_CREATED", "APPLICATION_NOTE_CREATED");
@@ -1539,7 +1539,7 @@ class PostgresAxonIntegrationTest {
         HttpMethod.POST,
         new HttpEntity<>(new CreateNoteRequest("Hello from GET notes test"), headers()),
         Void.class);
-    projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
+    projectionAwaiter.awaitApplication(applicationId);
 
     ResponseEntity<String> response =
         restTemplate.exchange(
@@ -1582,7 +1582,7 @@ class PostgresAxonIntegrationTest {
                 AutoGrantOutcome.AUTOGRANTED, Map.of("certificateNumber", "PA-CERT-001")),
             headers()),
         Void.class);
-    projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
+    projectionAwaiter.awaitApplication(applicationId);
 
     ResponseEntity<String> paResponse =
         restTemplate.postForEntity(
@@ -1651,7 +1651,7 @@ class PostgresAxonIntegrationTest {
                 AutoGrantOutcome.AUTOGRANTED, Map.of("certificateNumber", "PA-CERT-002")),
             headers()),
         Void.class);
-    projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
+    projectionAwaiter.awaitApplication(applicationId);
 
     ResponseEntity<String> paResponse =
         restTemplate.postForEntity(
@@ -1732,7 +1732,7 @@ class PostgresAxonIntegrationTest {
                 AutoGrantOutcome.AUTOGRANTED, Map.of("certificateNumber", "PA-CERT-003")),
             headers()),
         Void.class);
-    projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
+    projectionAwaiter.awaitApplication(applicationId);
 
     ResponseEntity<String> paResponse =
         restTemplate.postForEntity(
@@ -1838,7 +1838,7 @@ class PostgresAxonIntegrationTest {
                 AutoGrantOutcome.AUTOGRANTED, Map.of("certificateNumber", "PA-CERT-004")),
             headers()),
         Void.class);
-    projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
+    projectionAwaiter.awaitApplication(applicationId);
 
     ResponseEntity<String> paResponse =
         restTemplate.postForEntity(
@@ -1954,7 +1954,7 @@ class PostgresAxonIntegrationTest {
                 AutoGrantOutcome.AUTOGRANTED, Map.of("certificateNumber", "PA-CERT-005")),
             headers()),
         Void.class);
-    projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
+    projectionAwaiter.awaitApplication(applicationId);
 
     ResponseEntity<String> firstPaResponse =
         restTemplate.postForEntity(

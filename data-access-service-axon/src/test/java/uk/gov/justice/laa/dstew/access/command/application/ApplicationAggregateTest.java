@@ -96,7 +96,6 @@ class ApplicationAggregateTest {
         .events(
             new ApplicationCreatedEvent(
                 applicationId,
-                created.applicationDataVersion(),
                 created.requestFingerprint(),
                 status,
                 created.schemaVersion(),
@@ -219,8 +218,7 @@ class ApplicationAggregateTest {
 
     fixture
         .given()
-        .events(
-            created, new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, readyAt))
+        .events(created, new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, readyAt))
         .when()
         .command(
             new MakeApplicationDecisionCommand(
@@ -238,7 +236,6 @@ class ApplicationAggregateTest {
         .events(
             new ApplicationDecisionMadeEvent(
                 applicationId,
-                2L,
                 2L,
                 "REFUSED",
                 AutoGrantedState.MANUAL,
@@ -293,7 +290,6 @@ class ApplicationAggregateTest {
             new ApplicationDecisionMadeEvent(
                 applicationId,
                 1L,
-                1L,
                 "GRANTED",
                 AutoGrantedState.AUTOGRANTED,
                 Instant.parse("2026-07-19T10:00:00Z")))
@@ -320,7 +316,6 @@ class ApplicationAggregateTest {
             new ApplicationDecisionMadeEvent(
                 applicationId,
                 1L,
-                1L,
                 "REFUSED",
                 AutoGrantedState.MANUAL,
                 firstOccurredAt,
@@ -346,7 +341,6 @@ class ApplicationAggregateTest {
         .events(
             new ApplicationDecisionMadeEvent(
                 applicationId,
-                2L,
                 2L,
                 "REFUSED",
                 AutoGrantedState.MANUAL,
@@ -389,7 +383,7 @@ class ApplicationAggregateTest {
         .command(new MarkApplicationReadyCommand(applicationId, 0L, "{}", occurredAt))
         .then()
         .resultMessagePayload(ReadyApplicationResult.RECORDED)
-        .events(new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, occurredAt));
+        .events(new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, occurredAt));
   }
 
   @Test
@@ -401,7 +395,7 @@ class ApplicationAggregateTest {
         .given()
         .events(
             applicationCreatedEvent(applicationId),
-            new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, firstOccurredAt))
+            new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, firstOccurredAt))
         .when()
         .command(
             new MarkApplicationReadyCommand(
@@ -421,7 +415,6 @@ class ApplicationAggregateTest {
             applicationCreatedEvent(applicationId),
             new ApplicationDecisionMadeEvent(
                 applicationId,
-                1L,
                 1L,
                 "GRANTED",
                 AutoGrantedState.AUTOGRANTED,
@@ -457,7 +450,6 @@ class ApplicationAggregateTest {
     ApplicationCreatedEvent inProgress =
         new ApplicationCreatedEvent(
             applicationId,
-            0L,
             "fingerprint",
             "APPLICATION_IN_PROGRESS",
             1,
@@ -487,7 +479,7 @@ class ApplicationAggregateTest {
         .given()
         .events(
             applicationCreatedEvent(applicationId, details),
-            new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, Instant.now()))
+            new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, Instant.now()))
         .when()
         .command(
             new MakeApplicationDecisionCommand(
@@ -507,7 +499,7 @@ class ApplicationAggregateTest {
         .given()
         .events(
             applicationCreatedEvent(applicationId, details),
-            new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, Instant.now()))
+            new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, Instant.now()))
         .when()
         .command(decisionCommand(applicationId, 1L, proceedingId, "REFUSED", null, null))
         .then()
@@ -527,7 +519,7 @@ class ApplicationAggregateTest {
         .given()
         .events(
             applicationCreatedEvent(applicationId, details),
-            new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, Instant.now()))
+            new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, Instant.now()))
         .when()
         .command(
             new MakeApplicationDecisionCommand(
@@ -561,7 +553,7 @@ class ApplicationAggregateTest {
         .command(new CreateNoteCommand(applicationId, "My note", "{}", occurredAt))
         .then()
         .success()
-        .events(new NoteCreatedEvent(applicationId, 1L, occurredAt, "My note"));
+        .events(new NoteCreatedEvent(applicationId, occurredAt, "My note"));
   }
 
   @Test
@@ -597,7 +589,6 @@ class ApplicationAggregateTest {
                 "application/pdf",
                 "checksum",
                 "CIVIL_APPLY",
-                null,
                 ".pdf",
                 "originalFilename.pdf"));
   }
@@ -658,8 +649,7 @@ class ApplicationAggregateTest {
                 12L,
                 "application/pdf",
                 "previous-checksum",
-                "CIVIL_APPLY",
-                version))
+                "CIVIL_APPLY"))
         .when()
         .command(
             new ApplicationDocumentUploadCommand(
@@ -782,7 +772,6 @@ class ApplicationAggregateTest {
             applicationCreatedEvent(applicationId),
             new ApplicationDecisionMadeEvent(
                 applicationId,
-                1L,
                 1L,
                 "GRANTED",
                 AutoGrantedState.AUTOGRANTED,
@@ -991,7 +980,6 @@ class ApplicationAggregateTest {
             new ApplicationUpdatedEvent(
                 applicationId,
                 1L,
-                1L,
                 "APPLICATION_SUBMITTED",
                 "APPLICATION_SUBMITTED",
                 occurredAt,
@@ -1041,7 +1029,7 @@ class ApplicationAggregateTest {
         .given()
         .events(
             applicationCreatedEvent(applicationId),
-            new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, occurredAt))
+            new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, occurredAt))
         .when()
         .command(new RecordAutoGrantedOutcomeCommand(applicationId, Map.of(), "{}", occurredAt))
         .then()
@@ -1059,7 +1047,7 @@ class ApplicationAggregateTest {
         .events(
             applicationCreatedEvent(applicationId),
             new ApplicationDecisionMadeEvent(
-                applicationId, 1L, 1L, "GRANTED", AutoGrantedState.AUTOGRANTED, occurredAt))
+                applicationId, 1L, "GRANTED", AutoGrantedState.AUTOGRANTED, occurredAt))
         .when()
         .command(
             new RecordAutoGrantedOutcomeCommand(applicationId, Map.of(), "{different}", occurredAt))
@@ -1084,8 +1072,7 @@ class ApplicationAggregateTest {
 
     fixture
         .given()
-        .events(
-            created, new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, readyAt))
+        .events(created, new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, readyAt))
         .when()
         .command(
             new MakeApplicationDecisionCommand(
@@ -1103,7 +1090,6 @@ class ApplicationAggregateTest {
         .events(
             new ApplicationDecisionMadeEvent(
                 applicationId,
-                2L,
                 2L,
                 "GRANTED",
                 AutoGrantedState.MANUAL,

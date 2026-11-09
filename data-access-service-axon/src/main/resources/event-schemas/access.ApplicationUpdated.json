@@ -11,9 +11,6 @@
     "applicationVersion": {
       "type": "integer"
     },
-    "applicationDataVersion": {
-      "type": "integer"
-    },
     "previousStatus": {
       "type": [
         "string",
@@ -41,7 +38,6 @@
   "required": [
     "applicationId",
     "applicationVersion",
-    "applicationDataVersion",
     "previousStatus",
     "status",
     "occurredAt",

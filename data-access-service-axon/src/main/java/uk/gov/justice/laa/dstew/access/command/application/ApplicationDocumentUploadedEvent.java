@@ -19,7 +19,6 @@ public record ApplicationDocumentUploadedEvent(
     Erasable<String> contentType,
     String checksum,
     Erasable<String> sourceService,
-    Long applicationDataVersion,
     Erasable<String> fileSuffix,
     Erasable<String> originalFilename)
     implements GenesisScoped {
@@ -44,7 +43,6 @@ public record ApplicationDocumentUploadedEvent(
       String contentType,
       String checksum,
       String sourceService,
-      Long applicationDataVersion,
       String fileSuffix,
       String originalFilename) {
     this(
@@ -56,7 +54,6 @@ public record ApplicationDocumentUploadedEvent(
         Erasable.of(contentType),
         checksum,
         Erasable.of(sourceService),
-        applicationDataVersion,
         Erasable.of(fileSuffix),
         Erasable.of(originalFilename));
   }
@@ -71,7 +68,6 @@ public record ApplicationDocumentUploadedEvent(
       String contentType,
       String checksum,
       String sourceService,
-      Long applicationDataVersion,
       String fileSuffix) {
     this(
         applicationId,
@@ -82,36 +78,11 @@ public record ApplicationDocumentUploadedEvent(
         contentType,
         checksum,
         sourceService,
-        applicationDataVersion,
         fileSuffix,
         (String) null);
   }
 
-  /** Creates the historical event shape with a data-version pointer but no recorded suffix. */
-  public ApplicationDocumentUploadedEvent(
-      UUID applicationId,
-      UUID documentId,
-      String documentType,
-      Instant uploadedAt,
-      Long size,
-      String contentType,
-      String checksum,
-      String sourceService,
-      Long applicationDataVersion) {
-    this(
-        applicationId,
-        documentId,
-        documentType,
-        uploadedAt,
-        size,
-        contentType,
-        checksum,
-        sourceService,
-        applicationDataVersion,
-        (String) null);
-  }
-
-  /** Creates the legacy event shape without a sensitive-data version pointer. */
+  /** Creates the legacy event shape without a recorded suffix. */
   public ApplicationDocumentUploadedEvent(
       UUID applicationId,
       UUID documentId,
@@ -130,7 +101,7 @@ public record ApplicationDocumentUploadedEvent(
         contentType,
         checksum,
         sourceService,
-        (Long) null);
+        (String) null);
   }
 
   @Override

@@ -46,7 +46,6 @@ public class ApplicationDocumentUploadCommandHandler {
             command.contentType(),
             command.checksum(),
             command.sourceService(),
-            null,
             DocumentFileSuffix.fromFilename(command.originalFilename()),
             command.originalFilename()));
     return command.documentId();

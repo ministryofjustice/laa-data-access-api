@@ -77,8 +77,7 @@ class ApplicationSummaryProjectionTest {
             12L,
             "application/pdf",
             "checksum",
-            "CIVIL_APPLY",
-            1L),
+            "CIVIL_APPLY"),
         anyMessage());
 
     verify(summaryRepository).save(row);
@@ -186,7 +185,6 @@ class ApplicationSummaryProjectionTest {
   private static ApplicationCreatedEvent erased(ApplicationCreatedEvent event) {
     return new ApplicationCreatedEvent(
         event.applicationId(),
-        event.applicationDataVersion(),
         event.requestFingerprint(),
         event.status(),
         event.schemaVersion(),
@@ -405,7 +403,7 @@ class ApplicationSummaryProjectionTest {
 
     projection.on(
         new ApplicationDecisionMadeEvent(
-            applicationId, 3L, 4L, "GRANTED", AutoGrantedState.AUTOGRANTED, Instant.now()),
+            applicationId, 3L, "GRANTED", AutoGrantedState.AUTOGRANTED, Instant.now()),
         anyMessage());
 
     assertThat(existing.getStatus()).isEqualTo(ApplicationStatus.APPLICATION_GRANTED.name());
@@ -427,7 +425,7 @@ class ApplicationSummaryProjectionTest {
 
     projection.on(
         new ApplicationDecisionMadeEvent(
-            applicationId, 3L, 4L, null, AutoGrantedState.MANUAL, Instant.now()),
+            applicationId, 3L, null, AutoGrantedState.MANUAL, Instant.now()),
         anyMessage());
 
     assertThat(existing.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
@@ -450,7 +448,7 @@ class ApplicationSummaryProjectionTest {
             .build();
     when(summaryRepository.findById(applicationId)).thenReturn(Optional.of(existing));
 
-    projection.on(new NoteCreatedEvent(applicationId, 2L, Instant.now()), anyMessage());
+    projection.on(new NoteCreatedEvent(applicationId, Instant.now()), anyMessage());
 
     // Filter fields must not be modified
     assertThat(existing.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
@@ -495,7 +493,6 @@ class ApplicationSummaryProjectionTest {
         new ApplicationUpdatedEvent(
             applicationId,
             2L,
-            3L,
             "APPLICATION_SUBMITTED",
             "APPLICATION_UPDATED",
             Instant.now(),
@@ -527,12 +524,7 @@ class ApplicationSummaryProjectionTest {
 
     projection.on(
         new ApplicationUpdatedEvent(
-            applicationId,
-            2L,
-            3L,
-            "APPLICATION_IN_PROGRESS",
-            "APPLICATION_SUBMITTED",
-            Instant.now()),
+            applicationId, 2L, "APPLICATION_IN_PROGRESS", "APPLICATION_SUBMITTED", Instant.now()),
         anyMessage());
 
     assertThat(existing.getAutoGranted()).isEqualTo(AutoGrantedState.PENDING);
@@ -546,8 +538,7 @@ class ApplicationSummaryProjectionTest {
     when(summaryRepository.findById(applicationId)).thenReturn(Optional.empty());
 
     projection.on(
-        new ApplicationUpdatedEvent(applicationId, 2L, 3L, "prev", "new", Instant.now()),
-        anyMessage());
+        new ApplicationUpdatedEvent(applicationId, 2L, "prev", "new", Instant.now()), anyMessage());
 
     verify(summaryRepository, never()).save(any());
   }
@@ -569,7 +560,7 @@ class ApplicationSummaryProjectionTest {
 
     projection.on(
         new ApplicationDecisionMadeEvent(
-            applicationId, 3L, 4L, "REFUSED", AutoGrantedState.MANUAL, Instant.now()),
+            applicationId, 3L, "REFUSED", AutoGrantedState.MANUAL, Instant.now()),
         anyMessage());
 
     assertThat(existing.getStatus()).isEqualTo("APPLICATION_REFUSED");

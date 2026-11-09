@@ -10,7 +10,7 @@ class ApplicationUpdatedEventTest {
 
   private ApplicationUpdatedEvent event(String previousStatus, String status) {
     return new ApplicationUpdatedEvent(
-        UUID.randomUUID(), 1L, 1L, previousStatus, status, Instant.now());
+        UUID.randomUUID(), 1L, previousStatus, status, Instant.now());
   }
 
   @Test

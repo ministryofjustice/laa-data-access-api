@@ -26,7 +26,6 @@ public class ApplicationState {
   String officeCode;
   AutoGrantedState autoGranted = AutoGrantedState.PENDING;
   String overallDecision;
-  long applicationDataVersion;
   long applicationVersion;
   UUID caseworkerId;
   long assignmentVersion;

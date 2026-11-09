@@ -18,7 +18,6 @@ import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 @Event(namespace = "access", name = "ApplicationCreated")
 public record ApplicationCreatedEvent(
     @EventTag(key = "ApplicationAggregate") UUID applicationId,
-    long applicationDataVersion,
     String requestFingerprint,
     String status,
     int schemaVersion,
@@ -42,7 +41,6 @@ public record ApplicationCreatedEvent(
   /** Creates the event from plain content values. */
   public ApplicationCreatedEvent(
       UUID applicationId,
-      long applicationDataVersion,
       String requestFingerprint,
       String status,
       int schemaVersion,
@@ -55,7 +53,6 @@ public record ApplicationCreatedEvent(
       String serialisedRequest) {
     this(
         applicationId,
-        applicationDataVersion,
         requestFingerprint,
         status,
         schemaVersion,
@@ -71,7 +68,6 @@ public record ApplicationCreatedEvent(
   /** Creates the event without submitted content or proceedings. */
   public ApplicationCreatedEvent(
       UUID applicationId,
-      long applicationDataVersion,
       String requestFingerprint,
       String status,
       int schemaVersion,
@@ -81,7 +77,6 @@ public record ApplicationCreatedEvent(
       String laaReference) {
     this(
         applicationId,
-        applicationDataVersion,
         requestFingerprint,
         status,
         schemaVersion,
@@ -97,7 +92,6 @@ public record ApplicationCreatedEvent(
   /** Creates the event without submitted content or proceedings. */
   public ApplicationCreatedEvent(
       UUID applicationId,
-      long applicationDataVersion,
       String requestFingerprint,
       String status,
       int schemaVersion,
@@ -107,7 +101,6 @@ public record ApplicationCreatedEvent(
       String laaReference) {
     this(
         applicationId,
-        applicationDataVersion,
         requestFingerprint,
         status,
         schemaVersion,

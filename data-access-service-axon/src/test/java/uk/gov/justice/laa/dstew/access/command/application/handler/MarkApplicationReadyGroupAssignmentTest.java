@@ -70,7 +70,7 @@ class MarkApplicationReadyGroupAssignmentTest {
     verify(eventAppender)
         .append(
             List.of(
-                new ApplicationReadyForManualAssessmentEvent(APPLICATION_ID, 1L, 1L, OCCURRED_AT),
+                new ApplicationReadyForManualAssessmentEvent(APPLICATION_ID, 1L, OCCURRED_AT),
                 new WorkItemAssigned(
                     APPLICATION_ID,
                     WorkItemType.APPLICATION,
@@ -99,7 +99,7 @@ class MarkApplicationReadyGroupAssignmentTest {
     verify(eventAppender)
         .append(
             List.of(
-                new ApplicationReadyForManualAssessmentEvent(APPLICATION_ID, 3L, 3L, OCCURRED_AT),
+                new ApplicationReadyForManualAssessmentEvent(APPLICATION_ID, 3L, OCCURRED_AT),
                 new WorkItemUnassigned(
                     APPLICATION_ID,
                     WorkItemType.APPLICATION,
@@ -118,8 +118,7 @@ class MarkApplicationReadyGroupAssignmentTest {
 
     verify(eventAppender)
         .append(
-            List.of(
-                new ApplicationReadyForManualAssessmentEvent(APPLICATION_ID, 1L, 1L, OCCURRED_AT)));
+            List.of(new ApplicationReadyForManualAssessmentEvent(APPLICATION_ID, 1L, OCCURRED_AT)));
     verifyNoInteractions(stateManager);
   }
 
@@ -143,8 +142,7 @@ class MarkApplicationReadyGroupAssignmentTest {
         stateOf(
             List.of(
                 notReady(APPLICATION_ID).getFirst(),
-                new ApplicationReadyForManualAssessmentEvent(
-                    APPLICATION_ID, 1L, 1L, OCCURRED_AT))));
+                new ApplicationReadyForManualAssessmentEvent(APPLICATION_ID, 1L, OCCURRED_AT))));
 
     var result = handler.handle(command(), application, eventAppender, stateManager, context);
 

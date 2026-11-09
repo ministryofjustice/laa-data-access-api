@@ -25,7 +25,7 @@ class WorkItemRouteProjectionTest {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-09-03T10:00:00Z");
 
-    projection.on(new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, occurredAt));
+    projection.on(new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, occurredAt));
 
     WorkItemRoute route = savedRoute();
     assertThat(route.getWorkItemType()).isEqualTo(WorkItemType.APPLICATION);
@@ -41,7 +41,7 @@ class WorkItemRouteProjectionTest {
   void deletesApplicationRouteIdempotentlyWhenDecided() {
     UUID applicationId = UUID.randomUUID();
     ApplicationDecisionMadeEvent event =
-        new ApplicationDecisionMadeEvent(applicationId, 2L, 2L, "REFUSED", null, Instant.now());
+        new ApplicationDecisionMadeEvent(applicationId, 2L, "REFUSED", null, Instant.now());
 
     projection.on(event);
     projection.on(event);

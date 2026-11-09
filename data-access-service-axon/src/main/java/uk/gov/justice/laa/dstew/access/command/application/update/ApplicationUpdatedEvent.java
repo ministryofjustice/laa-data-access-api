@@ -18,7 +18,6 @@ import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 public record ApplicationUpdatedEvent(
     @EventTag(key = "ApplicationAggregate") UUID applicationId,
     long applicationVersion,
-    long applicationDataVersion,
     String previousStatus,
     String status,
     Instant occurredAt,
@@ -38,7 +37,6 @@ public record ApplicationUpdatedEvent(
   public ApplicationUpdatedEvent(
       UUID applicationId,
       long applicationVersion,
-      long applicationDataVersion,
       String previousStatus,
       String status,
       Instant occurredAt,
@@ -48,7 +46,6 @@ public record ApplicationUpdatedEvent(
     this(
         applicationId,
         applicationVersion,
-        applicationDataVersion,
         previousStatus,
         status,
         occurredAt,
@@ -61,14 +58,12 @@ public record ApplicationUpdatedEvent(
   public ApplicationUpdatedEvent(
       UUID applicationId,
       long applicationVersion,
-      long applicationDataVersion,
       String previousStatus,
       String status,
       Instant occurredAt) {
     this(
         applicationId,
         applicationVersion,
-        applicationDataVersion,
         previousStatus,
         status,
         occurredAt,

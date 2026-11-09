@@ -50,8 +50,8 @@ class ApplicationHistoryMapperTest {
     var history =
         map(
             APPLICATION_ID,
-            new NoteCreatedEvent(APPLICATION_ID, 1L, AT, Erasable.of("A note")),
-            new NoteCreatedEvent(APPLICATION_ID, 2L, AT, Erasable.erased()));
+            new NoteCreatedEvent(APPLICATION_ID, AT, Erasable.of("A note")),
+            new NoteCreatedEvent(APPLICATION_ID, AT, Erasable.erased()));
 
     assertThat(history.applicationHistoryEvents())
         .extracting(ApplicationHistoryEventResult::eventDescription)
@@ -68,7 +68,7 @@ class ApplicationHistoryMapperTest {
         ApplicationHistoryMapper.map(
             APPLICATION_ID,
             List.of(
-                message(new NoteCreatedEvent(APPLICATION_ID, 1L, AT, Erasable.of("A note"))),
+                message(new NoteCreatedEvent(APPLICATION_ID, AT, Erasable.of("A note"))),
                 message(submitted(UUID.randomUUID(), "EXPERT"))),
             List.of("APPLICATION_CREATED"));
 

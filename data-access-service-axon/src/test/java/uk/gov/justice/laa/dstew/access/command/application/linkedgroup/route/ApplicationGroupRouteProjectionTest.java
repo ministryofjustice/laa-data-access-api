@@ -322,7 +322,6 @@ class ApplicationGroupRouteProjectionTest {
       UUID applicationId, long applicationDataVersion, Instant occurredAt) {
     return new ApplicationCreatedEvent(
         applicationId,
-        applicationDataVersion,
         "fingerprint",
         "APPLICATION_SUBMITTED",
         1,

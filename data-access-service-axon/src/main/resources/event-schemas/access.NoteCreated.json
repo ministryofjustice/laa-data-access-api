@@ -8,9 +8,6 @@
       "type": "string",
       "format": "uuid"
     },
-    "applicationDataVersion": {
-      "type": "integer"
-    },
     "occurredAt": {
       "type": "string",
       "format": "date-time"
@@ -18,7 +15,6 @@
   },
   "required": [
     "applicationId",
-    "applicationDataVersion",
     "occurredAt"
   ],
   "additionalProperties": false

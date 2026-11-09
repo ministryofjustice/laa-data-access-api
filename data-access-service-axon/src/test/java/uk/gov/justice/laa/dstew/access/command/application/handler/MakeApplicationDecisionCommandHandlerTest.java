@@ -39,7 +39,7 @@ class MakeApplicationDecisionCommandHandlerTest {
     UUID applicationId = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
     UUID proceedingId = UUID.randomUUID();
-    ApplicationState state = activeManualState(applicationId, caseworkerId, 4L, 7L);
+    ApplicationState state = activeManualState(applicationId, caseworkerId, 4L);
     ApplicationDataPayload current = payloadWithProceeding(applicationId, proceedingId, null);
     Map<String, Object> certificate = Map.of("reference", "CERT-1");
     MakeApplicationDecisionCommand command =
@@ -65,7 +65,6 @@ class MakeApplicationDecisionCommandHandlerTest {
             new ApplicationDecisionMadeEvent(
                 applicationId,
                 5L,
-                8L,
                 "GRANTED",
                 AutoGrantedState.MANUAL,
                 OCCURRED_AT,
@@ -81,7 +80,7 @@ class MakeApplicationDecisionCommandHandlerTest {
     UUID applicationId = UUID.randomUUID();
     UUID existingProceedingId = UUID.randomUUID();
     UUID newProceedingId = UUID.randomUUID();
-    ApplicationState state = activeManualState(applicationId, UUID.randomUUID(), 1L, 2L);
+    ApplicationState state = activeManualState(applicationId, UUID.randomUUID(), 1L);
     ApplicationDataPayload current =
         payloadWithProceeding(
             applicationId,
@@ -114,7 +113,6 @@ class MakeApplicationDecisionCommandHandlerTest {
             new ApplicationDecisionMadeEvent(
                 applicationId,
                 2L,
-                3L,
                 "REFUSED",
                 AutoGrantedState.MANUAL,
                 OCCURRED_AT,
@@ -135,13 +133,12 @@ class MakeApplicationDecisionCommandHandlerTest {
   }
 
   private static ApplicationState activeManualState(
-      UUID applicationId, UUID caseworkerId, long applicationVersion, long dataVersion) {
+      UUID applicationId, UUID caseworkerId, long applicationVersion) {
     ApplicationState state = new ApplicationState();
     setField(state, "applicationId", applicationId);
     setField(state, "autoGranted", AutoGrantedState.MANUAL);
     setField(state, "caseworkerId", caseworkerId);
     setField(state, "applicationVersion", applicationVersion);
-    setField(state, "applicationDataVersion", dataVersion);
     return state;
   }
 

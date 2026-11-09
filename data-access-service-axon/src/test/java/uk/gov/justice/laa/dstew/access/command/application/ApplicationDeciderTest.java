@@ -280,7 +280,7 @@ class ApplicationDeciderTest {
     String fingerprint = PayloadFingerprint.compute("{}");
 
     List<Object> events =
-        ApplicationDecider.decideCreate(state, applicationId, 1, fingerprint, details, 0L);
+        ApplicationDecider.decideCreate(state, applicationId, 1, fingerprint, details);
 
     assertThat(events).hasSize(1);
     assertThat(events.getFirst()).isInstanceOf(ApplicationCreatedEvent.class);
@@ -288,7 +288,6 @@ class ApplicationDeciderTest {
     assertThat(event.applicationId()).isEqualTo(applicationId);
     assertThat(event.requestFingerprint()).isEqualTo(fingerprint);
     assertThat(event.schemaVersion()).isEqualTo(1);
-    assertThat(event.applicationDataVersion()).isEqualTo(0L);
     assertThat(event.officeCode()).isEqualTo("1A001B");
     assertThat(event.proceedingIds())
         .isEqualTo(details.proceedings().stream().map(Proceeding::getId).toList());
@@ -304,7 +303,7 @@ class ApplicationDeciderTest {
     ApplicationState state = stateAfterCreate(applicationId, fingerprint, 1);
 
     List<Object> events =
-        ApplicationDecider.decideCreate(state, applicationId, 1, fingerprint, null, 0L);
+        ApplicationDecider.decideCreate(state, applicationId, 1, fingerprint, null);
 
     assertThat(events).isEmpty();
   }
@@ -319,7 +318,7 @@ class ApplicationDeciderTest {
     assertThatThrownBy(
             () ->
                 ApplicationDecider.decideCreate(
-                    state, applicationId, 1, differentFingerprint, null, 0L))
+                    state, applicationId, 1, differentFingerprint, null))
         .isInstanceOf(ApplicationCreationConflictException.class);
   }
 
@@ -330,7 +329,7 @@ class ApplicationDeciderTest {
     ApplicationState state = stateAfterCreate(applicationId, fingerprint, 1);
 
     assertThatThrownBy(
-            () -> ApplicationDecider.decideCreate(state, applicationId, 2, fingerprint, null, 0L))
+            () -> ApplicationDecider.decideCreate(state, applicationId, 2, fingerprint, null))
         .isInstanceOf(ApplicationCreationConflictException.class);
   }
 
@@ -342,7 +341,7 @@ class ApplicationDeciderTest {
     String fingerprint = PayloadFingerprint.compute("{}");
 
     List<Object> events =
-        ApplicationDecider.decideCreate(state, applicationId, 1, fingerprint, details, 0L);
+        ApplicationDecider.decideCreate(state, applicationId, 1, fingerprint, details);
 
     ApplicationCreatedEvent event = (ApplicationCreatedEvent) events.getFirst();
     assertThat(
@@ -351,7 +350,6 @@ class ApplicationDeciderTest {
                 .toList())
         .containsExactly(
             "applicationId",
-            "applicationDataVersion",
             "requestFingerprint",
             "status",
             "schemaVersion",
@@ -449,10 +447,9 @@ class ApplicationDeciderTest {
     String fingerprint = PayloadFingerprint.compute(details.serialisedRequest());
 
     ApplicationCreatedEvent event =
-        ApplicationDecider.decideSubmitDraft(applicationId, 0L, fingerprint, details);
+        ApplicationDecider.decideSubmitDraft(applicationId, fingerprint, details);
 
     assertThat(event.applicationId()).isEqualTo(applicationId);
-    assertThat(event.applicationDataVersion()).isEqualTo(0L);
     assertThat(event.requestFingerprint()).isEqualTo(fingerprint);
     assertThat(event.status()).isEqualTo(details.status());
     assertThat(event.schemaVersion()).isEqualTo(details.schemaVersion());
@@ -467,7 +464,6 @@ class ApplicationDeciderTest {
     UUID proceedingId = UUID.randomUUID();
     ApplicationState state = stateAfterCreate(applicationId, "fp", 1);
     state.applicationVersion = 0L;
-    state.applicationDataVersion = 0L;
     state.proceedingIds.add(proceedingId);
     Instant occurredAt = Instant.parse("2026-07-19T10:00:00Z");
 
@@ -487,7 +483,6 @@ class ApplicationDeciderTest {
 
     assertThat(event.applicationId()).isEqualTo(applicationId);
     assertThat(event.applicationVersion()).isEqualTo(1L);
-    assertThat(event.applicationDataVersion()).isEqualTo(1L);
     assertThat(event.overallDecision()).isEqualTo("REFUSED");
     assertThat(event.occurredAt()).isEqualTo(occurredAt);
     assertThat(event.decisionRequestFingerprint()).isEqualTo(PayloadFingerprint.compute("{}"));
@@ -650,14 +645,12 @@ class ApplicationDeciderTest {
   void givenApplication_whenDecideNote_thenReturnsNoteCreatedEvent() {
     UUID applicationId = UUID.randomUUID();
     ApplicationState state = stateAfterCreate(applicationId, "fp", 1);
-    state.applicationDataVersion = 0L;
 
     NoteCreatedEvent event =
         ApplicationDecider.decideNote(
             state, new CreateNoteCommand(applicationId, "My note", "{}", TIMESTAMP));
 
     assertThat(event.applicationId()).isEqualTo(applicationId);
-    assertThat(event.applicationDataVersion()).isEqualTo(1L);
     assertThat(event.occurredAt()).isEqualTo(TIMESTAMP);
     assertThat(event.noteText()).isEqualTo(Erasable.of("My note"));
   }
@@ -708,7 +701,6 @@ class ApplicationDeciderTest {
     state.requestFingerprint = fingerprint;
     state.schemaVersion = schemaVersion;
     state.applicationVersion = 0L;
-    state.applicationDataVersion = 0L;
     return state;
   }
 

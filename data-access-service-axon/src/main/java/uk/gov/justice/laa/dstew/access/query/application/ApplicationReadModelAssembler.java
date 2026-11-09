@@ -61,7 +61,6 @@ public class ApplicationReadModelAssembler {
         ApplicationReadModel.builder()
             .applicationId(state.getApplicationId())
             .status(state.getStatus())
-            .applicationDataVersion(state.getApplicationDataVersion())
             .applicationVersion(state.getApplicationVersion())
             .schemaVersion(state.getSchemaVersion())
             .officeCode(officeCode)

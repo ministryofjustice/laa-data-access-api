@@ -175,8 +175,7 @@ public final class ApplicationDecider {
       UUID applicationId,
       int schemaVersion,
       String fingerprint,
-      ApplicationCreationDetails details,
-      long applicationDataVersion) {
+      ApplicationCreationDetails details) {
 
     if (state.applicationId != null) {
       if (Objects.equals(state.requestFingerprint, fingerprint)
@@ -186,8 +185,7 @@ public final class ApplicationDecider {
       throw new ApplicationCreationConflictException(state.applicationId);
     }
 
-    return List.of(
-        buildApplicationCreatedEvent(applicationId, applicationDataVersion, fingerprint, details));
+    return List.of(buildApplicationCreatedEvent(applicationId, fingerprint, details));
   }
 
   /**
@@ -239,12 +237,8 @@ public final class ApplicationDecider {
    * emitted by a direct {@link CreateApplicationCommand}, so the projection requires no changes.
    */
   public static ApplicationCreatedEvent decideSubmitDraft(
-      UUID applicationId,
-      long applicationDataVersion,
-      String fingerprint,
-      ApplicationCreationDetails details) {
-    return buildApplicationCreatedEvent(
-        applicationId, applicationDataVersion, fingerprint, details);
+      UUID applicationId, String fingerprint, ApplicationCreationDetails details) {
+    return buildApplicationCreatedEvent(applicationId, fingerprint, details);
   }
 
   /**
@@ -286,7 +280,6 @@ public final class ApplicationDecider {
     return new ApplicationDecisionMadeEvent(
         state.applicationId,
         state.applicationVersion + 1,
-        state.applicationDataVersion + 1,
         command.overallDecision(),
         autoGranted,
         command.occurredAt(),
@@ -350,11 +343,7 @@ public final class ApplicationDecider {
 
   /** Returns a {@link NoteCreatedEvent}. */
   public static NoteCreatedEvent decideNote(ApplicationState state, CreateNoteCommand command) {
-    return new NoteCreatedEvent(
-        state.applicationId,
-        state.applicationDataVersion + 1,
-        command.occurredAt(),
-        command.noteText());
+    return new NoteCreatedEvent(state.applicationId, command.occurredAt(), command.noteText());
   }
 
   /** Validates an idempotent transition to manual-assessment readiness. */
@@ -384,7 +373,6 @@ public final class ApplicationDecider {
     return new ApplicationUpdatedEvent(
         state.applicationId,
         state.applicationVersion + 1,
-        state.applicationDataVersion + 1,
         state.status,
         nextStatus,
         command.occurredAt(),
@@ -429,13 +417,9 @@ public final class ApplicationDecider {
   }
 
   private static ApplicationCreatedEvent buildApplicationCreatedEvent(
-      UUID applicationId,
-      long applicationDataVersion,
-      String fingerprint,
-      ApplicationCreationDetails details) {
+      UUID applicationId, String fingerprint, ApplicationCreationDetails details) {
     return new ApplicationCreatedEvent(
         applicationId,
-        applicationDataVersion,
         fingerprint,
         details.status(),
         details.schemaVersion(),

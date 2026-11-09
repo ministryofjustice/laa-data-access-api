@@ -1393,6 +1393,24 @@ Split into two steps:
       state and the read model.
     - **Validation:** unit tests 1307/1307 and integration tests 307/307
       pass. Checkstyle is unchanged.
+  - **4b-3b(iii) commit 2b, `applicationDataVersion` removed (done
+    2026-11-09):**
+    - **Events:** Created, Updated, NoteCreated, DocumentUploaded,
+      DecisionMade and ReadyForManualAssessment drop the field, and their
+      schemas drop it from properties and `required`. The data reset means
+      there is no upcasting. `ApplicationDocumentUploadedEvent` loses its
+      data-version constructor; the suffix-less legacy constructor covers
+      those callers.
+    - **State and reads:** `ApplicationState`, `ApplicationEvolve`,
+      `ApplicationDecider` (create and draft submit) and
+      `ApplicationReadModel` drop the counter. `applicationVersion` remains
+      the business version; nothing outside tests read the data version.
+    - **Tests:** integration awaiters that waited for a data version now do a
+      plain read, because application reads are sourced from the aggregate
+      and so reflect the committed command. Thin-event payload checks assert
+      on `applicationVersion` (or `occurredAt` for notes).
+    - **Validation:** unit tests 1306/1306 and integration tests 307/307
+      pass. Checkstyle: main clean, test 36, integration 49 (one fewer).
 
 1. Choose the declaration design: hash-bound review (recommended by the review)
    or persisted candidate. Agree version/hash transport, stale-response handling,

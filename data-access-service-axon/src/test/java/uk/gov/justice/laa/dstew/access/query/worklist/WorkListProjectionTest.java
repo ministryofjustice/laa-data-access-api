@@ -73,7 +73,6 @@ class WorkListProjectionTest {
     projection.on(
         new ApplicationCreatedEvent(
             applicationId,
-            5L,
             "fingerprint",
             "APPLICATION_SUBMITTED",
             1,
@@ -116,7 +115,7 @@ class WorkListProjectionTest {
 
     Instant occurredAt = Instant.parse("2026-08-28T10:00:00Z");
     projection.on(
-        new ApplicationReadyForManualAssessmentEvent(applicationId, 3L, 5L, occurredAt), message());
+        new ApplicationReadyForManualAssessmentEvent(applicationId, 3L, occurredAt), message());
 
     WorkListItemReadModel row = existing;
     assertThat(row.getId()).isEqualTo(applicationId);
@@ -203,7 +202,7 @@ class WorkListProjectionTest {
             () ->
                 projection.on(
                     new ApplicationReadyForManualAssessmentEvent(
-                        applicationId, 3L, 5L, Instant.parse("2026-08-28T10:00:00Z")),
+                        applicationId, 3L, Instant.parse("2026-08-28T10:00:00Z")),
                     message()))
         .isInstanceOf(IllegalStateException.class)
         .hasMessage("Missing application work-list item for " + applicationId);
@@ -395,7 +394,7 @@ class WorkListProjectionTest {
       givenFinalApplicationDecision_whenReplayed_thenDeletesOnlyItsApplicationWorkItemIdempotently() {
     UUID applicationId = UUID.randomUUID();
     ApplicationDecisionMadeEvent event =
-        new ApplicationDecisionMadeEvent(applicationId, 2L, 3L, "REFUSED", null, Instant.now());
+        new ApplicationDecisionMadeEvent(applicationId, 2L, "REFUSED", null, Instant.now());
 
     projection.on(event);
     projection.on(event);
@@ -442,8 +441,7 @@ class WorkListProjectionTest {
         .thenReturn(Optional.of(new WorkListGroupMemberReadModel(applicationId, groupId)));
 
     projection.on(
-        new ApplicationReadyForManualAssessmentEvent(applicationId, 3L, 5L, Instant.now()),
-        message());
+        new ApplicationReadyForManualAssessmentEvent(applicationId, 3L, Instant.now()), message());
 
     verify(items).save(existing);
     assertLinkedGroupBoundary(existing, groupId);

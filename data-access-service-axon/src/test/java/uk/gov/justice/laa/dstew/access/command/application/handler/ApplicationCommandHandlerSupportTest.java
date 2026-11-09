@@ -229,7 +229,6 @@ class ApplicationCommandHandlerSupportTest {
         "application/pdf",
         "checksum",
         "CIVIL_APPLY",
-        null,
         ".pdf",
         filename);
   }

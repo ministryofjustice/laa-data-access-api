@@ -42,7 +42,7 @@ public final class ApplicationStateEvents {
     return List.of(
         created(applicationId),
         new ApplicationDecisionMadeEvent(
-            applicationId, 1L, 1L, "GRANTED", AutoGrantedState.AUTOGRANTED, OCCURRED_AT));
+            applicationId, 1L, "GRANTED", AutoGrantedState.AUTOGRANTED, OCCURRED_AT));
   }
 
   /** Returns the events for an active application that already has a decision. */
@@ -52,7 +52,7 @@ public final class ApplicationStateEvents {
         ready(applicationId),
         assigned(applicationId, caseworkerId, 1L, 1L),
         new ApplicationDecisionMadeEvent(
-            applicationId, 2L, 2L, "GRANTED", AutoGrantedState.MANUAL, OCCURRED_AT));
+            applicationId, 2L, "GRANTED", AutoGrantedState.MANUAL, OCCURRED_AT));
   }
 
   /** Returns events for an assigned application that has been resubmitted and is not ready. */
@@ -98,7 +98,6 @@ public final class ApplicationStateEvents {
     return new ApplicationUpdatedEvent(
         applicationId,
         2L,
-        2L,
         "APPLICATION_GRANTED",
         "APPLICATION_SUBMITTED",
         OCCURRED_AT,
@@ -108,7 +107,7 @@ public final class ApplicationStateEvents {
   }
 
   private static ApplicationReadyForManualAssessmentEvent ready(UUID applicationId) {
-    return new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, OCCURRED_AT);
+    return new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, OCCURRED_AT);
   }
 
   private static WorkItemAssigned assigned(

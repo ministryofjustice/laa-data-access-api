@@ -31,7 +31,6 @@ public final class ApplicationEvolve {
     state.status = event.status();
     state.officeCode = event.officeCode();
     state.autoGranted = AutoGrantedState.PENDING;
-    state.applicationDataVersion = event.applicationDataVersion();
     state.applicationVersion = 0L;
     state.laaReference = event.laaReference();
     state.proceedingIds.clear();
@@ -69,7 +68,6 @@ public final class ApplicationEvolve {
   public static void apply(ApplicationState state, ApplicationUpdatedEvent event) {
     state.status = event.status();
     state.applicationVersion = event.applicationVersion();
-    state.applicationDataVersion = event.applicationDataVersion();
     state.modifiedAt = event.occurredAt();
     state.autoGranted = event.enteredSubmitted() ? AutoGrantedState.PENDING : state.autoGranted;
     state.proceedingIds.clear();
@@ -111,7 +109,6 @@ public final class ApplicationEvolve {
               : ApplicationStatus.APPLICATION_GRANTED.getValue();
     }
     state.applicationVersion = event.applicationVersion();
-    state.applicationDataVersion = event.applicationDataVersion();
     state.autoGranted = event.autoGranted();
     state.overallDecision = event.overallDecision();
     state.modifiedAt = event.occurredAt();
@@ -137,7 +134,6 @@ public final class ApplicationEvolve {
   /** Applies an {@link ApplicationReadyForManualAssessmentEvent} to the given state. */
   public static void apply(ApplicationState state, ApplicationReadyForManualAssessmentEvent event) {
     state.applicationVersion = event.applicationVersion();
-    state.applicationDataVersion = event.applicationDataVersion();
     state.autoGranted = AutoGrantedState.MANUAL;
     state.modifiedAt = event.occurredAt();
     state.content = state.content.map(ApplicationDataPayload::withManualAssessmentRequired);
@@ -159,7 +155,6 @@ public final class ApplicationEvolve {
 
   /** Applies a {@link NoteCreatedEvent} to the given state. */
   public static void apply(ApplicationState state, NoteCreatedEvent event) {
-    state.applicationDataVersion = event.applicationDataVersion();
     // applicationVersion intentionally not updated — notes are decoupled from optimistic locking
     state.modifiedAt = event.occurredAt();
     state.content =
@@ -184,9 +179,6 @@ public final class ApplicationEvolve {
             event.fileSuffix().orElse(null)));
     state.draftDocumentFilenames.put(event.documentId(), event.originalFilename());
     state.modifiedAt = event.uploadedAt();
-    if (event.applicationDataVersion() != null) {
-      state.applicationDataVersion = event.applicationDataVersion();
-    }
   }
 
   private static Erasable<ApplicationDataPayload> createdContent(

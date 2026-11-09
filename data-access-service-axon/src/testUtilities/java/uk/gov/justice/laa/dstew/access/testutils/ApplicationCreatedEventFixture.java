@@ -24,7 +24,7 @@ public final class ApplicationCreatedEventFixture {
   public static ApplicationCreatedEvent applicationCreatedEvent(
       UUID applicationId, ApplicationCreationDetails details) {
     return ApplicationDecider.decideSubmitDraft(
-        applicationId, 0L, PayloadFingerprint.compute(details.serialisedRequest()), details);
+        applicationId, PayloadFingerprint.compute(details.serialisedRequest()), details);
   }
 
   /** Creates minimal creation details with stable values for the supplied identifier. */

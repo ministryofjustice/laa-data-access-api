@@ -37,7 +37,6 @@ public class SubmitApplicationDraftCommandHandler {
     eventAppender.append(
         ApplicationDecider.decideSubmitDraft(
             command.applicationId(),
-            0L,
             PayloadFingerprint.compute(details.serialisedRequest()),
             details));
     return command.applicationId();

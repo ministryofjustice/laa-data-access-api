@@ -81,12 +81,11 @@ class ErasureReplayTest {
                 Erasable.of("application/pdf"),
                 "checksum",
                 Erasable.of("CIVIL_APPLY"),
-                0L,
                 Erasable.of(".pdf"),
                 Erasable.of("evidence.pdf")),
             new WorkItemAssigned(
                 applicationId, WorkItemType.APPLICATION, applicationId, 0L, 1L, caseworkerId, AT),
-            new NoteCreatedEvent(applicationId, 1L, AT, "private note"));
+            new NoteCreatedEvent(applicationId, AT, "private note"));
 
     ApplicationState full = fold(new ApplicationState(), ApplicationEvolve.class, history);
     ApplicationState erased = fold(new ApplicationState(), ApplicationEvolve.class, erase(history));
@@ -135,7 +134,6 @@ class ErasureReplayTest {
                 Erasable.of("application/pdf"),
                 "checksum",
                 Erasable.of("CIVIL_APPLY"),
-                null,
                 Erasable.of(".pdf"),
                 Erasable.of("evidence.pdf")));
 
@@ -175,10 +173,9 @@ class ErasureReplayTest {
     List<Object> history =
         List.of(
             created(),
-            new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, AT),
+            new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, AT),
             new ApplicationDecisionMadeEvent(
                 applicationId,
-                2L,
                 2L,
                 "GRANTED",
                 AutoGrantedState.AUTOGRANTED,
@@ -282,7 +279,6 @@ class ErasureReplayTest {
   private ApplicationCreatedEvent created() {
     return new ApplicationCreatedEvent(
         applicationId,
-        0L,
         "fingerprint",
         "APPLICATION_SUBMITTED",
         1,

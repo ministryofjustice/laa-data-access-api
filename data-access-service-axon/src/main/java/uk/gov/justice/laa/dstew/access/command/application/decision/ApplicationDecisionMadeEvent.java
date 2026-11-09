@@ -24,7 +24,6 @@ import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 public record ApplicationDecisionMadeEvent(
     @EventTag(key = "ApplicationAggregate") UUID applicationId,
     long applicationVersion,
-    long applicationDataVersion,
     String overallDecision,
     AutoGrantedState autoGranted,
     Instant occurredAt,
@@ -52,7 +51,6 @@ public record ApplicationDecisionMadeEvent(
   public ApplicationDecisionMadeEvent(
       UUID applicationId,
       long applicationVersion,
-      long applicationDataVersion,
       String overallDecision,
       AutoGrantedState autoGranted,
       Instant occurredAt,
@@ -64,7 +62,6 @@ public record ApplicationDecisionMadeEvent(
     this(
         applicationId,
         applicationVersion,
-        applicationDataVersion,
         overallDecision,
         autoGranted,
         occurredAt,
@@ -80,14 +77,12 @@ public record ApplicationDecisionMadeEvent(
   public ApplicationDecisionMadeEvent(
       UUID applicationId,
       long applicationVersion,
-      long applicationDataVersion,
       String overallDecision,
       AutoGrantedState autoGranted,
       Instant occurredAt) {
     this(
         applicationId,
         applicationVersion,
-        applicationDataVersion,
         overallDecision,
         autoGranted,
         occurredAt,

@@ -21,20 +21,13 @@
         "string",
         "null"
       ]
-    },
-    "applicationDataVersion": {
-      "type": [
-        "integer",
-        "null"
-      ]
     }
   },
   "required": [
     "applicationId",
     "documentId",
     "uploadedAt",
-    "checksum",
-    "applicationDataVersion"
+    "checksum"
   ],
   "additionalProperties": false
 }

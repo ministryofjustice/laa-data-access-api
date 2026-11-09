@@ -159,7 +159,6 @@ class ApplicationQueryHandlerTest {
         "application/pdf",
         "checksum",
         "CIVIL_APPLY",
-        null,
         ".pdf",
         "original evidence.pdf");
   }
@@ -220,7 +219,7 @@ class ApplicationQueryHandlerTest {
         submittedAggregate(
             applicationId,
             new uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent(
-                applicationId, 1L, createdAt, "Test note"));
+                applicationId, createdAt, "Test note"));
 
     ApplicationNotesResult result =
         projection.handle(new FindNotesForApplicationQuery(applicationId), aggregate);
@@ -587,7 +586,6 @@ class ApplicationQueryHandlerTest {
             applicationId,
             new ApplicationUpdatedEvent(
                 applicationId,
-                1L,
                 1L,
                 "APPLICATION_SUBMITTED",
                 "APPLICATION_SUBMITTED",

@@ -11,9 +11,6 @@
     "applicationVersion": {
       "type": "integer"
     },
-    "applicationDataVersion": {
-      "type": "integer"
-    },
     "overallDecision": {
       "type": [
         "string",
@@ -57,7 +54,6 @@
   "required": [
     "applicationId",
     "applicationVersion",
-    "applicationDataVersion",
     "overallDecision",
     "autoGranted",
     "occurredAt",

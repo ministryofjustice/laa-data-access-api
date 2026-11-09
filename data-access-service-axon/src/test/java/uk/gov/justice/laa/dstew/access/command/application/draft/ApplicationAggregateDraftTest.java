@@ -108,7 +108,6 @@ class ApplicationAggregateDraftTest {
                 "application/pdf",
                 "checksum",
                 "CIVIL_APPLY",
-                null,
                 ".pdf",
                 "client-report.pdf"));
   }
@@ -142,7 +141,6 @@ class ApplicationAggregateDraftTest {
                 "application/pdf",
                 "checksum",
                 "CIVIL_APPLY",
-                null,
                 ".pdf",
                 "client-report.pdf"))
         .when()
@@ -151,10 +149,7 @@ class ApplicationAggregateDraftTest {
         .resultMessagePayload(applicationId)
         .events(
             ApplicationDecider.decideSubmitDraft(
-                applicationId,
-                0L,
-                PayloadFingerprint.compute(details.serialisedRequest()),
-                details));
+                applicationId, PayloadFingerprint.compute(details.serialisedRequest()), details));
   }
 
   @Test
@@ -398,7 +393,7 @@ class ApplicationAggregateDraftTest {
         .command(new SubmitApplicationDraftCommand(applicationId, submittedAt))
         .then()
         .resultMessagePayload(applicationId)
-        .events(ApplicationDecider.decideSubmitDraft(applicationId, 0L, fingerprint, details));
+        .events(ApplicationDecider.decideSubmitDraft(applicationId, fingerprint, details));
   }
 
   @Test

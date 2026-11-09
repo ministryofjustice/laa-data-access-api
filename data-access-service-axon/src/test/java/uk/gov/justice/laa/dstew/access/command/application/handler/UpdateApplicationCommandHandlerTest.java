@@ -41,7 +41,7 @@ class UpdateApplicationCommandHandlerTest {
   @Test
   void givenNullStatusCommand_whenHandled_thenPreservesCurrentStatusAndNotEnteringSubmitted() {
     UUID applicationId = UUID.randomUUID();
-    ApplicationState state = state(applicationId, current, "APPLICATION_SUBMITTED", 2L, 5L);
+    ApplicationState state = state(applicationId, current, "APPLICATION_SUBMITTED", 2L);
     UpdateApplicationCommand command =
         new UpdateApplicationCommand(applicationId, null, Map.of(), "{}", OCCURRED_AT);
 
@@ -56,7 +56,6 @@ class UpdateApplicationCommandHandlerTest {
             new ApplicationUpdatedEvent(
                 applicationId,
                 3L,
-                6L,
                 "APPLICATION_SUBMITTED",
                 "APPLICATION_SUBMITTED",
                 OCCURRED_AT,
@@ -68,7 +67,7 @@ class UpdateApplicationCommandHandlerTest {
   @Test
   void givenSubmittedStatusFromInProgress_whenHandled_thenMarksEnteringSubmitted() {
     UUID applicationId = UUID.randomUUID();
-    ApplicationState state = state(applicationId, current, "APPLICATION_IN_PROGRESS", 4L, 7L);
+    ApplicationState state = state(applicationId, current, "APPLICATION_IN_PROGRESS", 4L);
     UpdateApplicationCommand command =
         new UpdateApplicationCommand(
             applicationId, "APPLICATION_SUBMITTED", Map.of(), "{}", OCCURRED_AT);
@@ -84,7 +83,6 @@ class UpdateApplicationCommandHandlerTest {
             new ApplicationUpdatedEvent(
                 applicationId,
                 5L,
-                8L,
                 "APPLICATION_IN_PROGRESS",
                 "APPLICATION_SUBMITTED",
                 OCCURRED_AT,
@@ -96,7 +94,7 @@ class UpdateApplicationCommandHandlerTest {
   @Test
   void givenDifferentStatusFromInProgress_whenHandled_thenDoesNotMarkEnteringSubmitted() {
     UUID applicationId = UUID.randomUUID();
-    ApplicationState state = state(applicationId, current, "APPLICATION_IN_PROGRESS", 1L, 2L);
+    ApplicationState state = state(applicationId, current, "APPLICATION_IN_PROGRESS", 1L);
     UpdateApplicationCommand command =
         new UpdateApplicationCommand(
             applicationId, "APPLICATION_GRANTED", Map.of(), "{}", OCCURRED_AT);
@@ -112,7 +110,6 @@ class UpdateApplicationCommandHandlerTest {
             new ApplicationUpdatedEvent(
                 applicationId,
                 2L,
-                3L,
                 "APPLICATION_IN_PROGRESS",
                 "APPLICATION_GRANTED",
                 OCCURRED_AT,
@@ -122,17 +119,12 @@ class UpdateApplicationCommandHandlerTest {
   }
 
   private static ApplicationState state(
-      UUID applicationId,
-      ApplicationDataPayload content,
-      String status,
-      long applicationVersion,
-      long dataVersion) {
+      UUID applicationId, ApplicationDataPayload content, String status, long applicationVersion) {
     ApplicationState state = new ApplicationState();
     setField(state, "applicationId", applicationId);
     setField(state, "content", Erasable.of(content));
     setField(state, "status", status);
     setField(state, "applicationVersion", applicationVersion);
-    setField(state, "applicationDataVersion", dataVersion);
     return state;
   }
 

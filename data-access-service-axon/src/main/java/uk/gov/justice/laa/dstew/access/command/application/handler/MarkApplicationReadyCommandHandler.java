@@ -37,14 +37,10 @@ public class MarkApplicationReadyCommandHandler {
 
     ApplicationCommandHandlerSupport.requireContentRetained(application);
     long nextApplicationVersion = application.getState().getApplicationVersion() + 1;
-    long nextDataVersion = application.getState().getApplicationDataVersion() + 1;
     List<Object> events = new ArrayList<>();
     events.add(
         new ApplicationReadyForManualAssessmentEvent(
-            command.applicationId(),
-            nextApplicationVersion,
-            nextDataVersion,
-            command.occurredAt()));
+            command.applicationId(), nextApplicationVersion, command.occurredAt()));
     if (command.linkedGroupId() != null) {
       var group =
           stateManager

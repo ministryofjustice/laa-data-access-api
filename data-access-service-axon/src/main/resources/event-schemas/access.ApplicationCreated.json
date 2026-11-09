@@ -8,9 +8,6 @@
       "type": "string",
       "format": "uuid"
     },
-    "applicationDataVersion": {
-      "type": "integer"
-    },
     "requestFingerprint": {
       "type": [
         "string",
@@ -50,7 +47,6 @@
   },
   "required": [
     "applicationId",
-    "applicationDataVersion",
     "requestFingerprint",
     "status",
     "schemaVersion",

@@ -998,7 +998,7 @@ class ApplicationDraftIntegrationTest {
             new HttpEntity<>(new ManualOutcomeRequest(AutoGrantOutcome.MANUAL), headers()),
             Void.class);
     assertThat(ready.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    var application = projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
+    var application = projectionAwaiter.awaitApplication(applicationId);
     ResponseEntity<Void> assigned =
         restTemplate.exchange(
             "http://localhost:" + port + "/api/v0/work-list/" + applicationId + "/assign",
@@ -1031,9 +1031,8 @@ class ApplicationDraftIntegrationTest {
             new HttpEntity<>(decision, headers()),
             Void.class);
     assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    var decided = projectionAwaiter.awaitApplicationVersion(applicationId, 2L);
+    var decided = projectionAwaiter.awaitApplication(applicationId);
     assertThat(decided.getStatus()).isEqualTo("APPLICATION_REFUSED");
-    assertThat(decided.getApplicationDataVersion()).isEqualTo(2L);
   }
 
   private UUID saveDraft(UUID applicationId, String laaReference, Map<String, Object> content) {

@@ -253,7 +253,6 @@ class CreateApplicationInMemoryTest {
     ApplicationReadModel current = awaitApplicationVersion(applicationId, 1L);
     assertThat(current.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
     assertThat(current.getAutoGranted()).isEqualTo(AutoGrantedState.PENDING);
-    assertThat(current.getApplicationDataVersion()).isEqualTo(1L);
     assertThat(awaitHistoryTypes(applicationId, "APPLICATION_CREATED", "APPLICATION_UPDATED"))
         .hasSize(2);
   }

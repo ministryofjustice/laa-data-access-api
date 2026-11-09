@@ -30,8 +30,6 @@ public class ApplicationReadModel {
 
   private String status;
 
-  private long applicationDataVersion;
-
   private long applicationVersion;
 
   private String laaReference;

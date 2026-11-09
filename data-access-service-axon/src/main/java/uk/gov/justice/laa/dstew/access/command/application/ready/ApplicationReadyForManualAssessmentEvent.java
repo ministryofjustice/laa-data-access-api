@@ -7,12 +7,11 @@ import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
 import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 
-/** Thin event recording the immutable data version that contains {@code autoGranted=MANUAL}. */
+/** Records that the Application is ready for manual assessment ({@code autoGranted=MANUAL}). */
 @Event(namespace = "access", name = "ApplicationReadyForManualAssessment")
 public record ApplicationReadyForManualAssessmentEvent(
     @EventTag(key = "ApplicationAggregate") UUID applicationId,
     long applicationVersion,
-    long applicationDataVersion,
     Instant occurredAt)
     implements GenesisScoped {
 

@@ -1763,7 +1763,7 @@ class PriorAuthorityDraftIntegrationTest {
     createApplication(applicationId, UUID.randomUUID());
     projectionAwaiter.awaitApplication(applicationId);
     grantApplication(applicationId);
-    projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
+    projectionAwaiter.awaitApplication(applicationId);
     return applicationId;
   }
 

@@ -11,9 +11,6 @@
     "applicationVersion": {
       "type": "integer"
     },
-    "applicationDataVersion": {
-      "type": "integer"
-    },
     "occurredAt": {
       "type": "string",
       "format": "date-time"
@@ -22,7 +19,6 @@
   "required": [
     "applicationId",
     "applicationVersion",
-    "applicationDataVersion",
     "occurredAt"
   ],
   "additionalProperties": false

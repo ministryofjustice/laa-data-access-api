@@ -36,8 +36,7 @@ public class CreateApplicationCommandHandler {
               command.applicationId(),
               command.schemaVersion(),
               PayloadFingerprint.compute(details.serialisedRequest()),
-              details,
-              0L)
+              details)
           .forEach(eventAppender::append);
     } else {
       ApplicationDecider.decideCreate(
@@ -45,8 +44,7 @@ public class CreateApplicationCommandHandler {
           command.applicationId(),
           command.schemaVersion(),
           PayloadFingerprint.compute(command.serialisedRequest()),
-          null,
-          0L);
+          null);
     }
     return command.applicationId();
   }

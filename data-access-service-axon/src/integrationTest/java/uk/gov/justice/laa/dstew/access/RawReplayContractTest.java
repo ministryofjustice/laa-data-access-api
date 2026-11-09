@@ -101,7 +101,6 @@ class RawReplayContractTest {
 
     ApplicationState state = replayWithoutAxon(rows);
 
-    assertThat(state.getApplicationDataVersion()).isZero();
     assertThat(state.getApplicationVersion()).isZero();
     assertThat(state.getUploadedDocuments())
         .extracting(DocumentMetadata::documentId)
@@ -142,7 +141,6 @@ class RawReplayContractTest {
 
     assertThat(state.getApplicationId()).isEqualTo(applicationId);
     assertThat(state.getApplicationVersion()).isEqualTo(0L);
-    assertThat(state.getApplicationDataVersion()).isEqualTo(0L);
     assertThat(state.getRequestFingerprint()).isNotNull().isNotEmpty();
   }
 

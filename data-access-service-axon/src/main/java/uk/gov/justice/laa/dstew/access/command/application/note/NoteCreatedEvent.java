@@ -12,7 +12,6 @@ import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 @Event(namespace = "access", name = "NoteCreated")
 public record NoteCreatedEvent(
     @EventTag(key = "ApplicationAggregate") UUID applicationId,
-    long applicationDataVersion,
     Instant occurredAt,
     Erasable<String> noteText)
     implements GenesisScoped {
@@ -22,14 +21,13 @@ public record NoteCreatedEvent(
   }
 
   /** Creates the event from a plain note text. */
-  public NoteCreatedEvent(
-      UUID applicationId, long applicationDataVersion, Instant occurredAt, String noteText) {
-    this(applicationId, applicationDataVersion, occurredAt, Erasable.of(noteText));
+  public NoteCreatedEvent(UUID applicationId, Instant occurredAt, String noteText) {
+    this(applicationId, occurredAt, Erasable.of(noteText));
   }
 
   /** Creates the event without note text. */
-  public NoteCreatedEvent(UUID applicationId, long applicationDataVersion, Instant occurredAt) {
-    this(applicationId, applicationDataVersion, occurredAt, Erasable.<String>erased());
+  public NoteCreatedEvent(UUID applicationId, Instant occurredAt) {
+    this(applicationId, occurredAt, Erasable.<String>erased());
   }
 
   @Override
