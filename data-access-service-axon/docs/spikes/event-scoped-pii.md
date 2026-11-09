@@ -1502,6 +1502,26 @@ Split into two steps:
       fails).
     - **Validation:** unit tests 1298/1298 and integration tests 309/309
       pass. Checkstyle: main clean, test 31, integration 47.
+  - **Stored event compatibility fixtures (done 2026-11-09):**
+    - **Probe findings:** with no upcasters, loading an old event with the
+      current mapper ignores unknown fields (renames and removals). It
+      silently loads missing fields as null or erased, even required kept
+      fields. Only a type change fails. So schema drift is mostly silent.
+    - **Fixtures:** `src/test/resources/stored-events/<type>/v1.json` holds
+      the stored form of every event type (`kept` row plus `content` row),
+      captured from the integration suite. The Prior Authority fixtures share
+      IDs so they fold as one history.
+    - **`StoredEventCompatibilityTest`** checks that:
+      - every event type has a fixture;
+      - each fixture's field names match the current record;
+      - each fixture passes kept-schema validation and round-trips through
+        separate and rejoin;
+      - each fixture decodes and re-serialises unchanged;
+      - the folded Prior Authority history gives the full decided aggregate.
+    - **Policy:** fixtures are never edited. A changed stored shape needs an
+      upcaster and a new `vN.json`, and older versions must still load.
+    - **Validation:** 23/23 tests pass, and renaming one fixture field fails
+      the test. Unit tests 1321/1321 pass.
 
 1. Choose the declaration design: hash-bound review (recommended by the review)
    or persisted candidate. Agree version/hash transport, stale-response handling,

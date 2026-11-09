@@ -1,0 +1,70 @@
+{
+  "kept": {
+    "applicationId": "00000000-0000-0000-0000-000000000100",
+    "schemaVersion": 1,
+    "requestFingerprint": "26cddfa623bcd66f72ebef9d2fb34f9a82106183da34664211987aed63008b25",
+    "occurredAt": "2026-11-09T16:01:48.576769Z",
+    "officeCode": "1A001B",
+    "status": "APPLICATION_SUBMITTED",
+    "laaReference": "LAA-123"
+  },
+  "content": {
+    "applicationContent": {
+      "submittedAt": "2026-07-14T12:30:00Z",
+      "client": {
+        "dateOfBirth": "1815-12-10",
+        "addresses": [
+          {
+            "countryCode": "GBR",
+            "addressLineOne": "07690 Simonis Mews",
+            "countryName": "United Kingdom",
+            "city": "Darylfurt",
+            "postcode": "69736",
+            "location": "home"
+          }
+        ],
+        "firstName": "Ada",
+        "appliedPreviously": false,
+        "lastName": "Lovelace"
+      },
+      "provider": {
+        "officeCode": "1A001B",
+        "contactEmail": "provider@example.com"
+      },
+      "createdAt": "2026-07-14T12:00:00Z",
+      "proceedings": [
+        {
+          "usedDelegatedFunctions": false,
+          "delegatedFunctionsCostLimitation": "0",
+          "matterTypeCode": "KPBLW",
+          "clientInvolvementType": "Respondent",
+          "meaning": "Care order",
+          "substantiveCostLimitation": "2500",
+          "code": "SE003",
+          "substantiveLevelOfServiceName": "Full Representation",
+          "substantiveLevelOfServiceCode": 3,
+          "matterType": "special children act (SCA)",
+          "emergencyLevelOfServiceName": "Full Representation",
+          "emergencyLevelOfServiceCode": 3,
+          "leadProceeding": true,
+          "clientInvolvementTypeCode": "A",
+          "categoryOfLawCode": "MAT",
+          "id": "00000000-0000-0000-0000-000000000101",
+          "scopeLimitations": [
+            {
+              "type": "SUBSTANTIVE",
+              "description": "Limited to all steps up to and including the final hearing",
+              "meaning": "Final hearing",
+              "id": "00000000-0000-0000-0000-000000000102",
+              "code": "FM062"
+            }
+          ],
+          "description": "Care order",
+          "categoryOfLaw": "Family"
+        }
+      ]
+    },
+    "serialisedRequest": "{\"status\":\"APPLICATION_SUBMITTED\",\"applicationContent\":{\"submittedAt\":\"2026-07-14T12:30:00Z\",\"client\":{\"dateOfBirth\":\"1815-12-10\",\"addresses\":[{\"countryCode\":\"GBR\",\"addressLineOne\":\"07690 Simonis Mews\",\"countryName\":\"United Kingdom\",\"city\":\"Darylfurt\",\"postcode\":\"69736\",\"location\":\"home\"}],\"firstName\":\"Ada\",\"appliedPreviously\":false,\"lastName\":\"Lovelace\"},\"provider\":{\"officeCode\":\"1A001B\",\"contactEmail\":\"provider@example.com\"},\"createdAt\":\"2026-07-14T12:00:00Z\",\"proceedings\":[{\"usedDelegatedFunctions\":false,\"delegatedFunctionsCostLimitation\":\"0\",\"matterTypeCode\":\"KPBLW\",\"clientInvolvementType\":\"Respondent\",\"meaning\":\"Care order\",\"substantiveCostLimitation\":\"2500\",\"code\":\"SE003\",\"substantiveLevelOfServiceName\":\"Full Representation\",\"substantiveLevelOfServiceCode\":3,\"matterType\":\"special children act (SCA)\",\"emergencyLevelOfServiceName\":\"Full Representation\",\"emergencyLevelOfServiceCode\":3,\"leadProceeding\":true,\"clientInvolvementTypeCode\":\"A\",\"categoryOfLawCode\":\"MAT\",\"id\":\"00000000-0000-0000-0000-000000000101\",\"scopeLimitations\":[{\"type\":\"SUBSTANTIVE\",\"description\":\"Limited to all steps up to and including the final hearing\",\"meaning\":\"Final hearing\",\"id\":\"00000000-0000-0000-0000-000000000102\",\"code\":\"FM062\"}],\"description\":\"Care order\",\"categoryOfLaw\":\"Family\"}]},\"laaReference\":\"LAA-123\",\"id\":\"00000000-0000-0000-0000-000000000100\",\"potentialDuplicates\":[]}",
+    "potentialDuplicates": []
+  }
+}

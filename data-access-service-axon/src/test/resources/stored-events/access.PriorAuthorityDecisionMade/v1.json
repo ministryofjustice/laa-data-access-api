@@ -1,0 +1,17 @@
+{
+  "kept": {
+    "priorAuthorityId": "00000000-0000-0000-0000-000000000001",
+    "applicationId": "00000000-0000-0000-0000-000000000002",
+    "priorAuthorityType": "DISBURSEMENT",
+    "overallDecision": "GRANTED",
+    "occurredAt": "2026-11-09T16:05:15.581576Z"
+  },
+  "content": {
+    "decisionJustification": "Granted as per policy guidelines",
+    "amountGranted": 150.0,
+    "dateGranted": "2026-11-09T16:05:15.569549Z",
+    "expertFee": null,
+    "disbursementInformation": null,
+    "apportionmentInformation": null
+  }
+}

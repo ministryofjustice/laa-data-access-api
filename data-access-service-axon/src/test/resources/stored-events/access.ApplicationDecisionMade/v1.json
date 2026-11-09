@@ -1,0 +1,25 @@
+{
+  "kept": {
+    "applicationId": "00000000-0000-0000-0000-000000000103",
+    "applicationVersion": 2,
+    "overallDecision": "REFUSED",
+    "autoGranted": "MANUAL",
+    "occurredAt": "2026-11-09T16:01:52.377194Z",
+    "decisionRequestFingerprint": "abd0d567e2cd84cd4841b85bb36ffc868856175af3953195963edf04c124944b",
+    "proceedingDecisions": {
+      "00000000-0000-0000-0000-000000000104": "REFUSED"
+    }
+  },
+  "content": {
+    "meritsDecisions": {
+      "00000000-0000-0000-0000-000000000104": {
+        "decision": "REFUSED",
+        "reason": "Insufficient evidence",
+        "justification": "The evidence did not meet the test"
+      }
+    },
+    "certificate": null,
+    "serialisedRequest": "{\"overallDecision\":\"REFUSED\",\"proceedings\":[{\"proceedingId\":\"00000000-0000-0000-0000-000000000104\",\"meritsDecision\":{\"decision\":\"REFUSED\",\"justification\":\"The evidence did not meet the test\",\"reason\":\"Insufficient evidence\"}}],\"eventHistory\":{\"eventDescription\":\"Decision recorded\"},\"applicationVersion\":1,\"autoGranted\":false,\"certificate\":{}}",
+    "eventDescription": "Decision recorded"
+  }
+}

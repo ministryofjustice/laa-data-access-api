@@ -1,0 +1,14 @@
+{
+  "kept": {
+    "priorAuthorityId": "00000000-0000-0000-0000-000000000001",
+    "parentApplicationId": "00000000-0000-0000-0000-000000000002",
+    "occurredAt": "2026-11-09T16:05:34.570608Z"
+  },
+  "content": {
+    "content": {
+      "priorAuthorityType": "EXPERT",
+      "justification": "Concurrent justification"
+    },
+    "serialisedRequest": "{\"counselDetails\":null,\"disbursementDetails\":null,\"expertDetails\":null,\"justification\":\"Concurrent justification\"}"
+  }
+}

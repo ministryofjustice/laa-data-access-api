@@ -1,0 +1,16 @@
+{
+  "kept": {
+    "priorAuthorityId": "00000000-0000-0000-0000-000000000001",
+    "documentId": "00000000-0000-0000-0000-000000000003",
+    "uploadedAt": "2026-11-09T16:05:26.525302Z",
+    "checksum": "checksum",
+    "parentApplicationId": "00000000-0000-0000-0000-000000000002"
+  },
+  "content": {
+    "size": 16,
+    "contentType": "application/pdf",
+    "sourceService": "CIVIL_APPLY",
+    "fileSuffix": ".pdf",
+    "originalFilename": "existing.pdf"
+  }
+}

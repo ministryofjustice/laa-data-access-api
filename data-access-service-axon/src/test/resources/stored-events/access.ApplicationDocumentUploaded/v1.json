@@ -1,0 +1,16 @@
+{
+  "kept": {
+    "applicationId": "00000000-0000-0000-0000-000000000105",
+    "documentId": "00000000-0000-0000-0000-000000000106",
+    "uploadedAt": "2026-11-09T16:01:49.671377Z",
+    "checksum": "checksum"
+  },
+  "content": {
+    "documentType": "GATEWAY_EVIDENCE",
+    "size": 16,
+    "contentType": "application/pdf",
+    "sourceService": "CIVIL_APPLY",
+    "fileSuffix": ".pdf",
+    "originalFilename": "retry.pdf"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "kept": {
+    "priorAuthorityId": "00000000-0000-0000-0000-000000000001",
+    "documentId": "00000000-0000-0000-0000-000000000003",
+    "occurredAt": "2026-11-09T16:05:27.642228Z",
+    "parentApplicationId": "00000000-0000-0000-0000-000000000002"
+  },
+  "content": {
+    "documentType": "GATEWAY_EVIDENCE"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "kept": {
+    "priorAuthorityId": "00000000-0000-0000-0000-000000000001",
+    "applicationId": "00000000-0000-0000-0000-000000000002",
+    "priorAuthorityType": "DISBURSEMENT",
+    "schemaVersion": 1,
+    "expertType": null,
+    "occurredAt": "2026-11-09T16:04:28.293801Z"
+  },
+  "content": {}
+}
