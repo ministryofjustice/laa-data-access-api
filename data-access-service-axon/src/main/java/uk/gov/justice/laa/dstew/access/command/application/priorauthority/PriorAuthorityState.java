@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -11,6 +12,7 @@ import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.ApportionmentInformation;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
@@ -24,7 +26,7 @@ public class PriorAuthorityState {
   UUID priorAuthorityId;
   UUID applicationId;
   String officeCode;
-  long dataVersion;
+  long priorAuthorityVersion;
   String requestFingerprint;
   boolean submitted;
   boolean decided;
@@ -33,9 +35,17 @@ public class PriorAuthorityState {
   long assignmentVersion;
   String priorAuthorityType;
   List<DocumentMetadata> uploadedDocuments = new ArrayList<>();
-  Erasable<PriorAuthorityContent> draftContent = Erasable.erased();
-  Erasable<String> draftSerialisedRequest = Erasable.erased();
+  Erasable<PriorAuthorityContent> content = Erasable.erased();
+  Erasable<String> serialisedRequest = Erasable.erased();
   Instant draftModifiedAt;
+  Instant submittedAt;
+  String overallDecision;
+  Erasable<String> decisionJustification = Erasable.erased();
+  Erasable<BigDecimal> amountGranted = Erasable.erased();
+  Erasable<Instant> dateGranted = Erasable.erased();
+  Erasable<ExpertFeeInformation> expertFee = Erasable.erased();
+  Erasable<DisbursementInformation> disbursementInformation = Erasable.erased();
+  Erasable<ApportionmentInformation> apportionmentInformation = Erasable.erased();
   Map<UUID, Erasable<String>> documentFilenames = new LinkedHashMap<>();
 
   /** Returns the processing status derived from the submitted and decided flags. */
@@ -48,19 +58,46 @@ public class PriorAuthorityState {
 
   /** Returns the open draft's content, or empty once submitted or when the content is erased. */
   public Optional<PriorAuthorityDataPayload> draft() {
-    if (priorAuthorityId == null || submitted || draftContent.isErased()) {
+    return submitted ? Optional.empty() : payload();
+  }
+
+  /**
+   * Returns the content of the draft, the submission or the decision, whichever is current, or
+   * empty when there is no prior authority or its content is erased.
+   */
+  public Optional<PriorAuthorityDataPayload> payload() {
+    if (priorAuthorityId == null || content.isErased()) {
       return Optional.empty();
     }
     return Optional.of(
         new PriorAuthorityDataPayload(
             priorAuthorityId,
             applicationId,
-            draftContent.value(),
-            draftSerialisedRequest.orElse(null),
-            draftModifiedAt,
-            null,
+            content.value(),
+            serialisedRequest.orElse(null),
+            submitted ? submittedAt : draftModifiedAt,
+            decided ? decisionDetails() : null,
             officeCode,
             retainedFilenames()));
+  }
+
+  /** Returns the submitted expert type, or {@code null} if absent or erased. */
+  public String expertType() {
+    PriorAuthorityContent current = content.orElse(null);
+    return current == null || current.expertDetails() == null
+        ? null
+        : current.expertDetails().expertType();
+  }
+
+  private PriorAuthorityDataPayload.DecisionDetails decisionDetails() {
+    return new PriorAuthorityDataPayload.DecisionDetails(
+        overallDecision,
+        decisionJustification.orElse(null),
+        amountGranted.orElse(null),
+        dateGranted.orElse(null),
+        expertFee.orElse(null),
+        disbursementInformation.orElse(null),
+        apportionmentInformation.orElse(null));
   }
 
   /** Returns the recorded original filename of each live document whose filename is retained. */

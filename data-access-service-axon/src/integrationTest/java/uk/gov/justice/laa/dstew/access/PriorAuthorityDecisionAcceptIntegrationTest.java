@@ -106,10 +106,10 @@ public class PriorAuthorityDecisionAcceptIntegrationTest {
 
     assertThat(
             jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.prior_authority_data"
-                    + " WHERE prior_authority_id = ? AND data_version > 0",
+                "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?"
+                    + " AND payload_type = 'access.PriorAuthorityDecisionMade'",
                 Integer.class,
-                priorAuthorityId))
+                priorAuthorityId.toString()))
         .isEqualTo(1);
 
     awaitPriorAuthorityProjection(priorAuthorityId);
@@ -161,10 +161,10 @@ public class PriorAuthorityDecisionAcceptIntegrationTest {
 
     assertThat(
             jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.prior_authority_data"
-                    + " WHERE prior_authority_id = ? AND data_version > 0",
+                "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?"
+                    + " AND payload_type = 'access.PriorAuthorityDecisionMade'",
                 Integer.class,
-                priorAuthorityId))
+                priorAuthorityId.toString()))
         .isEqualTo(1);
 
     awaitPriorAuthorityProjection(priorAuthorityId);

@@ -40,9 +40,8 @@ public final class PriorAuthorityDecider {
   }
 
   /**
-   * Returns a {@link PriorAuthoritySubmittedEvent} — a thin pointer with no personal data — for the
-   * given submit command. The submitted content is always appended as version 0 of {@code
-   * prior_authority_data}, since a submission's draft content is not itself versioned.
+   * Returns a {@link PriorAuthoritySubmittedEvent} for the given submit command. The event carries
+   * no content; the state seals the draft content as the submission.
    */
   public static PriorAuthoritySubmittedEvent decideSubmit(
       SubmitPriorAuthorityDraftCommand command, PriorAuthorityState state) {
@@ -51,7 +50,7 @@ public final class PriorAuthorityDecider {
         state.applicationId,
         state.priorAuthorityType,
         state.schemaVersion,
-        0L,
+        state.expertType(),
         command.occurredAt());
   }
 
@@ -84,7 +83,7 @@ public final class PriorAuthorityDecider {
     validateDecision(command);
     validateDecisionAssignment(state, command);
 
-    if (command.expectedPriorAuthorityVersion() != state.dataVersion) {
+    if (command.expectedPriorAuthorityVersion() != state.priorAuthorityVersion) {
       throw new PriorAuthorityVersionConflictException(
           command.priorAuthorityId(), command.expectedPriorAuthorityVersion());
     }
@@ -107,11 +106,13 @@ public final class PriorAuthorityDecider {
         command.priorAuthorityId(),
         state.applicationId,
         state.priorAuthorityType,
-        state.dataVersion + 1,
         command.overallDecision(),
         command.decisionJustification(),
         command.amountGranted(),
         command.dateGranted(),
+        command.expertFee(),
+        command.disbursementInformation(),
+        command.apportionmentInformation(),
         command.occurredAt());
   }
 

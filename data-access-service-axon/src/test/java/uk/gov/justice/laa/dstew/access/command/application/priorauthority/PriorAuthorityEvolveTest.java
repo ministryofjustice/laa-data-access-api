@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
@@ -48,7 +49,7 @@ class PriorAuthorityEvolveTest {
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
     PriorAuthoritySubmittedEvent event =
         new PriorAuthoritySubmittedEvent(
-            priorAuthorityId, applicationId, "EXPERT", 3, 0L, occurredAt);
+            priorAuthorityId, applicationId, "EXPERT", 3, null, occurredAt);
 
     PriorAuthorityEvolve.apply(state, event);
 
@@ -56,7 +57,7 @@ class PriorAuthorityEvolveTest {
     assertThat(state.getApplicationId()).isEqualTo(applicationId);
     assertThat(state.getPriorAuthorityType()).isEqualTo("EXPERT");
     assertThat(state.getSchemaVersion()).isEqualTo(3);
-    assertThat(state.getDataVersion()).isEqualTo(0L);
+    assertThat(state.getPriorAuthorityVersion()).isEqualTo(0L);
     assertThat(state.isSubmitted()).isTrue();
     assertThat(state.isDecided()).isFalse();
   }
@@ -69,22 +70,14 @@ class PriorAuthorityEvolveTest {
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
     PriorAuthorityDecisionMadeEvent event =
         new PriorAuthorityDecisionMadeEvent(
-            priorAuthorityId,
-            applicationId,
-            "EXPERT",
-            1L,
-            "REFUSED",
-            "Reason",
-            null,
-            null,
-            occurredAt);
+            priorAuthorityId, applicationId, "EXPERT", "REFUSED", "Reason", null, null, occurredAt);
 
     PriorAuthorityEvolve.apply(state, event);
 
     assertThat(state.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(state.getApplicationId()).isEqualTo(applicationId);
     assertThat(state.getPriorAuthorityType()).isEqualTo("EXPERT");
-    assertThat(state.getDataVersion()).isEqualTo(1L);
+    assertThat(state.getPriorAuthorityVersion()).isEqualTo(1L);
     assertThat(state.isSubmitted()).isTrue();
     assertThat(state.isDecided()).isTrue();
   }
@@ -248,9 +241,75 @@ class PriorAuthorityEvolveTest {
     PriorAuthorityEvolve.apply(
         state,
         new PriorAuthoritySubmittedEvent(
-            priorAuthorityId, applicationId, "EXPERT", 1, 0L, occurredAt));
+            priorAuthorityId, applicationId, "EXPERT", 1, null, occurredAt));
 
     assertThat(state.draft()).isEmpty();
+  }
+
+  @Test
+  void givenSubmittedAndDecided_whenPayloadRead_thenSealsDraftContentAndCarriesDecision() {
+    PriorAuthorityState state = new PriorAuthorityState();
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
+    Instant submittedAt = startedAt.plusSeconds(60);
+    final Instant decidedAt = startedAt.plusSeconds(120);
+    PriorAuthorityContent content =
+        new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Text", null, null, null);
+    final ExpertFeeInformation expertFee = ExpertFeeInformation.builder().build();
+    PriorAuthorityEvolve.apply(
+        state,
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId,
+            applicationId,
+            "EXPERT",
+            1,
+            startedAt,
+            "1A001B",
+            Erasable.of(content),
+            Erasable.of("{}")));
+    PriorAuthorityEvolve.apply(
+        state, uploaded(priorAuthorityId, documentId, startedAt, "evidence.pdf"));
+    PriorAuthorityEvolve.apply(
+        state,
+        new PriorAuthoritySubmittedEvent(
+            priorAuthorityId, applicationId, "EXPERT", 1, null, submittedAt));
+
+    assertThat(state.getPriorAuthorityVersion()).isZero();
+    assertThat(state.payload())
+        .contains(
+            new PriorAuthorityDataPayload(
+                priorAuthorityId,
+                applicationId,
+                content,
+                "{}",
+                submittedAt,
+                null,
+                "1A001B",
+                Map.of(documentId, "evidence.pdf")));
+
+    PriorAuthorityEvolve.apply(
+        state,
+        new PriorAuthorityDecisionMadeEvent(
+            priorAuthorityId,
+            applicationId,
+            "EXPERT",
+            "GRANTED",
+            "Reason",
+            BigDecimal.TEN,
+            decidedAt,
+            expertFee,
+            null,
+            null,
+            decidedAt));
+
+    assertThat(state.getPriorAuthorityVersion()).isEqualTo(1L);
+    assertThat(state.payload().orElseThrow().submittedAt()).isEqualTo(submittedAt);
+    assertThat(state.payload().orElseThrow().decisionDetails())
+        .isEqualTo(
+            new PriorAuthorityDataPayload.DecisionDetails(
+                "GRANTED", "Reason", BigDecimal.TEN, decidedAt, expertFee, null, null));
   }
 
   private PriorAuthorityDocumentUploadedEvent uploaded(

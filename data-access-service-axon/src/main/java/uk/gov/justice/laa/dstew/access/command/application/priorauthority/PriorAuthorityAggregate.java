@@ -42,8 +42,8 @@ public class PriorAuthorityAggregate implements OfficeCodeOwned {
     return priorAuthorityId;
   }
 
-  public long getDataVersion() {
-    return state.dataVersion;
+  public long getPriorAuthorityVersion() {
+    return state.priorAuthorityVersion;
   }
 
   public long getAssignmentVersion() {

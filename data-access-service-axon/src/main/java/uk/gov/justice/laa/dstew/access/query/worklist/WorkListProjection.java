@@ -21,8 +21,6 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApp
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberRemovedFromGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
@@ -43,18 +41,15 @@ import uk.gov.justice.laa.dstew.access.query.application.summary.ApplicationSumm
 public class WorkListProjection {
   private final WorkListItemReadRepository items;
   private final WorkListGroupMemberReadRepository groupMembers;
-  private final PriorAuthorityDataStore priorAuthorityDataStore;
   private final ApplicationSummaries applicationSummaries;
 
   /** Creates a projection backed by its read repositories and the application summary port. */
   public WorkListProjection(
       WorkListItemReadRepository items,
       WorkListGroupMemberReadRepository groupMembers,
-      PriorAuthorityDataStore priorAuthorityDataStore,
       ApplicationSummaries applicationSummaries) {
     this.items = items;
     this.groupMembers = groupMembers;
-    this.priorAuthorityDataStore = priorAuthorityDataStore;
     this.applicationSummaries = applicationSummaries;
   }
 
@@ -130,17 +125,11 @@ public class WorkListProjection {
             event.priorAuthorityId(),
             event.applicationId(),
             event.occurredAt(),
-            event.dataVersion(),
+            0L,
             message.identifier().hashCode());
     item.setReadyAt(event.occurredAt());
-    PriorAuthorityDataPayload priorAuthorityData =
-        priorAuthorityDataStore.get(event.priorAuthorityId(), event.dataVersion());
-    String priorAuthorityType = priorAuthorityData.content().priorAuthorityType().name();
-    item.setPriorAuthorityType(priorAuthorityType);
-    item.setExpertType(
-        "EXPERT".equals(priorAuthorityType)
-            ? priorAuthorityData.content().expertDetails().expertType()
-            : null);
+    item.setPriorAuthorityType(event.priorAuthorityType());
+    item.setExpertType("EXPERT".equals(event.priorAuthorityType()) ? event.expertType() : null);
     items.save(item);
   }
 

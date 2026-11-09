@@ -8,8 +8,9 @@ import org.axonframework.messaging.eventhandling.annotation.Event;
 import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 
 /**
- * Thin-pointer event emitted when a Prior Authority draft is submitted. Contains no personal data —
- * PII remains in the prior_authority_data table at the referenced dataVersion.
+ * Event emitted when a Prior Authority draft is submitted. It carries no content: the aggregate
+ * seals the draft content folded from the draft events. The expert type is kept plain so that the
+ * work list can filter on it.
  */
 @Event(namespace = "access", name = "PriorAuthoritySubmitted")
 public record PriorAuthoritySubmittedEvent(
@@ -17,7 +18,7 @@ public record PriorAuthoritySubmittedEvent(
     UUID applicationId,
     String priorAuthorityType,
     int schemaVersion,
-    long dataVersion,
+    String expertType,
     Instant occurredAt)
     implements GenesisScoped {
 

@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "access.PriorAuthorityDecisionMade kept fields",
-  "description": "Fields kept on the stored event. Every other field is content, stored apart so that it can be erased. Content: amountGranted, dateGranted, decisionJustification.",
+  "description": "Fields kept on the stored event. Every other field is content, stored apart so that it can be erased. Content: amountGranted, apportionmentInformation, dateGranted, decisionJustification, disbursementInformation, expertFee.",
   "type": "object",
   "properties": {
     "priorAuthorityId": {
@@ -18,9 +18,6 @@
         "null"
       ]
     },
-    "dataVersion": {
-      "type": "integer"
-    },
     "overallDecision": {
       "type": [
         "string",
@@ -36,7 +33,6 @@
     "priorAuthorityId",
     "applicationId",
     "priorAuthorityType",
-    "dataVersion",
     "overallDecision",
     "occurredAt"
   ],

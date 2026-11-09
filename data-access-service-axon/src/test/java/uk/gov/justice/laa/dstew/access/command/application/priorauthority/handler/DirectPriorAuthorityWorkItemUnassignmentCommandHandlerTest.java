@@ -38,7 +38,7 @@ class DirectPriorAuthorityWorkItemUnassignmentCommandHandlerTest {
     when(priorAuthority.getPriorAuthorityId()).thenReturn(workItemId);
     when(priorAuthority.getAssignmentVersion()).thenReturn(0L);
     when(priorAuthority.getCaseworkerId()).thenReturn(UUID.randomUUID());
-    when(priorAuthority.getDataVersion()).thenReturn(2L);
+    when(priorAuthority.getPriorAuthorityVersion()).thenReturn(2L);
     when(priorAuthority.getApplicationId()).thenReturn(applicationId);
 
     new DirectPriorAuthorityWorkItemUnassignmentCommandHandler()

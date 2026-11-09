@@ -570,10 +570,10 @@ class PriorAuthorityDraftIntegrationTest {
 
     assertThat(
             jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.prior_authority_data"
-                    + " WHERE prior_authority_id = ? AND data_version = 0",
+                "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?"
+                    + " AND payload_type = 'access.PriorAuthoritySubmitted'",
                 Integer.class,
-                priorAuthorityId))
+                priorAuthorityId.toString()))
         .isEqualTo(1);
 
     ResponseEntity<String> getResponse =
@@ -612,12 +612,6 @@ class PriorAuthorityDraftIntegrationTest {
     assertThat(eventCount(priorAuthorityId)).isEqualTo(eventsBefore);
     assertThat(getPriorAuthority(priorAuthorityId).getStatus())
         .isEqualTo(PriorAuthorityResponse.StatusEnum.DRAFT);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.prior_authority_data WHERE prior_authority_id = ?",
-                Integer.class,
-                priorAuthorityId))
-        .isZero();
   }
 
   @Test
@@ -1379,12 +1373,6 @@ class PriorAuthorityDraftIntegrationTest {
                 Integer.class,
                 priorAuthorityId))
         .isEqualTo(1);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.prior_authority_data WHERE prior_authority_id = ?",
-                Integer.class,
-                priorAuthorityId))
-        .isZero();
   }
 
   @Test
@@ -1726,12 +1714,6 @@ class PriorAuthorityDraftIntegrationTest {
 
   private void assertNoPriorAuthorityWrites(UUID applicationId) {
     assertThat(countPriorAuthorityCreationEvents(applicationId)).isZero();
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.prior_authority_data WHERE application_id = ?",
-                Long.class,
-                applicationId))
-        .isZero();
   }
 
   private UUID assertCreatedDraft(ResponseEntity<String> response, UUID applicationId) {

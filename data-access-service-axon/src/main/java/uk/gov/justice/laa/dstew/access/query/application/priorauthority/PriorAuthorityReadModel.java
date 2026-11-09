@@ -39,9 +39,6 @@ public class PriorAuthorityReadModel {
   @Column(name = "office_code")
   private String officeCode;
 
-  @Column(name = "data_version")
-  private long dataVersion;
-
   private String status;
 
   @Column(name = "created_at")

@@ -42,7 +42,6 @@ public class PriorAuthorityProjection {
             .priorAuthorityType(event.priorAuthorityType())
             .applicationId(event.applicationId())
             .officeCode(event.officeCode())
-            .dataVersion(0L)
             .status(PriorAuthorityStatus.DRAFT.name())
             .createdAt(event.occurredAt())
             .modifiedAt(event.occurredAt())
@@ -60,14 +59,13 @@ public class PriorAuthorityProjection {
         .ifPresent(
             current -> {
               current.setPriorAuthorityType(event.priorAuthorityType());
-              current.setDataVersion(event.dataVersion());
               current.setStatus(PriorAuthorityStatus.SUBMITTED.name());
               current.setModifiedAt(event.occurredAt());
               repository.save(current);
             });
   }
 
-  /** Updates a current-state data version after a terminal prior-authority decision. */
+  /** Records a terminal prior-authority decision on the current-state row. */
   @EventHandler
   public void on(PriorAuthorityDecisionMadeEvent event) {
     repository
@@ -75,7 +73,6 @@ public class PriorAuthorityProjection {
         .ifPresent(
             current -> {
               current.setPriorAuthorityType(event.priorAuthorityType());
-              current.setDataVersion(event.dataVersion());
               current.setDecision(event.overallDecision());
               current.setStatus(PriorAuthorityStatus.DECIDED.name());
               current.setModifiedAt(event.occurredAt());

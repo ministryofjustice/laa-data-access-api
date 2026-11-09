@@ -77,7 +77,7 @@ class PriorAuthorityAggregateTest {
     assertThat(aggregate.getApplicationId()).isEqualTo(APP_ID);
     assertThat(aggregate.getOfficeCode()).isEqualTo(OFFICE_CODE);
     assertThat(aggregate.getPriorAuthorityType()).isEqualTo(PA_TYPE);
-    assertThat(aggregate.getDataVersion()).isZero();
+    assertThat(aggregate.getPriorAuthorityVersion()).isZero();
     assertThat(aggregate.getState().isSubmitted()).isFalse();
     assertThat(aggregate.getState().isDecided()).isFalse();
     assertThat(aggregate.getState().getUploadedDocuments())
@@ -94,34 +94,29 @@ class PriorAuthorityAggregateTest {
   }
 
   @Test
-  @DisplayName("submission event restores the data version")
-  void submittedEventRestoresDataVersion() {
+  @DisplayName("submission event starts the prior authority version at zero")
+  void submittedEventStartsPriorAuthorityVersion() {
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
-    aggregate.on(new PriorAuthoritySubmittedEvent(PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, 1L, NOW));
+    aggregate.on(
+        new PriorAuthoritySubmittedEvent(PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, null, NOW));
 
     assertThat(aggregate.getPriorAuthorityId()).isEqualTo(PA_ID);
-    assertThat(aggregate.getDataVersion()).isEqualTo(1L);
+    assertThat(aggregate.getPriorAuthorityVersion()).isZero();
     assertThat(aggregate.getState().isSubmitted()).isTrue();
   }
 
   @Test
-  @DisplayName("decision event restores the data version and decided lifecycle")
-  void decisionEventRestoresDataVersion() {
+  @DisplayName("decision event advances the prior authority version and decided lifecycle")
+  void decisionEventAdvancesPriorAuthorityVersion() {
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
     aggregate.on(
+        new PriorAuthoritySubmittedEvent(PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, null, NOW));
+    aggregate.on(
         new PriorAuthorityDecisionMadeEvent(
-            PA_ID,
-            APP_ID,
-            PA_TYPE,
-            2L,
-            "APPROVED",
-            "test justification",
-            BigDecimal.TEN,
-            NOW,
-            NOW));
+            PA_ID, APP_ID, PA_TYPE, "APPROVED", "test justification", BigDecimal.TEN, NOW, NOW));
 
     assertThat(aggregate.getPriorAuthorityId()).isEqualTo(PA_ID);
-    assertThat(aggregate.getDataVersion()).isEqualTo(2L);
+    assertThat(aggregate.getPriorAuthorityVersion()).isEqualTo(1L);
     assertThat(aggregate.getState().isDecided()).isTrue();
   }
 

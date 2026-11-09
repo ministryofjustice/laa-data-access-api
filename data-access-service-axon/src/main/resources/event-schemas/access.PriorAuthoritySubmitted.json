@@ -21,8 +21,11 @@
     "schemaVersion": {
       "type": "integer"
     },
-    "dataVersion": {
-      "type": "integer"
+    "expertType": {
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "occurredAt": {
       "type": "string",
@@ -34,7 +37,7 @@
     "applicationId",
     "priorAuthorityType",
     "schemaVersion",
-    "dataVersion",
+    "expertType",
     "occurredAt"
   ],
   "additionalProperties": false

@@ -30,7 +30,6 @@ class PriorAuthorityDataPayloadTest {
     assertThat(payload.expert()).isNull();
     assertThat(payload.disbursement()).isNull();
     assertThat(payload.apportionment()).isNull();
-    assertThat(payload.decisionSerialisedRequest()).isNull();
   }
 
   @Test
@@ -54,7 +53,6 @@ class PriorAuthorityDataPayloadTest {
     assertThat(decided.expert()).isEqualTo(decisionDetails.expert());
     assertThat(decided.disbursement()).isEqualTo(decisionDetails.disbursement());
     assertThat(decided.apportionment()).isEqualTo(decisionDetails.apportionment());
-    assertThat(decided.decisionSerialisedRequest()).isEqualTo("{\"decision\":\"GRANTED\"}");
   }
 
   @Test
@@ -134,7 +132,6 @@ class PriorAuthorityDataPayloadTest {
             .newHourlyRateAmount(BigDecimal.valueOf(100.0))
             .build(),
         DisbursementInformation.builder().newAmount(BigDecimal.valueOf(45.0)).build(),
-        ApportionmentInformation.builder().newClientShareAmount(BigDecimal.valueOf(15.0)).build(),
-        "{\"decision\":\"GRANTED\"}");
+        ApportionmentInformation.builder().newClientShareAmount(BigDecimal.valueOf(15.0)).build());
   }
 }

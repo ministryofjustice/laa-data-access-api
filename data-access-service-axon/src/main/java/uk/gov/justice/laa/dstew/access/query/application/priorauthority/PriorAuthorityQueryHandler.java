@@ -1,18 +1,14 @@
 package uk.gov.justice.laa.dstew.access.query.application.priorauthority;
 
 import java.util.Optional;
-import java.util.UUID;
 import org.axonframework.messaging.queryhandling.annotation.QueryHandler;
 import org.axonframework.modelling.annotation.InjectEntity;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityState;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 
 /**
  * Answers single prior-authority reads from its aggregate, so a read straight after a committed
@@ -21,12 +17,6 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStat
 @Component
 public class PriorAuthorityQueryHandler {
 
-  private final PriorAuthorityDataStore priorAuthorityDataStore;
-
-  public PriorAuthorityQueryHandler(PriorAuthorityDataStore priorAuthorityDataStore) {
-    this.priorAuthorityDataStore = priorAuthorityDataStore;
-  }
-
   /** Returns the prior authority with its content, or {@code null} if absent or not visible. */
   @QueryHandler
   public @Nullable PriorAuthorityResult handle(
@@ -34,7 +24,7 @@ public class PriorAuthorityQueryHandler {
       @InjectEntity(idProperty = "priorAuthorityId") @Nullable PriorAuthorityAggregate aggregate) {
     return state(aggregate)
         .filter(state -> query.accessScope().permitsOfficeCode(state.getOfficeCode()))
-        .flatMap(state -> content(state).map(payload -> PriorAuthorityResult.from(state, payload)))
+        .flatMap(state -> state.payload().map(payload -> PriorAuthorityResult.from(state, payload)))
         .orElse(null);
   }
 
@@ -70,14 +60,5 @@ public class PriorAuthorityQueryHandler {
     return Optional.ofNullable(aggregate)
         .map(PriorAuthorityAggregate::getState)
         .filter(state -> state.getPriorAuthorityId() != null);
-  }
-
-  private Optional<PriorAuthorityDataPayload> content(PriorAuthorityState state) {
-    UUID priorAuthorityId = state.getPriorAuthorityId();
-    if (state.status() == PriorAuthorityStatus.DRAFT) {
-      return state.draft();
-    }
-    return Optional.ofNullable(
-        priorAuthorityDataStore.get(priorAuthorityId, state.getDataVersion()));
   }
 }

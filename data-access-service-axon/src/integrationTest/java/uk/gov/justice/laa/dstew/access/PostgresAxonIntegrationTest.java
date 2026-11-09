@@ -378,7 +378,6 @@ class PostgresAxonIntegrationTest {
             "genesis_stream",
             "linked_application_group_current_state",
             "prior_authority_current_state",
-            "prior_authority_data",
             "token_entry",
             "work_item_route",
             "work_list_group_member",

@@ -110,7 +110,7 @@ class PriorAuthorityDocumentTypeUpdateCommandHandlerTest {
     PriorAuthorityEvolve.apply(
         state,
         new PriorAuthoritySubmittedEvent(
-            priorAuthorityId, applicationId, "EXPERT", 1, 1L, OCCURRED_AT));
+            priorAuthorityId, applicationId, "EXPERT", 1, null, OCCURRED_AT));
     when(priorAuthority.getState()).thenReturn(state);
     PriorAuthorityDocumentTypeUpdateCommand command =
         new PriorAuthorityDocumentTypeUpdateCommand(

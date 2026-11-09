@@ -39,8 +39,6 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApp
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberRemovedFromGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
@@ -52,7 +50,6 @@ import uk.gov.justice.laa.dstew.access.query.application.summary.ApplicationSumm
 class WorkListProjectionTest {
   private WorkListItemReadRepository items;
   private WorkListGroupMemberReadRepository groupMembers;
-  private PriorAuthorityDataStore priorAuthorityDataStore;
   private ApplicationSummaries applicationSummaries;
   private WorkListProjection projection;
 
@@ -60,10 +57,8 @@ class WorkListProjectionTest {
   void setUp() {
     items = mock(WorkListItemReadRepository.class);
     groupMembers = mock(WorkListGroupMemberReadRepository.class);
-    priorAuthorityDataStore = mock(PriorAuthorityDataStore.class);
     applicationSummaries = mock(ApplicationSummaries.class);
-    projection =
-        new WorkListProjection(items, groupMembers, priorAuthorityDataStore, applicationSummaries);
+    projection = new WorkListProjection(items, groupMembers, applicationSummaries);
   }
 
   @Test
@@ -136,23 +131,15 @@ class WorkListProjectionTest {
   @Test
   void givenPriorAuthoritySubmitted_whenProjected_thenReadyAtIsSubmissionEventTime() {
     UUID priorAuthorityId = UUID.randomUUID();
-    PriorAuthorityDataPayload priorAuthorityData = mock(PriorAuthorityDataPayload.class);
-    uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent content =
-        mock(uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent.class);
-    uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertDetails expertDetails =
-        mock(uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertDetails.class);
-    when(priorAuthorityDataStore.get(priorAuthorityId, 0L)).thenReturn(priorAuthorityData);
-    when(priorAuthorityData.content()).thenReturn(content);
-    when(content.priorAuthorityType())
-        .thenReturn(
-            uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.EXPERT);
-    when(content.expertDetails()).thenReturn(expertDetails);
-    when(expertDetails.expertType()).thenReturn("Pathologist");
-
     UUID applicationId = UUID.randomUUID();
     projection.on(
         new PriorAuthoritySubmittedEvent(
-            priorAuthorityId, applicationId, "type", 1, 0, Instant.parse("2026-08-28T10:00:00Z")),
+            priorAuthorityId,
+            applicationId,
+            "EXPERT",
+            1,
+            "Pathologist",
+            Instant.parse("2026-08-28T10:00:00Z")),
         message());
 
     ArgumentCaptor<WorkListItemReadModel> captor =
@@ -171,19 +158,10 @@ class WorkListProjectionTest {
   @Test
   void givenNonExpertPriorAuthority_whenHandled_thenStoresNoExpertType() {
     UUID priorAuthorityId = UUID.randomUUID();
-    PriorAuthorityDataPayload priorAuthorityData = mock(PriorAuthorityDataPayload.class);
-    uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent content =
-        mock(uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent.class);
-    when(priorAuthorityDataStore.get(priorAuthorityId, 1)).thenReturn(priorAuthorityData);
-    when(priorAuthorityData.content()).thenReturn(content);
-    when(content.priorAuthorityType())
-        .thenReturn(
-            uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.COUNSEL);
-
     UUID applicationId = UUID.randomUUID();
     projection.on(
         new PriorAuthoritySubmittedEvent(
-            priorAuthorityId, applicationId, "EXPERT", 0, 1, Instant.now()),
+            priorAuthorityId, applicationId, "COUNSEL", 0, "Pathologist", Instant.now()),
         message());
 
     ArgumentCaptor<WorkListItemReadModel> captor =
@@ -410,7 +388,6 @@ class WorkListProjectionTest {
             priorAuthorityId,
             UUID.randomUUID(),
             "DISBURSEMENT",
-            2L,
             "REFUSED",
             "Recorded",
             BigDecimal.ZERO,

@@ -1,8 +1,6 @@
 package uk.gov.justice.laa.dstew.access.query.application.priorauthority;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityStateEvents.aggregateOf;
 import static uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.COUNSEL;
 import static uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.DISBURSEMENT;
@@ -20,8 +18,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.DisbursementInformation;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
@@ -31,7 +27,6 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.Apportionment;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.BillingType;
@@ -54,9 +49,9 @@ class PriorAuthorityQueryHandlerTest {
 
   private static final UUID APPLICATION_ID = UUID.randomUUID();
   private static final Instant STARTED_AT = Instant.parse("2026-09-10T09:00:00Z");
+  private static final Instant SUBMITTED_AT = STARTED_AT.plusSeconds(120);
 
-  @Mock private PriorAuthorityDataStore dataStore;
-  @InjectMocks private PriorAuthorityQueryHandler handler;
+  private final PriorAuthorityQueryHandler handler = new PriorAuthorityQueryHandler();
 
   @Test
   void givenDraft_whenQueried_thenHydratesDraftContentAndDocumentFilenames() {
@@ -82,21 +77,12 @@ class PriorAuthorityQueryHandlerTest {
         .containsExactly(documentId);
     assertThat(result.documentFilenames())
         .containsExactlyEntriesOf(Map.of(documentId, "evidence.pdf"));
-    verifyNoInteractions(dataStore);
   }
 
   @ParameterizedTest
   @ValueSource(strings = {"SUBMITTED", "DECIDED"})
-  void givenSubmittedOrDecided_whenQueried_thenHydratesContentAtEventDataVersion(String status) {
+  void givenSubmittedOrDecided_whenQueried_thenHydratesSealedDraftContent(String status) {
     UUID priorAuthorityId = UUID.randomUUID();
-    Instant submittedAt = Instant.parse("2026-09-11T10:00:00Z");
-    List<Object> events = new ArrayList<>(List.of(started(priorAuthorityId)));
-    events.add(submitted(priorAuthorityId, 1L));
-    long dataVersion = 1L;
-    if ("DECIDED".equals(status)) {
-      events.add(decided(priorAuthorityId, 4L));
-      dataVersion = 4L;
-    }
     PriorAuthorityContent content =
         new PriorAuthorityContent(
             COUNSEL,
@@ -104,17 +90,18 @@ class PriorAuthorityQueryHandlerTest {
             null,
             new CounselDetails(CounselType.TWO_JUNIOR_COUNSEL),
             null);
-    when(dataStore.get(priorAuthorityId, dataVersion))
-        .thenReturn(
-            new PriorAuthorityDataPayload(
-                priorAuthorityId, APPLICATION_ID, content, "{}", submittedAt));
+    List<Object> events = new ArrayList<>(List.of(started(priorAuthorityId, content)));
+    events.add(submitted(priorAuthorityId));
+    if ("DECIDED".equals(status)) {
+      events.add(decided(priorAuthorityId));
+    }
 
     PriorAuthorityResult result =
         handler.handle(
             new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId), aggregateOf(events));
 
     assertThat(result.status()).isEqualTo(status);
-    assertThat(result.submittedAt()).isEqualTo(submittedAt);
+    assertThat(result.submittedAt()).isEqualTo(SUBMITTED_AT);
     assertThat(result.justification()).isEqualTo("Counsel is required");
     assertThat(result.counselDetails().counselType()).isEqualTo(CounselType.TWO_JUNIOR_COUNSEL);
   }
@@ -131,7 +118,6 @@ class PriorAuthorityQueryHandlerTest {
                 new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId),
                 aggregateOf(List.of())))
         .isNull();
-    verifyNoInteractions(dataStore);
   }
 
   @ParameterizedTest
@@ -167,46 +153,61 @@ class PriorAuthorityQueryHandlerTest {
   }
 
   @Test
-  void givenSubmittedContentMissing_whenQueried_thenReturnsNull() {
+  void givenErasedSubmittedContent_whenQueried_thenReturnsNull() {
     UUID priorAuthorityId = UUID.randomUUID();
 
     assertThat(
             handler.handle(
                 new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId),
-                aggregateOf(List.of(started(priorAuthorityId), submitted(priorAuthorityId, 1L)))))
+                aggregateOf(
+                    List.of(
+                        new PriorAuthorityDraftStartedEvent(
+                            priorAuthorityId,
+                            APPLICATION_ID,
+                            EXPERT.name(),
+                            1,
+                            STARTED_AT,
+                            "1A001B"),
+                        submitted(priorAuthorityId)))))
         .isNull();
   }
 
   @Test
-  void givenDecisionStoredInPayload_whenQueried_thenReturnsDecisionDetails() {
+  void givenDecision_whenQueried_thenReturnsDecisionDetailsFromTheDecisionEvent() {
     UUID priorAuthorityId = UUID.randomUUID();
-    when(dataStore.get(priorAuthorityId, 2L))
-        .thenReturn(
-            new PriorAuthorityDataPayload(
-                priorAuthorityId,
-                APPLICATION_ID,
-                content(EXPERT),
-                "{}",
-                Instant.now(),
-                new PriorAuthorityDataPayload.DecisionDetails(
-                    "GRANTED",
-                    "Decision recorded",
-                    BigDecimal.valueOf(99.99),
-                    Instant.parse("2026-09-08T12:00:00Z"),
-                    null,
-                    DisbursementInformation.builder().build(),
-                    null,
-                    "{\"decision\":\"GRANTED\"}"),
-                null,
-                null));
+    DisbursementInformation disbursement = DisbursementInformation.builder().build();
 
     PriorAuthorityResult result =
         handler.handle(
             new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId),
-            aggregateOf(List.of(started(priorAuthorityId), decided(priorAuthorityId, 2L))));
+            aggregateOf(
+                List.of(
+                    started(priorAuthorityId),
+                    submitted(priorAuthorityId),
+                    new PriorAuthorityDecisionMadeEvent(
+                        priorAuthorityId,
+                        APPLICATION_ID,
+                        EXPERT.name(),
+                        "GRANTED",
+                        "Decision recorded",
+                        BigDecimal.valueOf(99.99),
+                        Instant.parse("2026-09-08T12:00:00Z"),
+                        null,
+                        disbursement,
+                        null,
+                        STARTED_AT.plusSeconds(180)))));
 
     assertThat(result.status()).isEqualTo("DECIDED");
-    assertThat(result.decisionDetails().decision()).isEqualTo("GRANTED");
+    assertThat(result.decisionDetails())
+        .isEqualTo(
+            new PriorAuthorityDataPayload.DecisionDetails(
+                "GRANTED",
+                "Decision recorded",
+                BigDecimal.valueOf(99.99),
+                Instant.parse("2026-09-08T12:00:00Z"),
+                null,
+                disbursement,
+                null));
   }
 
   @Test
@@ -305,10 +306,10 @@ class PriorAuthorityQueryHandlerTest {
                 new PriorAuthorityDocumentTypeUpdatedEvent(
                     priorAuthorityId, documentId, "EXPERT_REPORT", uploadedAt, APPLICATION_ID)));
     if (!"DRAFT".equals(status)) {
-      events.add(submitted(priorAuthorityId, 1L));
+      events.add(submitted(priorAuthorityId));
     }
     if ("DECIDED".equals(status)) {
-      events.add(decided(priorAuthorityId, 2L));
+      events.add(decided(priorAuthorityId));
     }
 
     assertThat(
@@ -355,7 +356,6 @@ class PriorAuthorityQueryHandlerTest {
                 new FindPriorAuthorityDocumentQuery(priorAuthorityId, documentId),
                 aggregateOf(events)))
         .isNull();
-    verifyNoInteractions(dataStore);
   }
 
   @Test
@@ -377,24 +377,22 @@ class PriorAuthorityQueryHandlerTest {
 
   private PriorAuthorityResult handleContent(PriorAuthorityContent content) {
     UUID priorAuthorityId = UUID.randomUUID();
-    when(dataStore.get(priorAuthorityId, 1L)).thenReturn(payload(priorAuthorityId, content));
 
     return handler.handle(
         new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId),
-        aggregateOf(List.of(started(priorAuthorityId), submitted(priorAuthorityId, 1L))));
+        aggregateOf(List.of(started(priorAuthorityId, content), submitted(priorAuthorityId))));
   }
 
   private static PriorAuthorityContent content(PriorAuthorityType type) {
     return new PriorAuthorityContent(type, "Expert required", null, null, null);
   }
 
-  private static PriorAuthorityDataPayload payload(
-      UUID priorAuthorityId, PriorAuthorityContent content) {
-    return new PriorAuthorityDataPayload(
-        priorAuthorityId, APPLICATION_ID, content, "{}", Instant.now());
+  private static PriorAuthorityDraftStartedEvent started(UUID priorAuthorityId) {
+    return started(priorAuthorityId, content(EXPERT));
   }
 
-  private static PriorAuthorityDraftStartedEvent started(UUID priorAuthorityId) {
+  private static PriorAuthorityDraftStartedEvent started(
+      UUID priorAuthorityId, PriorAuthorityContent content) {
     return new PriorAuthorityDraftStartedEvent(
         priorAuthorityId,
         APPLICATION_ID,
@@ -402,26 +400,20 @@ class PriorAuthorityQueryHandlerTest {
         1,
         STARTED_AT,
         "1A001B",
-        Erasable.of(content(EXPERT)),
+        Erasable.of(content),
         Erasable.of("{}"));
   }
 
-  private static PriorAuthoritySubmittedEvent submitted(UUID priorAuthorityId, long dataVersion) {
+  private static PriorAuthoritySubmittedEvent submitted(UUID priorAuthorityId) {
     return new PriorAuthoritySubmittedEvent(
-        priorAuthorityId,
-        APPLICATION_ID,
-        EXPERT.name(),
-        1,
-        dataVersion,
-        STARTED_AT.plusSeconds(120));
+        priorAuthorityId, APPLICATION_ID, EXPERT.name(), 1, null, SUBMITTED_AT);
   }
 
-  private static PriorAuthorityDecisionMadeEvent decided(UUID priorAuthorityId, long dataVersion) {
+  private static PriorAuthorityDecisionMadeEvent decided(UUID priorAuthorityId) {
     return new PriorAuthorityDecisionMadeEvent(
         priorAuthorityId,
         APPLICATION_ID,
         EXPERT.name(),
-        dataVersion,
         "GRANTED",
         "Decision recorded",
         null,

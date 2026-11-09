@@ -36,8 +36,7 @@ public record PriorAuthorityDataPayload(
       Instant dateGranted,
       ExpertFeeInformation expert,
       DisbursementInformation disbursement,
-      ApportionmentInformation apportionment,
-      String decisionSerialisedRequest) {}
+      ApportionmentInformation apportionment) {}
 
   /** Creates an initial payload version before any decision has been recorded. */
   public PriorAuthorityDataPayload(
@@ -102,10 +101,5 @@ public record PriorAuthorityDataPayload(
   /** Returns the apportionment details, or {@code null} if undecided. */
   public ApportionmentInformation apportionment() {
     return decisionDetails == null ? null : decisionDetails.apportionment();
-  }
-
-  /** Returns the serialised decision request, or {@code null} if undecided. */
-  public String decisionSerialisedRequest() {
-    return decisionDetails == null ? null : decisionDetails.decisionSerialisedRequest();
   }
 }

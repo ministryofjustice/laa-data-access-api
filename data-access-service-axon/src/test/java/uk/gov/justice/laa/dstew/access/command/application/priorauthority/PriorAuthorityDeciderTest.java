@@ -10,8 +10,10 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.MakePriorAuthorityDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertDetails;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
+import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityVersionConflictException;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
@@ -69,12 +71,20 @@ class PriorAuthorityDeciderTest {
   }
 
   @Test
-  void givenSubmitCommand_whenDecideSubmit_thenAlwaysUsesDataVersionZero() {
+  void givenSubmitCommand_whenDecideSubmit_thenCarriesTypeAndExpertTypeWithoutContent() {
     UUID priorAuthorityId = UUID.randomUUID();
     PriorAuthorityState state = new PriorAuthorityState();
     state.applicationId = UUID.randomUUID();
     state.priorAuthorityType = PriorAuthorityType.COUNSEL.name();
     state.schemaVersion = 2;
+    state.content =
+        Erasable.of(
+            new PriorAuthorityContent(
+                PriorAuthorityType.EXPERT,
+                null,
+                new ExpertDetails("Pathologist", null, null, null),
+                null,
+                null));
     SubmitPriorAuthorityDraftCommand command =
         new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT);
 
@@ -84,7 +94,7 @@ class PriorAuthorityDeciderTest {
     assertThat(event.applicationId()).isEqualTo(state.applicationId);
     assertThat(event.priorAuthorityType()).isEqualTo(PriorAuthorityType.COUNSEL.name());
     assertThat(event.schemaVersion()).isEqualTo(2);
-    assertThat(event.dataVersion()).isEqualTo(0L);
+    assertThat(event.expertType()).isEqualTo("Pathologist");
     assertThat(event.occurredAt()).isEqualTo(OCCURRED_AT);
   }
 
@@ -115,8 +125,9 @@ class PriorAuthorityDeciderTest {
     assertThat(result.get().priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(result.get().applicationId()).isEqualTo(applicationId);
     assertThat(result.get().priorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT.name());
-    assertThat(result.get().dataVersion()).isEqualTo(5L);
     assertThat(result.get().overallDecision()).isEqualTo("GRANTED");
+    assertThat(result.get().decisionJustification()).isEqualTo(Erasable.of("Recorded"));
+    assertThat(result.get().amountGranted()).isEqualTo(Erasable.of(BigDecimal.valueOf(350.0)));
   }
 
   @Test
@@ -351,7 +362,7 @@ class PriorAuthorityDeciderTest {
     state.applicationId = applicationId;
     state.priorAuthorityType = PriorAuthorityType.EXPERT.name();
     state.schemaVersion = 1;
-    state.dataVersion = dataVersion;
+    state.priorAuthorityVersion = dataVersion;
     state.caseworkerId = TestJwtDecoderConfig.CASEWORKER_ID;
     state.submitted = true;
     return state;
@@ -363,7 +374,7 @@ class PriorAuthorityDeciderTest {
     state.applicationId = applicationId;
     state.priorAuthorityType = PriorAuthorityType.EXPERT.name();
     state.schemaVersion = 1;
-    state.dataVersion = 0L;
+    state.priorAuthorityVersion = 0L;
     state.caseworkerId = TestJwtDecoderConfig.CASEWORKER_ID;
     state.submitted = false;
     return state;

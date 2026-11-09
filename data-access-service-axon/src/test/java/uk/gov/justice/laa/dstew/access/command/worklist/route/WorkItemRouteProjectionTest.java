@@ -56,7 +56,7 @@ class WorkItemRouteProjectionTest {
 
     projection.on(
         new PriorAuthoritySubmittedEvent(
-            priorAuthorityId, UUID.randomUUID(), "type", 1, 1L, occurredAt));
+            priorAuthorityId, UUID.randomUUID(), "type", 1, null, occurredAt));
 
     WorkItemRoute route = savedRoute();
     assertThat(route.getWorkItemType()).isEqualTo(WorkItemType.PRIOR_AUTHORITY);
@@ -76,7 +76,6 @@ class WorkItemRouteProjectionTest {
             priorAuthorityId,
             UUID.randomUUID(),
             "DISBURSEMENT",
-            1L,
             "GRANTED",
             "Recorded",
             BigDecimal.valueOf(100.0),

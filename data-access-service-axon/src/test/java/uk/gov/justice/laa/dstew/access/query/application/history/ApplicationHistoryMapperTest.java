@@ -153,7 +153,7 @@ class ApplicationHistoryMapperTest {
   }
 
   private static PriorAuthoritySubmittedEvent submitted(UUID priorAuthorityId, String type) {
-    return new PriorAuthoritySubmittedEvent(priorAuthorityId, APPLICATION_ID, type, 1, 1L, AT);
+    return new PriorAuthoritySubmittedEvent(priorAuthorityId, APPLICATION_ID, type, 1, null, AT);
   }
 
   private static PriorAuthorityDecisionMadeEvent decision(
@@ -162,11 +162,13 @@ class ApplicationHistoryMapperTest {
         priorAuthorityId,
         APPLICATION_ID,
         type,
-        2L,
         outcome,
         Erasable.of("Needed"),
-        Erasable.of(null),
-        Erasable.of(null),
+        Erasable.erased(),
+        Erasable.erased(),
+        Erasable.erased(),
+        Erasable.erased(),
+        Erasable.erased(),
         AT);
   }
 

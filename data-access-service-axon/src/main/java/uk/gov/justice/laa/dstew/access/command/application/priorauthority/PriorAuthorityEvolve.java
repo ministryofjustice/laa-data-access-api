@@ -20,25 +20,29 @@ public final class PriorAuthorityEvolve {
     state.schemaVersion = event.schemaVersion();
     state.submitted = false;
     state.decided = false;
-    state.draftContent = event.content();
-    state.draftSerialisedRequest = event.serialisedRequest();
+    state.content = event.content();
+    state.serialisedRequest = event.serialisedRequest();
     state.draftModifiedAt = event.occurredAt();
   }
 
   /** Applies a {@link PriorAuthorityDraftUpdatedEvent}, replacing the draft content. */
   public static void apply(PriorAuthorityState state, PriorAuthorityDraftUpdatedEvent event) {
-    state.draftContent = event.content();
-    state.draftSerialisedRequest = event.serialisedRequest();
+    state.content = event.content();
+    state.serialisedRequest = event.serialisedRequest();
     state.draftModifiedAt = event.occurredAt();
   }
 
-  /** Applies a {@link PriorAuthoritySubmittedEvent} to the given state. */
+  /**
+   * Applies a {@link PriorAuthoritySubmittedEvent}, sealing the draft content as the submission at
+   * version 0.
+   */
   public static void apply(PriorAuthorityState state, PriorAuthoritySubmittedEvent event) {
     state.priorAuthorityId = event.priorAuthorityId();
     state.applicationId = event.applicationId();
     state.priorAuthorityType = event.priorAuthorityType();
     state.schemaVersion = event.schemaVersion();
-    state.dataVersion = event.dataVersion();
+    state.priorAuthorityVersion = 0L;
+    state.submittedAt = event.occurredAt();
     state.submitted = true;
     state.decided = false;
   }
@@ -48,7 +52,14 @@ public final class PriorAuthorityEvolve {
     state.priorAuthorityId = event.priorAuthorityId();
     state.applicationId = event.applicationId();
     state.priorAuthorityType = event.priorAuthorityType();
-    state.dataVersion = event.dataVersion();
+    state.priorAuthorityVersion++;
+    state.overallDecision = event.overallDecision();
+    state.decisionJustification = event.decisionJustification();
+    state.amountGranted = event.amountGranted();
+    state.dateGranted = event.dateGranted();
+    state.expertFee = event.expertFee();
+    state.disbursementInformation = event.disbursementInformation();
+    state.apportionmentInformation = event.apportionmentInformation();
     state.submitted = true;
     state.decided = true;
   }

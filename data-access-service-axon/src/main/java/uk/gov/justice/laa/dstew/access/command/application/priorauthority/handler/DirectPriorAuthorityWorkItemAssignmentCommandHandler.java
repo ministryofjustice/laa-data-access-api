@@ -34,7 +34,7 @@ public class DirectPriorAuthorityWorkItemAssignmentCommandHandler {
             command.workItemId(),
             WorkItemType.PRIOR_AUTHORITY,
             priorAuthority.getApplicationId(),
-            priorAuthority.getDataVersion(),
+            priorAuthority.getPriorAuthorityVersion(),
             priorAuthority.getAssignmentVersion() + 1,
             command.caseworkerId(),
             command.occurredAt()));

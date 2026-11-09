@@ -1433,6 +1433,39 @@ Split into two steps:
       `PriorAuthorityDataStore`.
     - **Validation:** unit tests 1303/1303 and integration tests 307/307
       pass. Checkstyle: main clean, test 32, integration 47.
+  - **PA-2, prior authority submission and decision content in events (done
+    2026-11-09):**
+    - **Events:** Submitted no longer carries `dataVersion`. It carries a
+      plain `expertType` for the work list, which the decider reads from the
+      draft through `state.expertType()`. The draft content is sealed at
+      submit: the state keeps it, and no copy is written. DecisionMade drops
+      `dataVersion` and adds Erasable `expertFee`, `disbursementInformation`
+      and `apportionmentInformation` alongside the existing Erasable
+      justification, amount and date. Schemas are updated.
+    - **State:** `PriorAuthorityState` holds `priorAuthorityVersion`: 0 at
+      draft and at submit, 1 after the decision. It is checked against
+      `expectedPriorAuthorityVersion` and stamped on work item assignment
+      events. The state folds `submittedAt` and the decision content.
+      `payload()` serves every status, and `draft()` is `payload()` before
+      submit. The payload is empty when content is erased.
+    - **Reads:** `PriorAuthorityQueryHandler` answers every status from
+      `payload()`. `WorkListProjection` takes type and expert type from the
+      Submitted event.
+    - **Removed:** `PriorAuthorityDataStore`, the entity and the repository;
+      `DecisionDetails.decisionSerialisedRequest`, which the API never
+      exposed; `dataVersion` on the prior authority read model. V40 drops
+      `prior_authority_data`, its mutation guard and
+      `prior_authority_current_state.data_version`.
+    - **Validation:** unit tests 1296/1296 pass (the store test was
+      removed). Integration tests: 306/307 pass. Checkstyle: main clean, test
+      31, integration 47.
+    - **Known failure:** the DELETE case of
+      `givenDocumentMutationRacesDraftSave_whenBothCommit_thenNeitherChangeIsLost`.
+      It also fails on PA-1 when run alone. Sourcing reads content by tag
+      before it reads the events, so an event committed between the two
+      reads looks erased, and the delete returns "draft not found". The root
+      cause is that a missing content row is read as erased. The next change
+      replaces that with an explicit erasure status.
 
 1. Choose the declaration design: hash-bound review (recommended by the review)
    or persisted candidate. Agree version/hash transport, stale-response handling,

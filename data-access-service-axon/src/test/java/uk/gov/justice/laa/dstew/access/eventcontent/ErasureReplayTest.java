@@ -215,7 +215,8 @@ class ErasureReplayTest {
                 priorAuthorityId, documentId, Erasable.of("GATEWAY_EVIDENCE"), AT, applicationId),
             new PriorAuthorityDocumentDeletedEvent(
                 priorAuthorityId, deletedDocumentId, AT, applicationId),
-            new PriorAuthoritySubmittedEvent(priorAuthorityId, applicationId, "EXPERT", 1, 0L, AT),
+            new PriorAuthoritySubmittedEvent(
+                priorAuthorityId, applicationId, "EXPERT", 1, null, AT),
             new WorkItemAssigned(
                 priorAuthorityId,
                 WorkItemType.PRIOR_AUTHORITY,
@@ -233,8 +234,7 @@ class ErasureReplayTest {
     assertThat(erased.getUploadedDocuments()).hasSize(2);
     assertThat(erased)
         .usingRecursiveComparison()
-        .ignoringFields(
-            "uploadedDocuments", "documentFilenames", "draftContent", "draftSerialisedRequest")
+        .ignoringFields("uploadedDocuments", "documentFilenames", "content", "serialisedRequest")
         .isEqualTo(full);
     assertThat(erased.getUploadedDocuments())
         .isEqualTo(full.getUploadedDocuments().stream().map(this::withoutContent).toList());
@@ -249,7 +249,8 @@ class ErasureReplayTest {
     List<Object> decided =
         List.of(
             started(),
-            new PriorAuthoritySubmittedEvent(priorAuthorityId, applicationId, "EXPERT", 1, 0L, AT),
+            new PriorAuthoritySubmittedEvent(
+                priorAuthorityId, applicationId, "EXPERT", 1, null, AT),
             new WorkItemAssigned(
                 priorAuthorityId,
                 WorkItemType.PRIOR_AUTHORITY,
@@ -262,18 +263,25 @@ class ErasureReplayTest {
                 priorAuthorityId,
                 applicationId,
                 "EXPERT",
-                1L,
                 "GRANTED",
                 Erasable.of("justified"),
                 Erasable.of(new BigDecimal("125.50")),
                 Erasable.of(AT),
+                Erasable.erased(),
+                Erasable.erased(),
+                Erasable.erased(),
                 AT));
 
     PriorAuthorityState full = fold(new PriorAuthorityState(), PriorAuthorityEvolve.class, decided);
     PriorAuthorityState erased =
         fold(new PriorAuthorityState(), PriorAuthorityEvolve.class, erase(decided));
 
-    assertThat(erased).usingRecursiveComparison().isEqualTo(full);
+    assertThat(erased)
+        .usingRecursiveComparison()
+        .ignoringFields(
+            "content", "serialisedRequest", "decisionJustification", "amountGranted", "dateGranted")
+        .isEqualTo(full);
+    assertThat(erased.payload()).isEmpty();
     assertSameDecision(full, erased, state -> decidePriorAuthority(state, caseworkerId, 1L));
   }
 

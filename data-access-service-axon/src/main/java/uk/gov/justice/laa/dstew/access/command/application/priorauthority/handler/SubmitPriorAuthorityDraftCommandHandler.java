@@ -8,7 +8,6 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecider;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.SubmitPriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerResource;
 import uk.gov.justice.laa.dstew.access.security.OfficeCodeResourceWriteAccessResolver;
@@ -25,7 +24,6 @@ public class SubmitPriorAuthorityDraftCommandHandler {
   @RequireWriteAccess(resolver = OfficeCodeResourceWriteAccessResolver.class)
   public void handle(
       @AuthenticatedCallerResource SubmitPriorAuthorityDraftCommand command,
-      PriorAuthorityDataStore dataStore,
       JsonSchemaValidator jsonSchemaValidator,
       @InjectEntity(idProperty = "priorAuthorityId") @WriteAccessResolverResource
           PriorAuthorityAggregate priorAuthority,
@@ -43,14 +41,6 @@ public class SubmitPriorAuthorityDraftCommandHandler {
     int schemaVersion = priorAuthority.getState().getSchemaVersion();
 
     jsonSchemaValidator.validate(payload.content(), "PriorAuthority.json", schemaVersion);
-
-    dataStore.append(
-        command.priorAuthorityId(),
-        0L,
-        priorAuthority.getApplicationId(),
-        payload.withSubmittedAt(command.occurredAt()),
-        payload.serialisedRequest(),
-        command.occurredAt());
 
     eventAppender.append(PriorAuthorityDecider.decideSubmit(command, priorAuthority.getState()));
   }
