@@ -62,6 +62,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
@@ -1095,7 +1096,11 @@ public class ApplicationLinkMembershipIntegrationTest {
     return restTemplate.exchange(
         "/api/v0/applications/" + applicationId + "/" + operation,
         HttpMethod.POST,
-        new HttpEntity<>(new LinkedGroupChangeRequest(token), headers()),
+        new HttpEntity<>(
+            new LinkedGroupChangeRequest(token)
+                .eventHistory(
+                    new EventHistoryRequest().eventDescription("Justification for linking")),
+            headers()),
         String.class);
   }
 
@@ -1111,7 +1116,11 @@ public class ApplicationLinkMembershipIntegrationTest {
     return restTemplate.exchange(
         "/api/v0/applications/" + applicationId + "/" + operation,
         HttpMethod.POST,
-        new HttpEntity<>(new LinkedGroupChangeRequest(token), headers()),
+        new HttpEntity<>(
+            new LinkedGroupChangeRequest(token)
+                .eventHistory(
+                    new EventHistoryRequest().eventDescription("Justification for linking")),
+            headers()),
         Void.class);
   }
 

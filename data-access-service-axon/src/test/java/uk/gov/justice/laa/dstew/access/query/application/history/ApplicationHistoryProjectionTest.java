@@ -43,6 +43,11 @@ class ApplicationHistoryProjectionTest {
 
   @Mock private ApplicationDataStore applicationDataStore;
 
+  @Mock
+  private uk.gov.justice.laa.dstew.access.command.application.linkedgroup
+          .LinkedGroupJustificationStore
+      justificationStore;
+
   @Mock private ApplicationHistoryReadRepository repository;
 
   @Mock private PriorAuthorityHistoryReadRepository paRepository;
@@ -56,7 +61,7 @@ class ApplicationHistoryProjectionTest {
     projection =
         new ApplicationHistoryProjection(
             repository,
-            new ApplicationHistoryAssembler(applicationDataStore),
+            new ApplicationHistoryAssembler(applicationDataStore, justificationStore),
             paRepository,
             new PriorAuthorityHistoryAssembler(
                 new PriorAuthorityDataStore(priorAuthorityDataRepository)));

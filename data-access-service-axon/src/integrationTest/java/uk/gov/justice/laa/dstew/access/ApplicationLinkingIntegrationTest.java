@@ -59,6 +59,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
@@ -932,7 +933,11 @@ public class ApplicationLinkingIntegrationTest {
     return restTemplate.exchange(
         "/api/v0/applications/" + applicationId + "/" + action,
         HttpMethod.POST,
-        new HttpEntity<>(new LinkedGroupChangeRequest(versionToken), headers(bearerToken)),
+        new HttpEntity<>(
+            new LinkedGroupChangeRequest(versionToken)
+                .eventHistory(
+                    new EventHistoryRequest().eventDescription("Justification for linking")),
+            headers(bearerToken)),
         Void.class);
   }
 

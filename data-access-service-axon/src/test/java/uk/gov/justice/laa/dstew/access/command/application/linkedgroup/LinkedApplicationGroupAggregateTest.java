@@ -175,7 +175,14 @@ class LinkedApplicationGroupAggregateTest {
         .when()
         .command(new AddApplicationToLinkedGroupCommand(groupId, newMemberId, 0, occurredAt))
         .then()
-        .events(new MemberAddedToGroupEvent(groupId, leadId, newMemberId, occurredAt));
+        .events(
+            new MemberAddedToGroupEvent(
+                groupId,
+                leadId,
+                newMemberId,
+                occurredAt,
+                List.of(leadId, existingMemberId, newMemberId),
+                null));
   }
 
   @Test
@@ -305,7 +312,7 @@ class LinkedApplicationGroupAggregateTest {
         .then()
         .events(
             new LinkedApplicationGroupLeadChangedEvent(
-                groupId, leadId, associateId, 1, occurredAt));
+                groupId, leadId, associateId, 1, occurredAt, members, null));
   }
 
   @Test
@@ -341,7 +348,15 @@ class LinkedApplicationGroupAggregateTest {
         .when()
         .command(new RemoveApplicationFromLinkedGroupCommand(groupId, removedId, 0, occurredAt))
         .then()
-        .events(new MemberRemovedFromGroupEvent(groupId, leadId, removedId, 1, occurredAt));
+        .events(
+            new MemberRemovedFromGroupEvent(
+                groupId,
+                leadId,
+                removedId,
+                1,
+                occurredAt,
+                List.of(leadId, removedId, remainingId),
+                null));
   }
 
   @Test
@@ -419,7 +434,15 @@ class LinkedApplicationGroupAggregateTest {
         .command(
             new RemoveApplicationFromLinkedGroupCommand(groupId, previousLeadId, 2, occurredAt))
         .then()
-        .events(new MemberRemovedFromGroupEvent(groupId, newLeadId, previousLeadId, 3, occurredAt));
+        .events(
+            new MemberRemovedFromGroupEvent(
+                groupId,
+                newLeadId,
+                previousLeadId,
+                3,
+                occurredAt,
+                List.of(previousLeadId, newLeadId, associateId),
+                null));
   }
 
   @Test
@@ -560,7 +583,13 @@ class LinkedApplicationGroupAggregateTest {
         .then()
         .events(
             new LinkedApplicationGroupLeadChangedEvent(
-                groupId, leadId, associateId, 2, occurredAt));
+                groupId,
+                leadId,
+                associateId,
+                2,
+                occurredAt,
+                List.of(leadId, associateId, newMemberId),
+                null));
   }
 
   @Test

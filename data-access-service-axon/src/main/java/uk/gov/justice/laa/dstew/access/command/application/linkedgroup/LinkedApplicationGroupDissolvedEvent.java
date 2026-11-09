@@ -14,5 +14,37 @@ public record LinkedApplicationGroupDissolvedEvent(
     UUID removedApplicationId,
     List<UUID> memberApplicationIds,
     long groupVersion,
-    Instant occurredAt)
-    implements LinkedGroupMemberRemoval {}
+    Instant occurredAt,
+    UUID justificationId)
+    implements LinkedGroupMemberRemoval {
+
+  /** Preserves callers and historical events without a justification reference. */
+  public LinkedApplicationGroupDissolvedEvent(
+      UUID groupId,
+      UUID formerLeadApplicationId,
+      UUID removedApplicationId,
+      List<UUID> memberApplicationIds,
+      long groupVersion,
+      Instant occurredAt) {
+    this(
+        groupId,
+        formerLeadApplicationId,
+        removedApplicationId,
+        memberApplicationIds,
+        groupVersion,
+        occurredAt,
+        null);
+  }
+
+  @Override
+  public LinkedApplicationGroupDissolvedEvent withJustification(UUID id) {
+    return new LinkedApplicationGroupDissolvedEvent(
+        groupId,
+        formerLeadApplicationId,
+        removedApplicationId,
+        memberApplicationIds,
+        groupVersion,
+        occurredAt,
+        id);
+  }
+}

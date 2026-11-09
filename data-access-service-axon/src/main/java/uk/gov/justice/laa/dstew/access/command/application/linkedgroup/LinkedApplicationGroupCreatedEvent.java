@@ -15,4 +15,18 @@ public record LinkedApplicationGroupCreatedEvent(
     @EventTag(key = "LinkedApplicationGroupAggregate") UUID groupId,
     UUID leadApplicationId,
     List<UUID> memberApplicationIds,
-    Instant occurredAt) {}
+    Instant occurredAt,
+    UUID justificationId) {
+
+  /** Preserves callers and historical events without a justification reference. */
+  public LinkedApplicationGroupCreatedEvent(
+      UUID groupId, UUID leadApplicationId, List<UUID> memberApplicationIds, Instant occurredAt) {
+    this(groupId, leadApplicationId, memberApplicationIds, occurredAt, null);
+  }
+
+  /** Attaches the accepted action's external payload reference. */
+  public LinkedApplicationGroupCreatedEvent withJustification(UUID id) {
+    return new LinkedApplicationGroupCreatedEvent(
+        groupId, leadApplicationId, memberApplicationIds, occurredAt, id);
+  }
+}

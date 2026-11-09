@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.command.application.linkedgroup.handler;
 
 import java.util.ArrayList;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.core.unitofwork.ProcessingContext;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
@@ -13,11 +14,14 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.AddApplic
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDecider;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedGroupAssignmentDecider;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedGroupJustificationStore;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedGroupMembers;
 
 /** Handles adding an application to an established linked group. */
 @Component
+@RequiredArgsConstructor
 public class AddApplicationToLinkedGroupCommandHandler {
+  private final LinkedGroupJustificationStore justificationStore;
 
   /** Adds one application to an established group idempotently. */
   @CommandHandler
@@ -41,10 +45,16 @@ public class AddApplicationToLinkedGroupCommandHandler {
     var existing = memberIds.stream().map(applications::get).toList();
     var joining = applications.get(command.applicationId());
     var events = new ArrayList<>();
-    events.add(added.get());
     events.addAll(
         LinkedGroupAssignmentDecider.decideJoin(
             command.groupId(), existing, joining, command.occurredAt()));
+    events.add(
+        0,
+        added
+            .get()
+            .withJustification(
+                justificationStore.save(
+                    command.groupId(), command.justification(), command.occurredAt())));
     eventAppender.append(events);
   }
 }

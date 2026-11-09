@@ -28,6 +28,10 @@ public class UnlinkApplicationCoordinator {
         routeResolver.resolveGroupForMutation(command.applicationId(), expectedGroup.groupId());
     dispatcher.dispatch(
         new RemoveApplicationFromLinkedGroupCommand(
-            groupId, command.applicationId(), expectedGroup.version(), command.occurredAt()));
+            groupId,
+            command.applicationId(),
+            expectedGroup.version(),
+            command.occurredAt(),
+            command.justification()));
   }
 }
