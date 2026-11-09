@@ -35,7 +35,7 @@ public record LinkedApplicationGroupLeadChangedEvent(
   }
 
   /** Attaches the accepted action's external payload reference. */
-  public LinkedApplicationGroupLeadChangedEvent withJustification(UUID id) {
+  public LinkedApplicationGroupLeadChangedEvent withJustification(UUID justificationRefId) {
     return new LinkedApplicationGroupLeadChangedEvent(
         groupId,
         previousLeadApplicationId,
@@ -43,6 +43,6 @@ public record LinkedApplicationGroupLeadChangedEvent(
         groupVersion,
         occurredAt,
         memberApplicationIds,
-        id);
+        justificationRefId);
   }
 }

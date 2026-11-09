@@ -25,8 +25,8 @@ public record LinkedApplicationGroupCreatedEvent(
   }
 
   /** Attaches the accepted action's external payload reference. */
-  public LinkedApplicationGroupCreatedEvent withJustification(UUID id) {
+  public LinkedApplicationGroupCreatedEvent withJustification(UUID justificationRefId) {
     return new LinkedApplicationGroupCreatedEvent(
-        groupId, leadApplicationId, memberApplicationIds, occurredAt, id);
+        groupId, leadApplicationId, memberApplicationIds, occurredAt, justificationRefId);
   }
 }

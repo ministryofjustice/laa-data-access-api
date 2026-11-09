@@ -6,5 +6,5 @@ import java.util.UUID;
 public sealed interface LinkedGroupMemberRemoval
     permits MemberRemovedFromGroupEvent, LinkedApplicationGroupDissolvedEvent {
   /** Attaches the accepted action's external payload reference. */
-  LinkedGroupMemberRemoval withJustification(UUID id);
+  LinkedGroupMemberRemoval withJustification(UUID justificationRefId);
 }

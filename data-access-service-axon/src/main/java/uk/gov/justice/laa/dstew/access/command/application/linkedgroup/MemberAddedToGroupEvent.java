@@ -26,8 +26,8 @@ public record MemberAddedToGroupEvent(
   }
 
   /** Attaches the accepted action's external payload reference. */
-  public MemberAddedToGroupEvent withJustification(UUID id) {
+  public MemberAddedToGroupEvent withJustification(UUID justificationRefId) {
     return new MemberAddedToGroupEvent(
-        groupId, leadApplicationId, memberId, occurredAt, memberApplicationIds, id);
+        groupId, leadApplicationId, memberId, occurredAt, memberApplicationIds, justificationRefId);
   }
 }

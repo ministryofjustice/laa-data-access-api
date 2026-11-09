@@ -37,7 +37,7 @@ public record LinkedApplicationGroupDissolvedEvent(
   }
 
   @Override
-  public LinkedApplicationGroupDissolvedEvent withJustification(UUID id) {
+  public LinkedApplicationGroupDissolvedEvent withJustification(UUID justificationRefId) {
     return new LinkedApplicationGroupDissolvedEvent(
         groupId,
         formerLeadApplicationId,
@@ -45,6 +45,6 @@ public record LinkedApplicationGroupDissolvedEvent(
         memberApplicationIds,
         groupVersion,
         occurredAt,
-        id);
+        justificationRefId);
   }
 }

@@ -25,8 +25,8 @@ public record MemberRemovedFromGroupEvent(
   }
 
   @Override
-  public MemberRemovedFromGroupEvent withJustification(UUID id) {
+  public MemberRemovedFromGroupEvent withJustification(UUID justificationRefId) {
     return new MemberRemovedFromGroupEvent(
-        groupId, leadApplicationId, memberId, groupVersion, occurredAt, memberApplicationIds, id);
+        groupId, leadApplicationId, memberId, groupVersion, occurredAt, memberApplicationIds, justificationRefId);
   }
 }
