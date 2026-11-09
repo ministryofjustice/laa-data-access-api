@@ -30,13 +30,6 @@ final class PactIds {
   static final UUID APPLICATION_PA_PARENT = UUID.fromString("00000000-0000-0000-0000-000000000009");
   static final UUID APPLICATION_PENDING_WORK_LIST =
       UUID.fromString("00000000-0000-0000-0000-000000000010");
-  // Application drafts. Submitting removes the draft for the rest of the run and the ID can never
-  // be a draft again, so each draft ID serves one kind of changing request: 011 is submitted, 012
-  // only ever receives document uploads.
-  static final UUID APPLICATION_DRAFT_TO_SUBMIT =
-      UUID.fromString("00000000-0000-0000-0000-000000000011");
-  static final UUID APPLICATION_DRAFT_FOR_DOCUMENTS =
-      UUID.fromString("00000000-0000-0000-0000-000000000012");
   static final UUID APPLICATION_MISSING = UUID.fromString("00000000-0000-0000-0000-00000000dead");
 
   // Prior authorities. The API generates these, but a state handler may fix them when seeding, so

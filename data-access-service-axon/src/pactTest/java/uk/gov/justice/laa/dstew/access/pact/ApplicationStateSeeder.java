@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.pact;
 
 import static org.awaitility.Awaitility.await;
+import static uk.gov.justice.laa.dstew.access.pact.PactApplicationFixtures.applicationDraft;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -116,26 +117,16 @@ class ApplicationStateSeeder {
   }
 
   /**
-   * A draft under the request's fixed ID: in the draft store, which is what submit and document
-   * upload look up, and in the application projection. Idempotent while the draft exists. A draft
-   * is not returned by GET application by id until it is submitted.
-   *
-   * <p>A draft cannot be put back once submitted, so an ID that already names a submitted
-   * application fails here, with the reason, instead of letting the replayed request fail with 404
-   * or 409. Each draft ID therefore serves one submitting interaction per verification run.
+   * A brand-new draft under a generated identifier: in the draft store, which is what submit and
+   * document upload look up, and in the application projection. Every call creates another one, so
+   * nothing an earlier interaction did can be observed. A draft is not returned by GET application
+   * by id until it is submitted.
    */
-  void ensureDraft(CreateApplicationDraftRequest request) {
-    UUID applicationId = request.getId();
-    if (applicationDraftStore.find(applicationId).isPresent()) {
-      return;
-    }
-    if (find(applicationId) != null) {
-      throw new IllegalStateException(
-          "Application "
-              + applicationId
-              + " was already submitted in this verification run, so it cannot be a draft again."
-              + " Only one interaction per run may submit it.");
-    }
+  UUID newDraft() {
+    UUID applicationId = UUID.randomUUID();
+    String referenceSuffix = applicationId.toString().substring(0, 4).toUpperCase();
+    CreateApplicationDraftRequest request =
+        applicationDraft(applicationId, "LAA-REF-D" + referenceSuffix, "Dee", "Draft");
     boolean projected =
         createApplicationDraftUseCase.execute(
             saveApplicationDraftCommandMapper.toCreateCommand(request, 1));
@@ -147,6 +138,7 @@ class ApplicationStateSeeder {
         .atMost(PROJECTION_WAIT)
         .pollInterval(POLL_INTERVAL)
         .until(() -> applicationDraftStore.find(applicationId).isPresent());
+    return applicationId;
   }
 
   /** Submitted, auto-grant outcome still pending. Application version 0. */
