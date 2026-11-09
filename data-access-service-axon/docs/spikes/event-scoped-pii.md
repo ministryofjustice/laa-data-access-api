@@ -1411,6 +1411,28 @@ Split into two steps:
       on `applicationVersion` (or `occurredAt` for notes).
     - **Validation:** unit tests 1306/1306 and integration tests 307/307
       pass. Checkstyle: main clean, test 36, integration 49 (one fewer).
+  - **PA-1, prior authority draft content in events (done 2026-11-09):**
+    - **Events:** DraftStarted and DraftUpdated carry Erasable `content` and
+      `serialisedRequest`; DocumentUploaded carries an Erasable
+      `originalFilename`. Schemas list them as content.
+    - **State:** `PriorAuthorityState` folds the draft content, request,
+      modified time and per-document filenames. `draft()` builds the draft
+      payload and is empty when there is no draft, the prior authority is
+      submitted, or the content is erased. The state is the registered
+      command-side content reader for prior authority, as
+      `ApplicationCommandHandlerSupport` is for applications.
+    - **Commands and use cases:** create rejects a duplicate by aggregate
+      existence. Update, document handlers and submit read `draft()` and
+      return not found when it is empty. Use cases check the draft through
+      `FindPriorAuthorityDraftQuery`, answered from the sourced aggregate.
+      The DRAFT read in `PriorAuthorityQueryHandler` also uses `draft()`.
+    - **Removed:** `PriorAuthorityDraftStore`, the entity and the repository.
+      V39 drops `prior_authority_draft`. Concurrency tests that hooked the
+      store now rely on aggregate sequence conflicts.
+    - **Pending (PA-2):** submit and decision content, `dataVersion` and
+      `PriorAuthorityDataStore`.
+    - **Validation:** unit tests 1303/1303 and integration tests 307/307
+      pass. Checkstyle: main clean, test 32, integration 47.
 
 1. Choose the declaration design: hash-bound review (recommended by the review)
    or persisted candidate. Agree version/hash transport, stale-response handling,

@@ -11,8 +11,10 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
-import java.util.Optional;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -21,11 +23,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.FindPriorAuthorityDraftQuery;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentUploadCommand;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDraftSummary;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ValidateApplicationGrantedCommand;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
@@ -34,28 +35,20 @@ import uk.gov.justice.laa.dstew.access.service.sds.SdsUploadResult;
 @ExtendWith(MockitoExtension.class)
 class UploadEvidenceDocumentUseCaseTest {
 
-  @Mock private PriorAuthorityDraftStore draftStore;
+  @Mock private QueryGateway queryGateway;
   @Mock private RetryingCommandDispatcher dispatcher;
   @Mock private SdsService sdsService;
 
   @Test
   void givenDraftExists_whenExecute_thenValidatesApplicationAndDispatchesUploadCommand() {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
+        new UploadPriorAuthorityDocumentUseCase(queryGateway, dispatcher, sdsService);
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     MockMultipartFile file =
         new MockMultipartFile("file", "evidence.pdf", "application/pdf", "%PDF-content".getBytes());
 
-    when(draftStore.find(priorAuthorityId))
-        .thenReturn(
-            Optional.of(
-                new PriorAuthorityDataPayload(
-                    priorAuthorityId,
-                    applicationId,
-                    new PriorAuthorityContent(null, null, null, null, null),
-                    "{}",
-                    java.time.Instant.now())));
+    stubDraft(priorAuthorityId, new PriorAuthorityDraftSummary(applicationId, Map.of()));
     doNothing().when(dispatcher).dispatch(new ValidateApplicationGrantedCommand(applicationId));
     when(sdsService.saveEvidenceFile(
             org.mockito.ArgumentMatchers.eq(priorAuthorityId),
@@ -98,12 +91,12 @@ class UploadEvidenceDocumentUseCaseTest {
   @Test
   void givenDraftMissing_whenExecute_thenThrowsNotFound() {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
+        new UploadPriorAuthorityDocumentUseCase(queryGateway, dispatcher, sdsService);
     UUID priorAuthorityId = UUID.randomUUID();
     MockMultipartFile file =
         new MockMultipartFile("file", "evidence.pdf", "application/pdf", "%PDF-content".getBytes());
 
-    when(draftStore.find(priorAuthorityId)).thenReturn(Optional.empty());
+    stubDraft(priorAuthorityId, PriorAuthorityDraftSummary.NONE);
 
     assertThatExceptionOfType(ResourceNotFoundException.class)
         .isThrownBy(() -> useCase.execute(priorAuthorityId, file, "CIVIL_APPLY"));
@@ -112,21 +105,13 @@ class UploadEvidenceDocumentUseCaseTest {
   @Test
   void givenSdsReturnsNull_whenExecute_thenDispatchesCommandWithNullChecksum() {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
+        new UploadPriorAuthorityDocumentUseCase(queryGateway, dispatcher, sdsService);
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     MockMultipartFile file =
         new MockMultipartFile("file", "evidence.pdf", "application/pdf", "%PDF-content".getBytes());
 
-    when(draftStore.find(priorAuthorityId))
-        .thenReturn(
-            Optional.of(
-                new PriorAuthorityDataPayload(
-                    priorAuthorityId,
-                    applicationId,
-                    new PriorAuthorityContent(null, null, null, null, null),
-                    "{}",
-                    java.time.Instant.now())));
+    stubDraft(priorAuthorityId, new PriorAuthorityDraftSummary(applicationId, Map.of()));
     doNothing().when(dispatcher).dispatch(new ValidateApplicationGrantedCommand(applicationId));
     when(sdsService.saveEvidenceFile(
             org.mockito.ArgumentMatchers.eq(priorAuthorityId),
@@ -148,21 +133,13 @@ class UploadEvidenceDocumentUseCaseTest {
   @Test
   void givenApplicationNotGranted_whenExecute_thenThrowsAndDoesNotDispatchUploadCommand() {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
+        new UploadPriorAuthorityDocumentUseCase(queryGateway, dispatcher, sdsService);
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     MockMultipartFile file =
         new MockMultipartFile("file", "evidence.pdf", "application/pdf", "%PDF-content".getBytes());
 
-    when(draftStore.find(priorAuthorityId))
-        .thenReturn(
-            Optional.of(
-                new PriorAuthorityDataPayload(
-                    priorAuthorityId,
-                    applicationId,
-                    new PriorAuthorityContent(null, null, null, null, null),
-                    "{}",
-                    java.time.Instant.now())));
+    stubDraft(priorAuthorityId, new PriorAuthorityDraftSummary(applicationId, Map.of()));
     doThrow(new InvalidApplicationStateException(applicationId, "IN_PROGRESS"))
         .when(dispatcher)
         .dispatch(new ValidateApplicationGrantedCommand(applicationId));
@@ -177,7 +154,7 @@ class UploadEvidenceDocumentUseCaseTest {
   @Test
   void givenNonPdfContent_whenExecute_thenRejectsBeforeUploadingToSds() {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
+        new UploadPriorAuthorityDocumentUseCase(queryGateway, dispatcher, sdsService);
     MockMultipartFile file =
         new MockMultipartFile("file", "evidence.txt", "text/plain", "not a PDF".getBytes());
 
@@ -191,7 +168,7 @@ class UploadEvidenceDocumentUseCaseTest {
   @Test
   void givenPdfMimeWithInvalidSignature_whenExecute_thenRejectsBeforeUploadingToSds() {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
+        new UploadPriorAuthorityDocumentUseCase(queryGateway, dispatcher, sdsService);
     MockMultipartFile file =
         new MockMultipartFile("file", "evidence.pdf", "application/pdf", "not a PDF".getBytes());
 
@@ -205,7 +182,7 @@ class UploadEvidenceDocumentUseCaseTest {
   @Test
   void givenUnreadablePdf_whenExecute_thenRejectsBeforeUploadingToSds() throws IOException {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
+        new UploadPriorAuthorityDocumentUseCase(queryGateway, dispatcher, sdsService);
     MultipartFile file = mock(MultipartFile.class);
     when(file.getOriginalFilename()).thenReturn("evidence.pdf");
     when(file.getContentType()).thenReturn("application/pdf");
@@ -217,5 +194,11 @@ class UploadEvidenceDocumentUseCaseTest {
         .withCauseInstanceOf(IOException.class);
 
     verifyNoInteractions(sdsService);
+  }
+
+  private void stubDraft(UUID priorAuthorityId, PriorAuthorityDraftSummary draft) {
+    when(queryGateway.query(
+            new FindPriorAuthorityDraftQuery(priorAuthorityId), PriorAuthorityDraftSummary.class))
+        .thenReturn(CompletableFuture.completedFuture(draft));
   }
 }

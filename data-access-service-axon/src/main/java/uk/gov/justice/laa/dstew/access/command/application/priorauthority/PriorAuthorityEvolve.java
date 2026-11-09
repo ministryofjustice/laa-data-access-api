@@ -20,6 +20,16 @@ public final class PriorAuthorityEvolve {
     state.schemaVersion = event.schemaVersion();
     state.submitted = false;
     state.decided = false;
+    state.draftContent = event.content();
+    state.draftSerialisedRequest = event.serialisedRequest();
+    state.draftModifiedAt = event.occurredAt();
+  }
+
+  /** Applies a {@link PriorAuthorityDraftUpdatedEvent}, replacing the draft content. */
+  public static void apply(PriorAuthorityState state, PriorAuthorityDraftUpdatedEvent event) {
+    state.draftContent = event.content();
+    state.draftSerialisedRequest = event.serialisedRequest();
+    state.draftModifiedAt = event.occurredAt();
   }
 
   /** Applies a {@link PriorAuthoritySubmittedEvent} to the given state. */
@@ -68,6 +78,7 @@ public final class PriorAuthorityEvolve {
             event.sourceService().orElse(null),
             false,
             event.fileSuffix().orElse(null)));
+    state.documentFilenames.put(event.documentId(), event.originalFilename());
   }
 
   /** Applies a {@link PriorAuthorityDocumentDeletedEvent} to the given state. */
@@ -77,6 +88,7 @@ public final class PriorAuthorityEvolve {
             document.documentId().equals(event.documentId())
                 ? document.withDeleted(true)
                 : document);
+    state.documentFilenames.remove(event.documentId());
   }
 
   /** Applies a {@link PriorAuthorityDocumentTypeUpdatedEvent} to the given state. */

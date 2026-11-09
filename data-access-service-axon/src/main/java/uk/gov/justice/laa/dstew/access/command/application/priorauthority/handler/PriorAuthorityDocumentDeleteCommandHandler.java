@@ -9,8 +9,6 @@ import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecider;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentDeleteCommand;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerResource;
@@ -28,13 +26,12 @@ public class PriorAuthorityDocumentDeleteCommandHandler {
   @RequireWriteAccess(resolver = OfficeCodeResourceWriteAccessResolver.class)
   public DocumentMetadata handle(
       @AuthenticatedCallerResource PriorAuthorityDocumentDeleteCommand command,
-      PriorAuthorityDraftStore draftStore,
       @InjectEntity(idProperty = "priorAuthorityId") @WriteAccessResolverResource
           PriorAuthorityAggregate priorAuthority,
       EventAppender eventAppender) {
 
     requireDraftLifecycle(priorAuthority);
-    PriorAuthorityDataPayload existingDraft = requireDraft(command.priorAuthorityId(), draftStore);
+    requireDraft(priorAuthority, command.priorAuthorityId());
     DocumentMetadata document =
         priorAuthority.getState().getUploadedDocuments().stream()
             .filter(uploaded -> uploaded.documentId().equals(command.documentId()))
@@ -46,12 +43,6 @@ public class PriorAuthorityDocumentDeleteCommandHandler {
                         "Document %s not found for Prior Authority %s"
                             .formatted(command.documentId(), command.priorAuthorityId())));
 
-    draftStore.upsert(
-        command.priorAuthorityId(),
-        existingDraft.applicationId(),
-        existingDraft.withoutDocumentFilename(command.documentId()),
-        existingDraft.serialisedRequest(),
-        command.occurredAt());
     eventAppender.append(
         PriorAuthorityDecider.decideDocumentDeleted(command, priorAuthority.getApplicationId()));
     return document;
@@ -64,13 +55,9 @@ public class PriorAuthorityDocumentDeleteCommandHandler {
     }
   }
 
-  private static PriorAuthorityDataPayload requireDraft(
-      UUID priorAuthorityId, PriorAuthorityDraftStore draftStore) {
-    return draftStore
-        .find(priorAuthorityId)
-        .orElseThrow(
-            () ->
-                new ResourceNotFoundException(
-                    "Prior Authority draft not found: " + priorAuthorityId));
+  private static void requireDraft(PriorAuthorityAggregate priorAuthority, UUID priorAuthorityId) {
+    if (priorAuthority.getState().draft().isEmpty()) {
+      throw new ResourceNotFoundException("Prior Authority draft not found: " + priorAuthorityId);
+    }
   }
 }

@@ -599,10 +599,12 @@ class GetApplicationsIntegrationTest {
     awaitPriorAuthorityProjection(priorAuthorityId);
     String storedPriorAuthorityType =
         jdbcTemplate.queryForObject(
-            "SELECT payload #>> '{content,priorAuthorityType}' "
-                + "FROM axon.prior_authority_draft WHERE prior_authority_id = ?",
+            "SELECT c.content #>> '{content,priorAuthorityType}' FROM axon.event_content c"
+                + " JOIN axon.domain_event_entry e ON c.event_id = e.event_identifier"
+                + " WHERE e.aggregate_identifier = ?"
+                + " AND e.payload_type = 'access.PriorAuthorityDraftStarted'",
             String.class,
-            priorAuthorityId);
+            priorAuthorityId.toString());
     assertThat(storedPriorAuthorityType).isEqualTo("DISBURSEMENT");
 
     ResponseEntity<ApplicationResponse> response =

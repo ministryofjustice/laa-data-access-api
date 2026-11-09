@@ -10,7 +10,6 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityState;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
@@ -23,13 +22,9 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStat
 public class PriorAuthorityQueryHandler {
 
   private final PriorAuthorityDataStore priorAuthorityDataStore;
-  private final PriorAuthorityDraftStore priorAuthorityDraftStore;
 
-  public PriorAuthorityQueryHandler(
-      PriorAuthorityDataStore priorAuthorityDataStore,
-      PriorAuthorityDraftStore priorAuthorityDraftStore) {
+  public PriorAuthorityQueryHandler(PriorAuthorityDataStore priorAuthorityDataStore) {
     this.priorAuthorityDataStore = priorAuthorityDataStore;
-    this.priorAuthorityDraftStore = priorAuthorityDraftStore;
   }
 
   /** Returns the prior authority with its content, or {@code null} if absent or not visible. */
@@ -60,11 +55,7 @@ public class PriorAuthorityQueryHandler {
                             new EvidenceDocument(
                                 document.documentId(),
                                 document.documentType(),
-                                content(state)
-                                    .map(
-                                        payload ->
-                                            payload.documentFilenames().get(document.documentId()))
-                                    .orElse(null),
+                                state.retainedFilenames().get(document.documentId()),
                                 null,
                                 document.contentType(),
                                 document.size(),
@@ -84,7 +75,7 @@ public class PriorAuthorityQueryHandler {
   private Optional<PriorAuthorityDataPayload> content(PriorAuthorityState state) {
     UUID priorAuthorityId = state.getPriorAuthorityId();
     if (state.status() == PriorAuthorityStatus.DRAFT) {
-      return priorAuthorityDraftStore.find(priorAuthorityId);
+      return state.draft();
     }
     return Optional.ofNullable(
         priorAuthorityDataStore.get(priorAuthorityId, state.getDataVersion()));

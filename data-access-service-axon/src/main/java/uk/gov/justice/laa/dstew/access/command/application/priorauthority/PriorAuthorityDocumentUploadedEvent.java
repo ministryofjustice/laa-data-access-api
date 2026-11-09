@@ -19,7 +19,8 @@ public record PriorAuthorityDocumentUploadedEvent(
     String checksum,
     UUID parentApplicationId,
     Erasable<String> sourceService,
-    Erasable<String> fileSuffix)
+    Erasable<String> fileSuffix,
+    Erasable<String> originalFilename)
     implements GenesisScoped {
 
   /** Treats absent content as erased so a stored event without its content row still loads. */
@@ -28,9 +29,35 @@ public record PriorAuthorityDocumentUploadedEvent(
     contentType = Erasable.orErased(contentType);
     sourceService = Erasable.orErased(sourceService);
     fileSuffix = Erasable.orErased(fileSuffix);
+    originalFilename = Erasable.orErased(originalFilename);
   }
 
   /** Creates the event from plain content values. */
+  public PriorAuthorityDocumentUploadedEvent(
+      UUID priorAuthorityId,
+      UUID documentId,
+      Instant uploadedAt,
+      Long size,
+      String contentType,
+      String checksum,
+      UUID parentApplicationId,
+      String sourceService,
+      String fileSuffix,
+      String originalFilename) {
+    this(
+        priorAuthorityId,
+        documentId,
+        uploadedAt,
+        Erasable.of(size),
+        Erasable.of(contentType),
+        checksum,
+        parentApplicationId,
+        Erasable.of(sourceService),
+        Erasable.of(fileSuffix),
+        Erasable.of(originalFilename));
+  }
+
+  /** Creates the upload event without a recorded original filename. */
   public PriorAuthorityDocumentUploadedEvent(
       UUID priorAuthorityId,
       UUID documentId,
@@ -45,12 +72,13 @@ public record PriorAuthorityDocumentUploadedEvent(
         priorAuthorityId,
         documentId,
         uploadedAt,
-        Erasable.of(size),
-        Erasable.of(contentType),
+        size,
+        contentType,
         checksum,
         parentApplicationId,
-        Erasable.of(sourceService),
-        Erasable.of(fileSuffix));
+        sourceService,
+        fileSuffix,
+        null);
   }
 
   /** Creates the historical upload event whose storage suffix is unknown. */

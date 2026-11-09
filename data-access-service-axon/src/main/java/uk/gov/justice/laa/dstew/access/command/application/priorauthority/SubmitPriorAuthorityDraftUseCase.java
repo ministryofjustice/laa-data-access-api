@@ -1,9 +1,8 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
+import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 
@@ -12,18 +11,18 @@ import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 public class SubmitPriorAuthorityDraftUseCase {
 
   private final RetryingCommandDispatcher dispatcher;
-  private final PriorAuthorityDraftStore draftStore;
+  private final QueryGateway queryGateway;
 
   /**
    * Constructs a new instance of SubmitPriorAuthorityDraftUseCase.
    *
    * @param dispatcher the command dispatcher used to send commands
-   * @param draftStore the store used to retrieve prior authority drafts
+   * @param queryGateway the gateway used to find the open prior authority draft
    */
   public SubmitPriorAuthorityDraftUseCase(
-      RetryingCommandDispatcher dispatcher, PriorAuthorityDraftStore draftStore) {
+      RetryingCommandDispatcher dispatcher, QueryGateway queryGateway) {
     this.dispatcher = dispatcher;
-    this.draftStore = draftStore;
+    this.queryGateway = queryGateway;
   }
 
   /**
@@ -37,13 +36,16 @@ public class SubmitPriorAuthorityDraftUseCase {
    */
   @AllowApiCaseworker
   public void submit(SubmitPriorAuthorityDraftCommand command) {
-    PriorAuthorityDataPayload draft =
-        draftStore
-            .find(command.priorAuthorityId())
-            .orElseThrow(
-                () ->
-                    new ResourceNotFoundException(
-                        "Prior Authority draft not found: " + command.priorAuthorityId()));
+    PriorAuthorityDraftSummary draft =
+        queryGateway
+            .query(
+                new FindPriorAuthorityDraftQuery(command.priorAuthorityId()),
+                PriorAuthorityDraftSummary.class)
+            .join();
+    if (draft == null || !draft.exists()) {
+      throw new ResourceNotFoundException(
+          "Prior Authority draft not found: " + command.priorAuthorityId());
+    }
     dispatcher.dispatch(new ValidateApplicationGrantedCommand(draft.applicationId()));
     dispatcher.dispatch(command);
   }

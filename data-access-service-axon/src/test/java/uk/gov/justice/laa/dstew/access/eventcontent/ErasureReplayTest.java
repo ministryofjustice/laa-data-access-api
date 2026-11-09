@@ -233,7 +233,8 @@ class ErasureReplayTest {
     assertThat(erased.getUploadedDocuments()).hasSize(2);
     assertThat(erased)
         .usingRecursiveComparison()
-        .ignoringFields("uploadedDocuments")
+        .ignoringFields(
+            "uploadedDocuments", "documentFilenames", "draftContent", "draftSerialisedRequest")
         .isEqualTo(full);
     assertThat(erased.getUploadedDocuments())
         .isEqualTo(full.getUploadedDocuments().stream().map(this::withoutContent).toList());
@@ -339,7 +340,8 @@ class ErasureReplayTest {
         "checksum",
         applicationId,
         Erasable.of("CIVIL_APPLY"),
-        Erasable.of(".pdf"));
+        Erasable.of(".pdf"),
+        Erasable.of("evidence.pdf"));
   }
 
   private Object decidePriorAuthority(PriorAuthorityState state, UUID actor, long version) {

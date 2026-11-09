@@ -9,7 +9,6 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.SubmitPriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerResource;
 import uk.gov.justice.laa.dstew.access.security.OfficeCodeResourceWriteAccessResolver;
@@ -26,7 +25,6 @@ public class SubmitPriorAuthorityDraftCommandHandler {
   @RequireWriteAccess(resolver = OfficeCodeResourceWriteAccessResolver.class)
   public void handle(
       @AuthenticatedCallerResource SubmitPriorAuthorityDraftCommand command,
-      PriorAuthorityDraftStore draftStore,
       PriorAuthorityDataStore dataStore,
       JsonSchemaValidator jsonSchemaValidator,
       @InjectEntity(idProperty = "priorAuthorityId") @WriteAccessResolverResource
@@ -34,8 +32,9 @@ public class SubmitPriorAuthorityDraftCommandHandler {
       EventAppender eventAppender) {
 
     PriorAuthorityDataPayload payload =
-        draftStore
-            .find(command.priorAuthorityId())
+        priorAuthority
+            .getState()
+            .draft()
             .orElseThrow(
                 () ->
                     new ResourceNotFoundException(
@@ -54,7 +53,5 @@ public class SubmitPriorAuthorityDraftCommandHandler {
         command.occurredAt());
 
     eventAppender.append(PriorAuthorityDecider.decideSubmit(command, priorAuthority.getState()));
-
-    draftStore.delete(command.priorAuthorityId());
   }
 }

@@ -2,21 +2,15 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority.handl
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
-import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
@@ -27,11 +21,10 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityEvolve;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityState;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
+import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -40,11 +33,8 @@ class PriorAuthorityDocumentDeleteCommandHandlerTest {
 
   private static final Instant OCCURRED_AT = Instant.parse("2026-09-01T10:00:00Z");
 
-  @Mock private PriorAuthorityDraftStore draftStore;
   @Mock private PriorAuthorityAggregate priorAuthority;
   @Mock private EventAppender eventAppender;
-
-  @Captor private ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor;
 
   @Test
   void givenExistingDocument_whenHandle_thenRemovesDocumentAndEmitsEvent() {
@@ -52,22 +42,9 @@ class PriorAuthorityDocumentDeleteCommandHandlerTest {
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
     UUID remainingDocumentId = UUID.randomUUID();
-    PriorAuthorityContent existingContent =
-        new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Existing", null, null, null);
-    PriorAuthorityDataPayload existingDraft =
-        new PriorAuthorityDataPayload(
-            priorAuthorityId,
-            applicationId,
-            existingContent,
-            "old",
-            OCCURRED_AT,
-            null,
-            null,
-            Map.of(documentId, "remove.pdf", remainingDocumentId, "keep.pdf"));
     PriorAuthorityDocumentDeleteCommand command =
         new PriorAuthorityDocumentDeleteCommand(priorAuthorityId, documentId, OCCURRED_AT);
 
-    when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(existingDraft));
     when(priorAuthority.getApplicationId()).thenReturn(applicationId);
     when(priorAuthority.getState())
         .thenReturn(
@@ -76,7 +53,7 @@ class PriorAuthorityDocumentDeleteCommandHandlerTest {
 
     DocumentMetadata returnedDocument =
         new PriorAuthorityDocumentDeleteCommandHandler()
-            .handle(command, draftStore, priorAuthority, eventAppender);
+            .handle(command, priorAuthority, eventAppender);
 
     assertThat(returnedDocument)
         .isEqualTo(
@@ -89,16 +66,6 @@ class PriorAuthorityDocumentDeleteCommandHandlerTest {
                 "checksum-1",
                 "service",
                 false));
-    verify(draftStore)
-        .upsert(
-            eq(priorAuthorityId),
-            eq(applicationId),
-            payloadCaptor.capture(),
-            eq("old"),
-            eq(OCCURRED_AT));
-    assertThat(payloadCaptor.getValue().documentFilenames())
-        .containsEntry(remainingDocumentId, "keep.pdf")
-        .doesNotContainKey(documentId);
     verify(eventAppender)
         .append(
             new PriorAuthorityDocumentDeletedEvent(
@@ -112,17 +79,15 @@ class PriorAuthorityDocumentDeleteCommandHandlerTest {
     PriorAuthorityDocumentDeleteCommand command =
         new PriorAuthorityDocumentDeleteCommand(priorAuthorityId, documentId, OCCURRED_AT);
 
-    when(draftStore.find(priorAuthorityId)).thenReturn(Optional.empty());
-    when(priorAuthority.getState()).thenReturn(draftState(priorAuthorityId, UUID.randomUUID()));
+    when(priorAuthority.getState()).thenReturn(new PriorAuthorityState());
 
     assertThatThrownBy(
             () ->
                 new PriorAuthorityDocumentDeleteCommandHandler()
-                    .handle(command, draftStore, priorAuthority, eventAppender))
+                    .handle(command, priorAuthority, eventAppender))
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage("Prior Authority draft not found: " + priorAuthorityId);
 
-    verify(draftStore).find(priorAuthorityId);
     verifyNoInteractions(eventAppender);
   }
 
@@ -131,26 +96,19 @@ class PriorAuthorityDocumentDeleteCommandHandlerTest {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
-    PriorAuthorityContent existingContent =
-        new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Existing", null, null, null);
-    PriorAuthorityDataPayload existingDraft =
-        new PriorAuthorityDataPayload(
-            priorAuthorityId, applicationId, existingContent, "old", OCCURRED_AT);
     PriorAuthorityDocumentDeleteCommand command =
         new PriorAuthorityDocumentDeleteCommand(priorAuthorityId, documentId, OCCURRED_AT);
 
-    when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(existingDraft));
     when(priorAuthority.getState()).thenReturn(draftState(priorAuthorityId, applicationId));
 
     assertThatThrownBy(
             () ->
                 new PriorAuthorityDocumentDeleteCommandHandler()
-                    .handle(command, draftStore, priorAuthority, eventAppender))
+                    .handle(command, priorAuthority, eventAppender))
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage(
             "Document %s not found for Prior Authority %s".formatted(documentId, priorAuthorityId));
 
-    verify(draftStore).find(priorAuthorityId);
     verifyNoInteractions(eventAppender);
   }
 
@@ -170,10 +128,10 @@ class PriorAuthorityDocumentDeleteCommandHandlerTest {
     assertThatThrownBy(
             () ->
                 new PriorAuthorityDocumentDeleteCommandHandler()
-                    .handle(command, draftStore, priorAuthority, eventAppender))
+                    .handle(command, priorAuthority, eventAppender))
         .isInstanceOf(ValidationException.class);
 
-    verifyNoInteractions(draftStore, eventAppender);
+    verifyNoInteractions(eventAppender);
   }
 
   @Test
@@ -188,17 +146,6 @@ class PriorAuthorityDocumentDeleteCommandHandlerTest {
         state,
         new PriorAuthorityDocumentDeletedEvent(
             priorAuthorityId, documentId, OCCURRED_AT, applicationId));
-    PriorAuthorityDataPayload draft =
-        new PriorAuthorityDataPayload(
-            priorAuthorityId,
-            applicationId,
-            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Existing", null, null, null),
-            "old",
-            OCCURRED_AT,
-            null,
-            null,
-            Map.of(documentId, "deleted.pdf"));
-    when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(draft));
     when(priorAuthority.getState()).thenReturn(state);
     PriorAuthorityDocumentDeleteCommand command =
         new PriorAuthorityDocumentDeleteCommand(priorAuthorityId, documentId, OCCURRED_AT);
@@ -206,12 +153,9 @@ class PriorAuthorityDocumentDeleteCommandHandlerTest {
     assertThatThrownBy(
             () ->
                 new PriorAuthorityDocumentDeleteCommandHandler()
-                    .handle(command, draftStore, priorAuthority, eventAppender))
+                    .handle(command, priorAuthority, eventAppender))
         .isInstanceOf(ResourceNotFoundException.class);
 
-    verify(draftStore).find(priorAuthorityId);
-    verify(draftStore, never())
-        .upsert(eq(priorAuthorityId), eq(applicationId), eq(draft), eq("old"), eq(OCCURRED_AT));
     verifyNoInteractions(eventAppender);
   }
 
@@ -248,7 +192,15 @@ class PriorAuthorityDocumentDeleteCommandHandlerTest {
     PriorAuthorityEvolve.apply(
         state,
         new PriorAuthorityDraftStartedEvent(
-            priorAuthorityId, applicationId, "EXPERT", 1, OCCURRED_AT));
+            priorAuthorityId,
+            applicationId,
+            "EXPERT",
+            1,
+            OCCURRED_AT,
+            "1A001B",
+            Erasable.of(
+                new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Existing", null, null, null)),
+            Erasable.of("{}")));
     return state;
   }
 }

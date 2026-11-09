@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority.handler;
 
+import jakarta.annotation.Nullable;
 import java.util.List;
 import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
@@ -7,10 +8,8 @@ import org.axonframework.modelling.annotation.InjectEntity;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityDraftCommand;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecider;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.security.OfficeCodeWriteAccessPolicy;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -23,14 +22,12 @@ public class CreatePriorAuthorityDraftCommandHandler {
   @CommandHandler
   public void handle(
       CreatePriorAuthorityDraftCommand command,
-      PriorAuthorityDraftStore draftStore,
-      PriorAuthorityDataStore dataStore,
+      @InjectEntity(idProperty = "priorAuthorityId") @Nullable PriorAuthorityAggregate existing,
       @InjectEntity(idProperty = "applicationId") ApplicationAggregate application,
       OfficeCodeWriteAccessPolicy writeAccessPolicy,
       EventAppender eventAppender) {
 
-    if (draftStore.exists(command.priorAuthorityId())
-        || dataStore.exists(command.priorAuthorityId())) {
+    if (existing != null && existing.getPriorAuthorityId() != null) {
       throw new PriorAuthorityCreationConflictException(command.priorAuthorityId());
     }
 
@@ -42,23 +39,6 @@ public class CreatePriorAuthorityDraftCommandHandler {
 
     String officeCode = application.getOfficeCode();
     writeAccessPolicy.requireOfficeCodeWriteAccess(officeCode, command.caller());
-    PriorAuthorityDataPayload payload =
-        new PriorAuthorityDataPayload(
-            command.priorAuthorityId(),
-            command.applicationId(),
-            command.content(),
-            command.serialisedRequest(),
-            command.occurredAt(),
-            null,
-            officeCode,
-            null);
-
-    draftStore.upsert(
-        command.priorAuthorityId(),
-        command.applicationId(),
-        payload,
-        command.serialisedRequest(),
-        command.occurredAt());
     eventAppender.append(PriorAuthorityDecider.decideStartDraft(command, officeCode));
   }
 }

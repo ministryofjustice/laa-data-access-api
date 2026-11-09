@@ -3,13 +3,18 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
+import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 
 /** Unit tests for {@link PriorAuthorityEvolve}. */
 class PriorAuthorityEvolveTest {
@@ -151,6 +156,116 @@ class PriorAuthorityEvolveTest {
                 "sum",
                 "CIVIL_APPLY",
                 false));
+  }
+
+  @Test
+  void givenDraftStartedAndUpdated_whenApplied_thenDraftCarriesLatestContentAndFilenames() {
+    PriorAuthorityState state = new PriorAuthorityState();
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    UUID keptId = UUID.randomUUID();
+    UUID deletedId = UUID.randomUUID();
+    Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
+    Instant updatedAt = startedAt.plusSeconds(60);
+    PriorAuthorityContent updated =
+        new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Updated", null, null, null);
+
+    PriorAuthorityEvolve.apply(
+        state,
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId,
+            applicationId,
+            "EXPERT",
+            1,
+            startedAt,
+            "1A001B",
+            Erasable.of(
+                new PriorAuthorityContent(PriorAuthorityType.EXPERT, "First", null, null, null)),
+            Erasable.of("{\"first\":true}")));
+    PriorAuthorityEvolve.apply(
+        state,
+        new PriorAuthorityDraftUpdatedEvent(
+            priorAuthorityId,
+            applicationId,
+            updatedAt,
+            Erasable.of(updated),
+            Erasable.of("{\"updated\":true}")));
+    PriorAuthorityEvolve.apply(state, uploaded(priorAuthorityId, keptId, startedAt, "kept.pdf"));
+    PriorAuthorityEvolve.apply(
+        state, uploaded(priorAuthorityId, deletedId, startedAt, "deleted.pdf"));
+    PriorAuthorityEvolve.apply(
+        state,
+        new PriorAuthorityDocumentDeletedEvent(
+            priorAuthorityId, deletedId, updatedAt, UUID.randomUUID()));
+
+    assertThat(state.draft())
+        .contains(
+            new PriorAuthorityDataPayload(
+                priorAuthorityId,
+                applicationId,
+                updated,
+                "{\"updated\":true}",
+                updatedAt,
+                null,
+                "1A001B",
+                Map.of(keptId, "kept.pdf")));
+  }
+
+  @Test
+  void givenErasedDraftContent_whenDraftRead_thenEmpty() {
+    PriorAuthorityState state = new PriorAuthorityState();
+    PriorAuthorityEvolve.apply(
+        state,
+        new PriorAuthorityDraftStartedEvent(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            "EXPERT",
+            1,
+            Instant.parse("2026-08-01T10:00:00Z"),
+            "1A001B"));
+
+    assertThat(state.draft()).isEmpty();
+  }
+
+  @Test
+  void givenSubmittedDraft_whenDraftRead_thenEmpty() {
+    PriorAuthorityState state = new PriorAuthorityState();
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
+    PriorAuthorityEvolve.apply(
+        state,
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId,
+            applicationId,
+            "EXPERT",
+            1,
+            occurredAt,
+            "1A001B",
+            Erasable.of(
+                new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Text", null, null, null)),
+            Erasable.of("{}")));
+    PriorAuthorityEvolve.apply(
+        state,
+        new PriorAuthoritySubmittedEvent(
+            priorAuthorityId, applicationId, "EXPERT", 1, 0L, occurredAt));
+
+    assertThat(state.draft()).isEmpty();
+  }
+
+  private PriorAuthorityDocumentUploadedEvent uploaded(
+      UUID priorAuthorityId, UUID documentId, Instant uploadedAt, String originalFilename) {
+    return new PriorAuthorityDocumentUploadedEvent(
+        priorAuthorityId,
+        documentId,
+        uploadedAt,
+        10L,
+        "application/pdf",
+        "sum",
+        UUID.randomUUID(),
+        "CIVIL_APPLY",
+        "pdf",
+        originalFilename);
   }
 
   private PriorAuthorityDocumentUploadedEvent uploaded(

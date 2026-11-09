@@ -24,8 +24,6 @@ import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import javax.sql.DataSource;
@@ -48,7 +46,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.testcontainers.junit.jupiter.Container;
@@ -58,7 +55,6 @@ import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRoute;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteKind;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteRepository;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
@@ -109,8 +105,6 @@ class PriorAuthorityDraftIntegrationTest {
 
   @MockitoBean private SdsService sdsService;
 
-  @MockitoSpyBean private PriorAuthorityDraftStore draftStore;
-
   private ProjectionAwaiter projectionAwaiter;
 
   @PostConstruct
@@ -139,12 +133,7 @@ class PriorAuthorityDraftIntegrationTest {
     assertThat(priorAuthorityId).isNotNull();
     assertThat(body.getSavedAt()).isNotNull();
 
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT application_id FROM axon.prior_authority_draft WHERE prior_authority_id = ?",
-                UUID.class,
-                priorAuthorityId))
-        .isEqualTo(applicationId);
+    assertThat(getPriorAuthority(priorAuthorityId).getApplicationId()).isEqualTo(applicationId);
     projectionAwaiter.awaitPriorAuthority(priorAuthorityId);
     assertThat(
             jdbcTemplate.queryForObject(
@@ -193,12 +182,7 @@ class PriorAuthorityDraftIntegrationTest {
             String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.prior_authority_draft WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isZero();
+    assertThat(countPriorAuthorityCreationEvents(applicationId)).isZero();
   }
 
   @Test
@@ -396,8 +380,6 @@ class PriorAuthorityDraftIntegrationTest {
       }
       if ("LEAD".equals(operation) || "LINK".equals(operation)) {
         assertAssociateRejection(createDraft(scenario.applicationId()));
-        assertThat(countPriorAuthorityDrafts(scenario.applicationId()))
-            .isEqualTo(failInsert ? 0 : 1);
         assertThat(countPriorAuthorityCreationEvents(scenario.applicationId()))
             .isEqualTo(failInsert ? 0 : 1);
       }
@@ -466,12 +448,7 @@ class PriorAuthorityDraftIntegrationTest {
             saveDraftUrl(), new HttpEntity<>(request, headers()), String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.prior_authority_draft WHERE application_id = ?",
-                Integer.class,
-                nonexistentApplicationId))
-        .isZero();
+    assertThat(countPriorAuthorityCreationEvents(nonexistentApplicationId)).isZero();
   }
 
   @Test
@@ -491,12 +468,7 @@ class PriorAuthorityDraftIntegrationTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     assertThat(response.getBody()).contains("GRANTED");
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.prior_authority_draft WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isZero();
+    assertThat(countPriorAuthorityCreationEvents(applicationId)).isZero();
   }
 
   @Test
@@ -603,12 +575,6 @@ class PriorAuthorityDraftIntegrationTest {
                 Integer.class,
                 priorAuthorityId))
         .isEqualTo(1);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.prior_authority_draft WHERE prior_authority_id = ?",
-                Integer.class,
-                priorAuthorityId))
-        .isZero();
 
     ResponseEntity<String> getResponse =
         restTemplate.exchange(
@@ -644,12 +610,8 @@ class PriorAuthorityDraftIntegrationTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     assertThat(eventCount(priorAuthorityId)).isEqualTo(eventsBefore);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.prior_authority_draft WHERE prior_authority_id = ?",
-                Integer.class,
-                priorAuthorityId))
-        .isEqualTo(1);
+    assertThat(getPriorAuthority(priorAuthorityId).getStatus())
+        .isEqualTo(PriorAuthorityResponse.StatusEnum.DRAFT);
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.prior_authority_data WHERE prior_authority_id = ?",
@@ -808,9 +770,7 @@ class PriorAuthorityDraftIntegrationTest {
     awaitDocument(priorAuthorityId, documentId);
     updateDocumentType(priorAuthorityId, documentId);
     if (missingFilename) {
-      jdbcTemplate.update(
-          "UPDATE axon.prior_authority_draft SET payload = jsonb_set(payload, '{documentFilenames}', '{}'::jsonb) WHERE prior_authority_id = ?",
-          priorAuthorityId);
+      removeUploadedFilename(priorAuthorityId);
     }
     if (submitted) {
       submitDraft(priorAuthorityId);
@@ -868,14 +828,6 @@ class PriorAuthorityDraftIntegrationTest {
     UUID documentId = uploadDocument(priorAuthorityId, filename);
     awaitDocument(priorAuthorityId, documentId);
 
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT payload -> 'documentFilenames' ->> ? FROM axon.prior_authority_draft WHERE prior_authority_id = ?",
-                String.class,
-                documentId.toString(),
-                priorAuthorityId))
-        .isEqualTo(filename);
-
     String suffix =
         filename.substring(
             filename.lastIndexOf('.') < 0 ? filename.length() : filename.lastIndexOf('.'));
@@ -890,11 +842,10 @@ class PriorAuthorityDraftIntegrationTest {
     String eventPayload = stored.get("payload").toString();
     String eventContent = stored.get("content").toString();
     assertThat(objectMapper.readTree(eventContent).get("fileSuffix").asString()).isEqualTo(suffix);
+    assertThat(objectMapper.readTree(eventContent).get("originalFilename").asString())
+        .isEqualTo(filename);
     assertThat(eventPayload).doesNotContain(filename).doesNotContain("fileSuffix");
-    assertThat(eventContent).doesNotContain(filename);
-    jdbcTemplate.update(
-        "UPDATE axon.prior_authority_draft SET payload = jsonb_set(payload, '{documentFilenames}', '{}'::jsonb) WHERE prior_authority_id = ?",
-        priorAuthorityId);
+    removeUploadedFilename(priorAuthorityId);
 
     ResponseEntity<Void> deleteResponse =
         restTemplate.exchange(
@@ -1035,7 +986,7 @@ class PriorAuthorityDraftIntegrationTest {
         .thenReturn(new SdsUploadResult(null, null, "checksum"));
     UUID documentId = uploadDocument(priorAuthorityId, "existing.pdf");
     awaitDocument(priorAuthorityId, documentId);
-    Map<String, Object> draftBefore = draftRow(priorAuthorityId);
+    PriorAuthorityResponse draftBefore = getPriorAuthority(priorAuthorityId);
     int eventsBefore = eventCount(priorAuthorityId);
 
     rejectDocumentEvent(priorAuthorityId, eventType);
@@ -1049,7 +1000,7 @@ class PriorAuthorityDraftIntegrationTest {
       removeDocumentEventRejection();
     }
 
-    assertThat(draftRow(priorAuthorityId)).isEqualTo(draftBefore);
+    assertThat(getPriorAuthority(priorAuthorityId)).isEqualTo(draftBefore);
     assertThat(eventCount(priorAuthorityId)).isEqualTo(eventsBefore);
     assertThat(getPriorAuthority(priorAuthorityId).getUploadedDocuments())
         .singleElement()
@@ -1101,35 +1052,13 @@ class PriorAuthorityDraftIntegrationTest {
   void givenConcurrentUploads_whenRegistered_thenBothDocumentsAndFilenamesSurvive()
       throws Exception {
     UUID priorAuthorityId = saveDraft(grantedApplication(), PriorAuthorityType.EXPERT, null, null);
-    CyclicBarrier staleReads = new CyclicBarrier(2);
-    AtomicInteger writeAttempts = new AtomicInteger();
-    AtomicInteger staleReadCount = new AtomicInteger();
-    AtomicBoolean gateDraftReads = new AtomicBoolean();
     CyclicBarrier storedFiles = new CyclicBarrier(2);
     when(sdsService.saveEvidenceFile(any(), any(), any()))
         .thenAnswer(
             invocation -> {
               storedFiles.await(10, TimeUnit.SECONDS);
-              gateDraftReads.set(true);
               return new SdsUploadResult(null, null, "checksum");
             });
-    doAnswer(
-            invocation -> {
-              writeAttempts.incrementAndGet();
-              return invocation.callRealMethod();
-            })
-        .when(draftStore)
-        .upsert(any(), any(), any(), any(), any());
-    doAnswer(
-            invocation -> {
-              Object draft = invocation.callRealMethod();
-              if (gateDraftReads.get() && staleReadCount.incrementAndGet() <= 2) {
-                staleReads.await(10, TimeUnit.SECONDS);
-              }
-              return draft;
-            })
-        .when(draftStore)
-        .find(priorAuthorityId);
     int eventsBefore = eventCount(priorAuthorityId);
 
     List<ResponseEntity<String>> responses =
@@ -1153,22 +1082,6 @@ class PriorAuthorityDraftIntegrationTest {
             .toList();
     assertThat(documentIds).doesNotHaveDuplicates();
     assertThat(eventCount(priorAuthorityId)).isEqualTo(eventsBefore + 2);
-    assertThat(writeAttempts.get()).isEqualTo(3);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT version FROM axon.prior_authority_draft WHERE prior_authority_id = ?",
-                Long.class,
-                priorAuthorityId))
-        .isEqualTo(2L);
-    for (int index = 0; index < documentIds.size(); index++) {
-      assertThat(
-              jdbcTemplate.queryForObject(
-                  "SELECT payload -> 'documentFilenames' ->> ? FROM axon.prior_authority_draft WHERE prior_authority_id = ?",
-                  String.class,
-                  documentIds.get(index).toString(),
-                  priorAuthorityId))
-          .isEqualTo(index == 0 ? "first.pdf" : "second.PDF");
-    }
     await()
         .atMost(Duration.ofSeconds(15))
         .untilAsserted(
@@ -1194,17 +1107,6 @@ class PriorAuthorityDraftIntegrationTest {
     UUID documentId = uploadDocument(priorAuthorityId, "existing.pdf");
     awaitDocument(priorAuthorityId, documentId);
     int eventsBefore = eventCount(priorAuthorityId);
-    CyclicBarrier staleReads = new CyclicBarrier(2);
-    AtomicInteger writeAttempts = new AtomicInteger();
-    doAnswer(
-            invocation -> {
-              if (writeAttempts.incrementAndGet() <= 2) {
-                staleReads.await(10, TimeUnit.SECONDS);
-              }
-              return invocation.callRealMethod();
-            })
-        .when(draftStore)
-        .upsert(any(), any(), any(), any(), any());
 
     List<ResponseEntity<String>> responses =
         race(
@@ -1253,19 +1155,10 @@ class PriorAuthorityDraftIntegrationTest {
                 default -> assertThat(documents).isEmpty();
               }
             });
-    assertThat(
-            objectMapper
-                .readTree((String) draftRow(priorAuthorityId).get("payload"))
-                .get("documentFilenames")
-                .size())
-        .isEqualTo("POST".equals(method) ? 2 : "DELETE".equals(method) ? 0 : 1);
     assertThat(eventCount(priorAuthorityId))
         .withFailMessage(
             "Both successful writes must be recorded in the Prior Authority event stream")
         .isEqualTo(eventsBefore + 2);
-    assertThat(writeAttempts.get())
-        .withFailMessage("One of the two stale writes must roll back and retry against fresh state")
-        .isEqualTo(3);
     String eventPayload =
         jdbcTemplate.queryForObject(
             "SELECT convert_from(payload, 'UTF8') FROM axon.domain_event_entry"
@@ -1323,12 +1216,6 @@ class PriorAuthorityDraftIntegrationTest {
       assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
       assertThat(response.getBody()).contains("prior authority draft");
       assertThat(eventCount(priorAuthorityId)).isEqualTo(eventsAfterSubmission);
-      assertThat(
-              jdbcTemplate.queryForObject(
-                  "SELECT COUNT(*) FROM axon.prior_authority_draft WHERE prior_authority_id = ?",
-                  Integer.class,
-                  priorAuthorityId))
-          .isZero();
       assertThat(getPriorAuthority(priorAuthorityId).getUploadedDocuments()).isNullOrEmpty();
       assertThat(documentId.get()).isNotNull();
       verify(sdsService, never()).deleteEvidenceFile(any(), any(), any());
@@ -1362,12 +1249,6 @@ class PriorAuthorityDraftIntegrationTest {
         .atMost(Duration.ofSeconds(15))
         .untilAsserted(
             () -> assertThat(getPriorAuthority(priorAuthorityId).getUploadedDocuments()).isEmpty());
-    assertThat(
-            objectMapper
-                .readTree((String) draftRow(priorAuthorityId).get("payload"))
-                .get("documentFilenames")
-                .size())
-        .isZero();
   }
 
   @Test
@@ -1392,12 +1273,6 @@ class PriorAuthorityDraftIntegrationTest {
         .atMost(Duration.ofSeconds(15))
         .untilAsserted(
             () -> assertThat(getPriorAuthority(priorAuthorityId).getUploadedDocuments()).isEmpty());
-    assertThat(
-            objectMapper
-                .readTree((String) draftRow(priorAuthorityId).get("payload"))
-                .get("documentFilenames")
-                .size())
-        .isZero();
     verify(sdsService).deleteEvidenceFile(priorAuthorityId, documentId, documentId + ".pdf");
   }
 
@@ -1496,12 +1371,8 @@ class PriorAuthorityDraftIntegrationTest {
             submitUrl(priorAuthorityId), new HttpEntity<>(null, headers()), String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.prior_authority_draft WHERE prior_authority_id = ?",
-                Integer.class,
-                priorAuthorityId))
-        .isEqualTo(1);
+    assertThat(getPriorAuthority(priorAuthorityId).getStatus())
+        .isEqualTo(PriorAuthorityResponse.StatusEnum.DRAFT);
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.prior_authority_current_state WHERE prior_authority_id = ?",
@@ -1587,11 +1458,15 @@ class PriorAuthorityDraftIntegrationTest {
         priorAuthorityId.toString());
   }
 
-  private Map<String, Object> draftRow(UUID priorAuthorityId) {
-    return jdbcTemplate.queryForMap(
-        "SELECT payload::text AS payload, payload_hash, created_at, updated_at"
-            + " FROM axon.prior_authority_draft WHERE prior_authority_id = ?",
-        priorAuthorityId);
+  private void removeUploadedFilename(UUID priorAuthorityId) {
+    // Content rows are immutable, so replace the row without its filename in one statement.
+    jdbcTemplate.update(
+        "WITH removed AS (DELETE FROM axon.event_content c USING axon.domain_event_entry e"
+            + " WHERE c.event_id = e.event_identifier AND e.aggregate_identifier = ?"
+            + " AND e.payload_type = 'access.PriorAuthorityDocumentUploaded' RETURNING c.*)"
+            + " INSERT INTO axon.event_content (event_id, tags, content, created_at)"
+            + " SELECT event_id, tags, content - 'originalFilename', created_at FROM removed",
+        priorAuthorityId.toString());
   }
 
   private List<ResponseEntity<String>> race(
@@ -1819,13 +1694,6 @@ class PriorAuthorityDraftIntegrationTest {
                     .isEqualTo(leadApplicationId));
   }
 
-  private long countPriorAuthorityDrafts(UUID applicationId) {
-    return jdbcTemplate.queryForObject(
-        "SELECT COUNT(*) FROM axon.prior_authority_draft WHERE application_id = ?",
-        Long.class,
-        applicationId);
-  }
-
   private long countPriorAuthorityCreationEvents(UUID applicationId) {
     return jdbcTemplate.queryForObject(
         """
@@ -1857,7 +1725,6 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   private void assertNoPriorAuthorityWrites(UUID applicationId) {
-    assertThat(countPriorAuthorityDrafts(applicationId)).isZero();
     assertThat(countPriorAuthorityCreationEvents(applicationId)).isZero();
     assertThat(
             jdbcTemplate.queryForObject(
@@ -1875,16 +1742,11 @@ class PriorAuthorityDraftIntegrationTest {
         objectMapper
             .readValue(response.getBody(), SavePriorAuthorityDraftResponse.class)
             .getPriorAuthorityId();
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT application_id FROM axon.prior_authority_draft WHERE prior_authority_id = ?",
-                UUID.class,
-                priorAuthorityId))
-        .isEqualTo(applicationId);
+    assertThat(getPriorAuthority(priorAuthorityId).getApplicationId()).isEqualTo(applicationId);
     assertThat(eventCount(priorAuthorityId)).isEqualTo(1);
     assertThat(countPriorAuthorityCreationEvents(applicationId)).isEqualTo(1);
-    assertThat(draftRow(priorAuthorityId).get("payload").toString())
-        .contains("Concurrency test content");
+    assertThat(getPriorAuthority(priorAuthorityId).getJustification())
+        .isEqualTo("Concurrency test content");
     return priorAuthorityId;
   }
 

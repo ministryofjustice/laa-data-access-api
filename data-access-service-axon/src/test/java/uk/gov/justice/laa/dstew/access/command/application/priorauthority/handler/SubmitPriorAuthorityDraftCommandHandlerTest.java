@@ -8,7 +8,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
-import java.util.Optional;
+import java.util.Map;
 import java.util.UUID;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.junit.jupiter.api.Test;
@@ -25,9 +25,9 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.SubmitPriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
+import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 
@@ -36,7 +36,6 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
 
   private static final Instant OCCURRED_AT = Instant.parse("2026-09-01T10:00:00Z");
 
-  @Mock private PriorAuthorityDraftStore draftStore;
   @Mock private PriorAuthorityDataStore dataStore;
   @Mock private JsonSchemaValidator jsonSchemaValidator;
   @Mock private PriorAuthorityAggregate priorAuthority;
@@ -51,20 +50,16 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
     PriorAuthorityContent content =
         new PriorAuthorityContent(
             PriorAuthorityType.EXPERT, "Need urgent review", null, null, null);
-    PriorAuthorityDataPayload payload =
-        new PriorAuthorityDataPayload(
-            priorAuthorityId, applicationId, content, "{}", Instant.parse("2026-08-31T09:00:00Z"));
     SubmitPriorAuthorityDraftCommand command =
         new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT);
     PriorAuthorityState state =
-        startedState(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT, 1);
+        startedState(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT, 1, content);
 
-    when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(payload));
     when(priorAuthority.getApplicationId()).thenReturn(applicationId);
     when(priorAuthority.getState()).thenReturn(state);
 
     new SubmitPriorAuthorityDraftCommandHandler()
-        .handle(command, draftStore, dataStore, jsonSchemaValidator, priorAuthority, eventAppender);
+        .handle(command, dataStore, jsonSchemaValidator, priorAuthority, eventAppender);
 
     verify(jsonSchemaValidator).validate(content, "PriorAuthority.json", 1);
     verify(dataStore)
@@ -75,7 +70,10 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
             payloadCaptor.capture(),
             eq("{}"),
             eq(OCCURRED_AT));
-    assertThat(payloadCaptor.getValue()).isEqualTo(payload.withSubmittedAt(OCCURRED_AT));
+    assertThat(payloadCaptor.getValue())
+        .isEqualTo(
+            new PriorAuthorityDataPayload(
+                priorAuthorityId, applicationId, content, "{}", OCCURRED_AT, null, null, Map.of()));
     verify(eventAppender)
         .append(
             new PriorAuthoritySubmittedEvent(
@@ -85,7 +83,6 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
                 1,
                 0L,
                 OCCURRED_AT));
-    verify(draftStore).delete(priorAuthorityId);
   }
 
   @Test
@@ -94,22 +91,15 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
     SubmitPriorAuthorityDraftCommand command =
         new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT);
 
-    when(draftStore.find(priorAuthorityId)).thenReturn(Optional.empty());
+    when(priorAuthority.getState()).thenReturn(new PriorAuthorityState());
 
     assertThatThrownBy(
             () ->
                 new SubmitPriorAuthorityDraftCommandHandler()
-                    .handle(
-                        command,
-                        draftStore,
-                        dataStore,
-                        jsonSchemaValidator,
-                        priorAuthority,
-                        eventAppender))
+                    .handle(command, dataStore, jsonSchemaValidator, priorAuthority, eventAppender))
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage("Prior Authority draft not found: " + priorAuthorityId);
 
-    verify(draftStore).find(priorAuthorityId);
     verifyNoInteractions(dataStore, jsonSchemaValidator, eventAppender);
   }
 
@@ -119,19 +109,16 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityContent content =
         new PriorAuthorityContent(null, "No type yet", null, null, null);
-    PriorAuthorityDataPayload payload =
-        new PriorAuthorityDataPayload(priorAuthorityId, applicationId, content, "{}", OCCURRED_AT);
     SubmitPriorAuthorityDraftCommand command =
         new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT);
     PriorAuthorityState state =
-        startedState(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT, 4);
+        startedState(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT, 4, content);
 
-    when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(payload));
     when(priorAuthority.getApplicationId()).thenReturn(applicationId);
     when(priorAuthority.getState()).thenReturn(state);
 
     new SubmitPriorAuthorityDraftCommandHandler()
-        .handle(command, draftStore, dataStore, jsonSchemaValidator, priorAuthority, eventAppender);
+        .handle(command, dataStore, jsonSchemaValidator, priorAuthority, eventAppender);
 
     verify(eventAppender)
         .append(
@@ -149,7 +136,8 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
       UUID priorAuthorityId,
       UUID applicationId,
       PriorAuthorityType priorAuthorityType,
-      int schemaVersion) {
+      int schemaVersion,
+      PriorAuthorityContent content) {
     PriorAuthorityState state = new PriorAuthorityState();
     PriorAuthorityEvolve.apply(
         state,
@@ -158,7 +146,10 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
             applicationId,
             priorAuthorityType == null ? null : priorAuthorityType.name(),
             schemaVersion,
-            OCCURRED_AT));
+            OCCURRED_AT,
+            null,
+            Erasable.of(content),
+            Erasable.of("{}")));
     return state;
   }
 }

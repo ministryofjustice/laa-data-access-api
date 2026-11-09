@@ -2,7 +2,6 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -10,8 +9,10 @@ import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
@@ -20,8 +21,6 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -29,7 +28,7 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 class SubmitPriorAuthorityDraftUseCaseTest {
 
   @Mock private RetryingCommandDispatcher dispatcher;
-  @Mock private PriorAuthorityDraftStore draftStore;
+  @Mock private QueryGateway queryGateway;
 
   @InjectMocks private SubmitPriorAuthorityDraftUseCase useCase;
 
@@ -37,8 +36,7 @@ class SubmitPriorAuthorityDraftUseCaseTest {
   void givenDraftExists_whenSubmit_thenValidatesGrantedBeforeDispatchingSubmit() {
     SubmitPriorAuthorityDraftCommand command = stubCommand();
     UUID applicationId = UUID.randomUUID();
-    when(draftStore.find(command.priorAuthorityId()))
-        .thenReturn(Optional.of(stubDraftPayload(command.priorAuthorityId(), applicationId)));
+    stubDraft(command.priorAuthorityId(), new PriorAuthorityDraftSummary(applicationId, Map.of()));
 
     useCase.submit(command);
 
@@ -50,7 +48,7 @@ class SubmitPriorAuthorityDraftUseCaseTest {
   @Test
   void givenNoDraftExists_whenSubmit_thenThrowsNotFoundBeforeDispatch() {
     SubmitPriorAuthorityDraftCommand command = stubCommand();
-    when(draftStore.find(command.priorAuthorityId())).thenReturn(Optional.empty());
+    stubDraft(command.priorAuthorityId(), PriorAuthorityDraftSummary.NONE);
 
     assertThatThrownBy(() -> useCase.submit(command))
         .isInstanceOf(ResourceNotFoundException.class)
@@ -62,8 +60,7 @@ class SubmitPriorAuthorityDraftUseCaseTest {
   void givenValidationFails_whenSubmit_thenPropagatesWithoutSubmitting() {
     SubmitPriorAuthorityDraftCommand command = stubCommand();
     UUID applicationId = UUID.randomUUID();
-    when(draftStore.find(command.priorAuthorityId()))
-        .thenReturn(Optional.of(stubDraftPayload(command.priorAuthorityId(), applicationId)));
+    stubDraft(command.priorAuthorityId(), new PriorAuthorityDraftSummary(applicationId, Map.of()));
     ValidationException failure = new ValidationException(List.of("Application must be granted"));
     doThrow(failure)
         .when(dispatcher)
@@ -74,16 +71,12 @@ class SubmitPriorAuthorityDraftUseCaseTest {
   }
 
   private SubmitPriorAuthorityDraftCommand stubCommand() {
-    UUID priorAuthorityId = UUID.randomUUID();
-    lenient()
-        .when(draftStore.find(priorAuthorityId))
-        .thenReturn(Optional.of(stubDraftPayload(priorAuthorityId, UUID.randomUUID())));
-    return new SubmitPriorAuthorityDraftCommand(priorAuthorityId, Instant.now());
+    return new SubmitPriorAuthorityDraftCommand(UUID.randomUUID(), Instant.now());
   }
 
-  private static PriorAuthorityDataPayload stubDraftPayload(
-      UUID priorAuthorityId, UUID applicationId) {
-    return new PriorAuthorityDataPayload(
-        priorAuthorityId, applicationId, null, "{}", Instant.now());
+  private void stubDraft(UUID priorAuthorityId, PriorAuthorityDraftSummary draft) {
+    when(queryGateway.query(
+            new FindPriorAuthorityDraftQuery(priorAuthorityId), PriorAuthorityDraftSummary.class))
+        .thenReturn(CompletableFuture.completedFuture(draft));
   }
 }

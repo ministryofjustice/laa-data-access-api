@@ -39,7 +39,8 @@ class EventContentArchitectureTest {
    * and by the processors in RegisteredContentReaders. Subscribing processors receive events with
    * content attached, so this rule, not delivery, is what keeps them from reading it. The one
    * command-side reader is ApplicationCommandHandlerSupport, which reads draft content for submit
-   * and treats erased draft content as no draft. ApplicationReadModelAssembler reads content from
+   * and treats erased draft content as no draft. PriorAuthorityState does the same for prior
+   * authority drafts and their retained filenames. ApplicationReadModelAssembler reads content from
    * the sourced application aggregate for single-application reads and treats erased content as not
    * found. ApplicationSummaryProjection copies descriptive facts from content into the summary, and
    * clears them when content is erased. ApplicationHistoryMapper reads note text and decision
@@ -63,6 +64,9 @@ class EventContentArchitectureTest {
         .and()
         .doNotHaveFullyQualifiedName(
             ROOT + ".command.application.handler.ApplicationCommandHandlerSupport")
+        .and()
+        .doNotHaveFullyQualifiedName(
+            ROOT + ".command.application.priorauthority.PriorAuthorityState")
         .and()
         .doNotHaveFullyQualifiedName(ROOT + ".query.application.history.ApplicationHistoryMapper")
         .and()

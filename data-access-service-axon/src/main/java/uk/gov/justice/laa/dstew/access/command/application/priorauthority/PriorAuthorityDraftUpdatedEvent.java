@@ -6,21 +6,27 @@ import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
 import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
+import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 
 /**
- * Persisted event emitted on every prior-authority draft-body mutation.
- *
- * <p>A thin, PII-free pointer carrying no draft content. Its sole purpose is to route every draft
- * write through the aggregate's per-stream optimistic-concurrency gate, so concurrent writers
- * (draft edit vs document upload, or edit vs edit) serialise and retry-converge instead of silently
- * last-write-wins dropping a change.
+ * Persisted event emitted on every prior-authority draft-body update. Carries the full replacement
+ * draft content, so the aggregate folds the current draft from its own stream.
  */
 @Event(namespace = "access", name = "PriorAuthorityDraftUpdated")
 public record PriorAuthorityDraftUpdatedEvent(
     @EventTag(key = "PriorAuthorityAggregate") UUID priorAuthorityId,
     UUID parentApplicationId,
-    Instant occurredAt)
+    Instant occurredAt,
+    Erasable<PriorAuthorityContent> content,
+    Erasable<String> serialisedRequest)
     implements GenesisScoped {
+
+  /** Treats absent content as erased so a stored event without its content row still loads. */
+  public PriorAuthorityDraftUpdatedEvent {
+    content = Erasable.orErased(content);
+    serialisedRequest = Erasable.orErased(serialisedRequest);
+  }
 
   @Override
   public Set<UUID> genesisIds() {

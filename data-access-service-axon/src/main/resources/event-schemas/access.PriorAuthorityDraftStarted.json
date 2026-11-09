@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "access.PriorAuthorityDraftStarted kept fields",
-  "description": "Fields kept on the stored event. Every other field is content, stored apart so that it can be erased.",
+  "description": "Fields kept on the stored event. Every other field is content, stored apart so that it can be erased. Content: content, serialisedRequest.",
   "type": "object",
   "properties": {
     "priorAuthorityId": {

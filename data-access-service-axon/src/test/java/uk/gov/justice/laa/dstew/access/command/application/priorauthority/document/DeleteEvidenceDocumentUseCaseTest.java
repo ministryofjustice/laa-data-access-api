@@ -11,8 +11,10 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
-import java.util.Optional;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -23,10 +25,9 @@ import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.FindPriorAuthorityDraftQuery;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentDeleteCommand;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDraftSummary;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
@@ -34,7 +35,7 @@ import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 @ExtendWith(MockitoExtension.class)
 class DeleteEvidenceDocumentUseCaseTest {
 
-  @Mock private PriorAuthorityDraftStore draftStore;
+  @Mock private QueryGateway queryGateway;
   @Mock private RetryingCommandDispatcher dispatcher;
   @Mock private SdsService sdsService;
 
@@ -43,14 +44,13 @@ class DeleteEvidenceDocumentUseCaseTest {
   @ValueSource(strings = {"evidence.pdf", "evidence.PDF", "evidence.png", "evidence"})
   void givenDraftExists_whenExecute_thenDispatchesBeforeDeletingTheSdsFile(String filename) {
     DeletePriorAuthorityDocumentUseCase useCase =
-        new DeletePriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
+        new DeletePriorAuthorityDocumentUseCase(queryGateway, dispatcher, sdsService);
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
-    var draft = draft(priorAuthorityId);
-    if (filename != null) {
-      draft = draft.withDocumentFilename(documentId, filename);
-    }
-    when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(draft));
+    stubDraft(
+        priorAuthorityId,
+        new PriorAuthorityDraftSummary(
+            UUID.randomUUID(), filename == null ? Map.of() : Map.of(documentId, filename)));
     when(dispatcher.dispatch(
             any(PriorAuthorityDocumentDeleteCommand.class), eq(DocumentMetadata.class)))
         .thenReturn(pdfDocument(documentId));
@@ -69,12 +69,12 @@ class DeleteEvidenceDocumentUseCaseTest {
   @Test
   void givenSdsDeletionFails_whenExecute_thenDoesNotPropagateTheFailure() {
     DeletePriorAuthorityDocumentUseCase useCase =
-        new DeletePriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
+        new DeletePriorAuthorityDocumentUseCase(queryGateway, dispatcher, sdsService);
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
-    when(draftStore.find(priorAuthorityId))
-        .thenReturn(
-            Optional.of(draft(priorAuthorityId).withDocumentFilename(documentId, "file.PDF")));
+    stubDraft(
+        priorAuthorityId,
+        new PriorAuthorityDraftSummary(UUID.randomUUID(), Map.of(documentId, "file.PDF")));
     when(dispatcher.dispatch(
             any(PriorAuthorityDocumentDeleteCommand.class), eq(DocumentMetadata.class)))
         .thenReturn(pdfDocument(documentId));
@@ -90,9 +90,9 @@ class DeleteEvidenceDocumentUseCaseTest {
   @Test
   void givenDraftMissing_whenExecute_thenThrowsNotFoundWithoutDeletingFromSds() {
     DeletePriorAuthorityDocumentUseCase useCase =
-        new DeletePriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
+        new DeletePriorAuthorityDocumentUseCase(queryGateway, dispatcher, sdsService);
     UUID priorAuthorityId = UUID.randomUUID();
-    when(draftStore.find(priorAuthorityId)).thenReturn(Optional.empty());
+    stubDraft(priorAuthorityId, PriorAuthorityDraftSummary.NONE);
 
     assertThatExceptionOfType(ResourceNotFoundException.class)
         .isThrownBy(() -> useCase.execute(priorAuthorityId, UUID.randomUUID()));
@@ -100,26 +100,17 @@ class DeleteEvidenceDocumentUseCaseTest {
     verifyNoInteractions(dispatcher, sdsService);
   }
 
-  private PriorAuthorityDataPayload draft(UUID priorAuthorityId) {
-    return new PriorAuthorityDataPayload(
-        priorAuthorityId,
-        UUID.randomUUID(),
-        new PriorAuthorityContent(null, null, null, null, null),
-        "{}",
-        Instant.now());
-  }
-
   @ParameterizedTest
   @ValueSource(strings = {".pdf", ".PDF", ".png", ""})
   void givenSuffixWithoutFilename_whenDeleted_thenUsesAggregateMetadata(String suffix) {
     UUID ownerId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
-    when(draftStore.find(ownerId)).thenReturn(Optional.of(draft(ownerId)));
+    stubDraft(ownerId, new PriorAuthorityDraftSummary(UUID.randomUUID(), Map.of()));
     when(dispatcher.dispatch(
             any(PriorAuthorityDocumentDeleteCommand.class), eq(DocumentMetadata.class)))
         .thenReturn(pdfDocument(documentId).withFileSuffix(suffix));
 
-    new DeletePriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService)
+    new DeletePriorAuthorityDocumentUseCase(queryGateway, dispatcher, sdsService)
         .execute(ownerId, documentId);
 
     verify(sdsService).deleteEvidenceFile(ownerId, documentId, documentId + suffix);
@@ -128,5 +119,11 @@ class DeleteEvidenceDocumentUseCaseTest {
   private DocumentMetadata pdfDocument(UUID documentId) {
     return new DocumentMetadata(
         documentId, null, Instant.now(), 1L, "application/pdf", null, "test", false);
+  }
+
+  private void stubDraft(UUID priorAuthorityId, PriorAuthorityDraftSummary draft) {
+    when(queryGateway.query(
+            new FindPriorAuthorityDraftQuery(priorAuthorityId), PriorAuthorityDraftSummary.class))
+        .thenReturn(CompletableFuture.completedFuture(draft));
   }
 }
