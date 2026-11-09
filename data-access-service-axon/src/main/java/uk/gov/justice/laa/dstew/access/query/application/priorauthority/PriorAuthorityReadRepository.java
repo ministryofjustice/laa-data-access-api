@@ -15,5 +15,5 @@ public interface PriorAuthorityReadRepository
   List<PriorAuthorityReadModel> findAllByApplicationIdIn(Collection<UUID> applicationIds);
 
   /** Returns whether a row has the given status; always queries the table. */
-  boolean existsByPriorAuthorityIdAndStatus(UUID priorAuthorityId, String status);
+  boolean existsByPriorAuthorityIdAndStatusIn(UUID priorAuthorityId, Collection<String> statuses);
 }

@@ -87,6 +87,12 @@ persistence context returns cached, stale entities on later polls, and a merely 
 as a draft whose submission data is already written) can report ready before its event is
 projected.
 
+Readiness conditions must be monotonic: once true, a later event must not make them false. Check
+for the target state or any later state (for example, `SUBMITTED` or `DECIDED`), not an exact
+current status, or a fast follow-up event leaves the request waiting until timeout. The gateway
+bounds each poll by the remaining deadline, so a stalled query falls back to `202 Accepted` rather
+than holding the request.
+
 ### Understand the split linking failure semantics
 
 The subscribing linking router validates referenced applications in the originating command unit

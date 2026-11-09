@@ -32,6 +32,9 @@ import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 @Namespace("prior-authority-projection")
 public class PriorAuthorityProjection {
 
+  private static final List<String> SUBMITTED_OR_LATER =
+      List.of(PriorAuthorityStatus.SUBMITTED.name(), PriorAuthorityStatus.DECIDED.name());
+
   private final PriorAuthorityReadRepository repository;
   private final PriorAuthorityReadQueryGateway readQueryGateway;
   private final PriorAuthorityCurrentStateAccessPolicy accessPolicy;
@@ -99,11 +102,14 @@ public class PriorAuthorityProjection {
         .orElse(null);
   }
 
-  /** Confirms whether a current-state projection has reached SUBMITTED. */
+  /**
+   * Confirms whether the projection has processed the submission. DECIDED counts too: status only
+   * moves forward, so a decision projected before the poll must not hide the submission.
+   */
   @QueryHandler
   public boolean handle(PriorAuthoritySubmittedByPriorAuthorityIdQuery query) {
-    return repository.existsByPriorAuthorityIdAndStatus(
-        query.priorAuthorityId(), PriorAuthorityStatus.SUBMITTED.name());
+    return repository.existsByPriorAuthorityIdAndStatusIn(
+        query.priorAuthorityId(), SUBMITTED_OR_LATER);
   }
 
   private String documentFilename(PriorAuthorityReadModel priorAuthority, UUID documentId) {

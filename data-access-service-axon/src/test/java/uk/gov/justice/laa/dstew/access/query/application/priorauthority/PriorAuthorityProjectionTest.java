@@ -616,9 +616,10 @@ class PriorAuthorityProjectionTest {
 
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
-  void givenSubmittedRowExistence_whenSubmittedQueryHandled_thenReturnsExistence(boolean exists) {
+  void givenSubmittedOrDecidedExistence_whenSubmittedQueryHandled_thenReturnsIt(boolean exists) {
     UUID priorAuthorityId = UUID.randomUUID();
-    when(repository.existsByPriorAuthorityIdAndStatus(priorAuthorityId, "SUBMITTED"))
+    when(repository.existsByPriorAuthorityIdAndStatusIn(
+            priorAuthorityId, List.of("SUBMITTED", "DECIDED")))
         .thenReturn(exists);
 
     assertThat(

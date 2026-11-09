@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -84,6 +85,37 @@ class ProjectionReadinessGatewayTest {
   }
 
   @Test
+  void givenPollQueryStalls_whenAwaitProjection_thenTimesOutAtDeadline() {
+    when(queryGateway.query(query, Boolean.class)).thenReturn(new CompletableFuture<>());
+
+    long startNs = System.nanoTime();
+    boolean result = gateway(SHORT_TIMEOUT).awaitProjection(query, action);
+    long elapsedMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNs);
+
+    assertThat(result).isFalse();
+    assertThat(elapsedMs).isBetween(SHORT_TIMEOUT.toMillis(), 1_000L);
+    assertThat(timerCount("timeout")).isEqualTo(1);
+  }
+
+  @Test
+  void givenQueryHandledOnCallingThreadStalls_whenAwaitProjection_thenTimesOutAtDeadline() {
+    when(queryGateway.query(query, Boolean.class))
+        .thenAnswer(
+            invocation -> {
+              Thread.sleep(PATIENT_TIMEOUT);
+              return completed(true);
+            });
+
+    long startNs = System.nanoTime();
+    boolean result = gateway(SHORT_TIMEOUT).awaitProjection(query, action);
+    long elapsedMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNs);
+
+    assertThat(result).isFalse();
+    assertThat(elapsedMs).isLessThan(PATIENT_TIMEOUT.toMillis());
+    assertThat(timerCount("timeout")).isEqualTo(1);
+  }
+
+  @Test
   void givenNullReadinessResult_whenAwaitProjection_thenTreatsAsNotReady() {
     when(queryGateway.query(query, Boolean.class)).thenReturn(completed(null));
 
@@ -116,8 +148,28 @@ class ProjectionReadinessGatewayTest {
   }
 
   @Test
+  void givenThreadInterruptedDuringPoll_whenAwaitProjection_thenRestoresInterruptFlag() {
+    // The interrupt can win before the poll dispatches, leaving the stub unused.
+    lenient().when(queryGateway.query(query, Boolean.class)).thenReturn(new CompletableFuture<>());
+
+    try {
+      assertThatThrownBy(
+              () ->
+                  gateway(PATIENT_TIMEOUT)
+                      .awaitProjection(query, () -> Thread.currentThread().interrupt()))
+          .isInstanceOf(IllegalStateException.class)
+          .hasCauseInstanceOf(InterruptedException.class);
+
+      assertThat(Thread.currentThread().isInterrupted()).isTrue();
+    } finally {
+      Thread.interrupted();
+    }
+  }
+
+  @Test
   void givenThreadInterruptedWhileWaiting_whenAwaitProjection_thenRestoresInterruptFlag() {
-    when(queryGateway.query(query, Boolean.class)).thenReturn(completed(false));
+    // The interrupt can win before the poll dispatches, leaving the stub unused.
+    lenient().when(queryGateway.query(query, Boolean.class)).thenReturn(completed(false));
 
     try {
       assertThatThrownBy(

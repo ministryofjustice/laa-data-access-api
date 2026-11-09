@@ -3,7 +3,12 @@ package uk.gov.justice.laa.dstew.access.query;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import java.time.Duration;
-import java.util.function.BooleanSupplier;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,6 +31,7 @@ public class ProjectionReadinessGateway {
   static final String TIMER_NAME = "projection.await";
   private static final Duration INITIAL_POLL_INTERVAL = Duration.ofMillis(25);
   private static final Duration MAX_POLL_INTERVAL = Duration.ofMillis(250);
+  private static final Executor VIRTUAL_THREADS = task -> Thread.ofVirtual().start(task);
 
   private final QueryGateway queryGateway;
   private final MeterRegistry meterRegistry;
@@ -55,55 +61,72 @@ public class ProjectionReadinessGateway {
    * @param action the side-effecting work (typically a command dispatch) whose event the projection
    *     must reflect.
    * @return {@code true} when the projection is ready within the configured timeout; {@code false}
-   *     when the timeout expires — the action has still committed its event and the caller should
-   *     signal acceptance rather than failure.
+   *     when the timeout expires (each poll is bounded by the remaining time, so a slow query
+   *     cannot hold the request past the deadline) — the action has still committed its event and
+   *     the caller should signal acceptance rather than failure.
    * @throws RuntimeException propagated from {@code action}, or when the wait is interrupted (the
    *     interrupt flag is restored).
    */
   public boolean awaitProjection(Object readinessQuery, Runnable action) {
     action.run();
-    return await(
-        readinessQuery,
-        () -> Boolean.TRUE.equals(queryGateway.query(readinessQuery, Boolean.class).join()));
-  }
-
-  private boolean await(Object query, BooleanSupplier readable) {
     long startNanos = System.nanoTime();
     long deadlineNanos = startNanos + timeout.toNanos();
     long pollIntervalNanos = INITIAL_POLL_INTERVAL.toNanos();
-    while (!pollQuietly(readable)) {
+    while (true) {
       long remainingNanos = deadlineNanos - System.nanoTime();
       if (remainingNanos <= 0) {
-        record(query, "timeout", startNanos);
+        record(readinessQuery, "timeout", startNanos);
         return false;
       }
-      sleep(Math.min(remainingNanos, pollIntervalNanos));
+      if (pollWithin(readinessQuery, remainingNanos)) {
+        record(readinessQuery, "ready", startNanos);
+        return true;
+      }
+      sleep(Math.min(deadlineNanos - System.nanoTime(), pollIntervalNanos));
       pollIntervalNanos = Math.min(pollIntervalNanos * 2, MAX_POLL_INTERVAL.toNanos());
     }
-    record(query, "ready", startNanos);
-    return true;
   }
 
   /**
-   * Treats a failed poll as "not yet readable": the command has committed, so a transient read
-   * failure should fall back to {@code 202 Accepted} rather than fail the request.
+   * Runs one readiness poll, bounded by the time left before the deadline. The poll is dispatched
+   * on a virtual thread so the bound holds even when the query bus handles the query on the calling
+   * thread. A poll that fails or overruns counts as "not yet ready": the command has committed, so
+   * the caller should fall back to {@code 202 Accepted} rather than fail the request.
    */
-  private boolean pollQuietly(BooleanSupplier readable) {
+  private boolean pollWithin(Object readinessQuery, long remainingNanos) {
+    CompletableFuture<Boolean> poll =
+        CompletableFuture.supplyAsync(
+                () -> queryGateway.query(readinessQuery, Boolean.class), VIRTUAL_THREADS)
+            .thenCompose(Function.identity());
     try {
-      return readable.getAsBoolean();
-    } catch (RuntimeException e) {
-      log.warn("Projection readiness poll failed; continuing to wait", e);
+      return Boolean.TRUE.equals(poll.get(remainingNanos, TimeUnit.NANOSECONDS));
+    } catch (TimeoutException e) {
+      poll.cancel(true);
+      log.warn("Projection readiness poll did not complete before the deadline");
       return false;
+    } catch (ExecutionException e) {
+      log.warn("Projection readiness poll failed; continuing to wait", e.getCause());
+      return false;
+    } catch (InterruptedException e) {
+      poll.cancel(true);
+      throw interrupted(e);
     }
   }
 
   private void sleep(long nanos) {
+    if (nanos <= 0) {
+      return;
+    }
     try {
       Thread.sleep(Duration.ofNanos(nanos));
     } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new IllegalStateException("Interrupted while awaiting projection", e);
+      throw interrupted(e);
     }
+  }
+
+  private static IllegalStateException interrupted(InterruptedException e) {
+    Thread.currentThread().interrupt();
+    return new IllegalStateException("Interrupted while awaiting projection", e);
   }
 
   private void record(Object query, String outcome, long startNanos) {
