@@ -40,7 +40,7 @@ public class EventContentAxonConfig {
 
   @Bean
   EventContentSeparator eventContentSeparator(EventJson json) {
-    return new EventContentSeparator(json);
+    return new EventContentSeparator(json, AxonStoredEvents.eventTypesIn(EVENTS_PACKAGE));
   }
 
   @Bean

@@ -57,6 +57,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUp
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.draft.CreateApplicationDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.draft.SubmitApplicationDraftCommand;
+import uk.gov.justice.laa.dstew.access.eventcontent.EventContentStore;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
@@ -118,6 +119,8 @@ class PostgresAxonIntegrationTest {
   @Autowired private EventStorageEngine eventStorageEngine;
 
   @Autowired private JdbcTemplate jdbcTemplate;
+
+  @Autowired private EventContentStore eventContentStore;
 
   @Autowired private CommandGateway commandGateway;
 
@@ -306,6 +309,98 @@ class PostgresAxonIntegrationTest {
 
     commandGateway.sendAndWait(command);
     assertThat(uploadedFilenames(applicationId, documentId)).containsExactly("client-report.pdf");
+  }
+
+  @Test
+  void givenUploadedDocument_whenContentErased_thenRowIsKeptAndAggregateStillLoads() {
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    createDocumentDraft(applicationId);
+    commandGateway.sendAndWait(uploadCommand(applicationId, documentId, "client-report.pdf"));
+    String eventId = uploadedEventId(applicationId);
+
+    eventContentStore.erase(List.of(eventId), objectMapper.createObjectNode());
+
+    Map<String, Object> row =
+        jdbcTemplate.queryForMap(
+            "SELECT content::text AS content, erased_at FROM axon.event_content WHERE event_id = ?",
+            eventId);
+    assertThat(row.get("content")).isEqualTo("{}");
+    assertThat(row.get("erased_at")).isNotNull();
+    assertThatThrownBy(
+            () -> jdbcTemplate.update("DELETE FROM axon.event_content WHERE event_id = ?", eventId))
+        .hasStackTraceContaining("immutable except for erasure");
+    assertThatThrownBy(
+            () ->
+                jdbcTemplate.update(
+                    "UPDATE axon.event_content SET content = '{}'::jsonb, erased_at = now()"
+                        + " WHERE event_id = ?",
+                    eventId))
+        .hasStackTraceContaining("immutable except for erasure");
+
+    commandGateway.sendAndWait(uploadCommand(applicationId, UUID.randomUUID(), "another.pdf"));
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
+                Integer.class,
+                applicationId.toString()))
+        .isEqualTo(3);
+  }
+
+  @Test
+  void givenContentRowLost_whenAggregateSourced_thenFailsInsteadOfLoadingAsErased() {
+    UUID applicationId = UUID.randomUUID();
+    createDocumentDraft(applicationId);
+    commandGateway.sendAndWait(
+        uploadCommand(applicationId, UUID.randomUUID(), "client-report.pdf"));
+    String eventId = uploadedEventId(applicationId);
+    Map<String, Object> row =
+        jdbcTemplate.queryForMap(
+            "SELECT tags::text AS tags, content::text AS content FROM axon.event_content"
+                + " WHERE event_id = ?",
+            eventId);
+    // Rows cannot be deleted, so bypass the guard to simulate a lost row.
+    jdbcTemplate.execute(
+        "ALTER TABLE axon.event_content DISABLE TRIGGER event_content_immutable;"
+            + " DELETE FROM axon.event_content WHERE event_id = '%s';".formatted(eventId)
+            + " ALTER TABLE axon.event_content ENABLE TRIGGER event_content_immutable");
+    try {
+      assertThatThrownBy(
+              () ->
+                  commandGateway.sendAndWait(
+                      uploadCommand(applicationId, UUID.randomUUID(), "another.pdf")))
+          .hasStackTraceContaining("of type access.ApplicationDocumentUploaded has no content row");
+    } finally {
+      // Restore the row so event processors that read content are not left stuck.
+      jdbcTemplate.update(
+          "INSERT INTO axon.event_content (event_id, tags, content)"
+              + " VALUES (?, ?::text[], ?::jsonb)",
+          eventId,
+          row.get("tags"),
+          row.get("content"));
+    }
+  }
+
+  private ApplicationDocumentUploadCommand uploadCommand(
+      UUID applicationId, UUID documentId, String filename) {
+    return new ApplicationDocumentUploadCommand(
+        applicationId,
+        documentId,
+        "GATEWAY_EVIDENCE",
+        Instant.now(),
+        12L,
+        "application/pdf",
+        "checksum",
+        "CIVIL_APPLY",
+        filename);
+  }
+
+  private String uploadedEventId(UUID applicationId) {
+    return jdbcTemplate.queryForObject(
+        "SELECT event_identifier FROM axon.domain_event_entry WHERE aggregate_identifier = ?"
+            + " AND payload_type = 'access.ApplicationDocumentUploaded'",
+        String.class,
+        applicationId.toString());
   }
 
   private List<String> uploadedFilenames(UUID applicationId, UUID documentId) {

@@ -64,7 +64,11 @@ public final class ContentReadingEventSource implements StreamableEventSource {
         .get()
         .findByEventId(message.identifier())
         .map(content -> ContentJoin.join(message, content, separator, converter))
-        .orElse(message);
+        .orElseGet(
+            () -> {
+              separator.get().requireNoContentFields(message.type().name(), message.identifier());
+              return message;
+            });
   }
 
   @Override

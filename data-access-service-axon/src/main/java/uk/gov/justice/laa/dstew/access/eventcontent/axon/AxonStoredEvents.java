@@ -102,7 +102,9 @@ final class AxonStoredEvents implements StoredEvents {
       throw new IllegalStateException("No @Event class is named " + entry.type());
     }
     ObjectNode kept = (ObjectNode) mapper.readTree(entry.payload());
-    // No content row: the event had no content, or its content has been erased.
+    if (content == null) {
+      separator.get().requireNoContentFields(entry.type(), entry.identifier());
+    }
     ObjectNode whole = content == null ? kept : separator.get().rejoin(kept, content);
     Map<String, String> metadata =
         entry.metadata() == null ? Map.of() : mapper.readValue(entry.metadata(), METADATA);

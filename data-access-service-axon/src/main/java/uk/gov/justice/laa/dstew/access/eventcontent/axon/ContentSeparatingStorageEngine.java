@@ -114,8 +114,23 @@ final class ContentSeparatingStorageEngine implements EventStorageEngine {
         return message;
       }
       ObjectNode extra = content.get(message.identifier());
-      // No row: the event had no content, or its content has been erased.
-      return extra == null ? message : ContentJoin.join(message, extra, separator, converter);
+      if (extra == null) {
+        String typeName = message.type().name();
+        if (!separator.get().hasContentFields(typeName)) {
+          return message;
+        }
+        // Content was read by tag before the events, so an event committed in between is found
+        // here. Content commits with its event and erasure keeps the row, so none means lost.
+        extra =
+            store
+                .get()
+                .findByEventId(message.identifier())
+                .orElseThrow(
+                    () ->
+                        new EventContentSeparator.MissingEventContentException(
+                            typeName, message.identifier()));
+      }
+      return ContentJoin.join(message, extra, separator, converter);
     };
   }
 

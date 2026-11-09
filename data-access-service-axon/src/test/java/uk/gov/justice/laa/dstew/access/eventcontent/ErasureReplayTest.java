@@ -58,7 +58,8 @@ class ErasureReplayTest {
   private static final Instant AT = Instant.parse("2026-11-02T10:00:00Z");
   private static final String DECISION_REQUEST = "{\"overallDecision\":\"GRANTED\"}";
 
-  private final EventContentSeparator separator = new EventContentSeparator(new EventJson());
+  private final EventContentSeparator separator =
+      new EventContentSeparator(new EventJson(), Map.of());
 
   private final UUID applicationId = UUID.randomUUID();
   private final UUID priorAuthorityId = UUID.randomUUID();

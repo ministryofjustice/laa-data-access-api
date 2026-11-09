@@ -867,13 +867,12 @@ class ApplicationDraftIntegrationTest {
         .thenReturn(new SdsUploadResult(null, null, "checksum"));
     final UUID documentId = uploadDocument(applicationId, "original evidence.pdf");
     if (missingFilename) {
-      // Content rows are immutable, so replace the row without its filename in one statement.
+      // Erase only the filename: erasure may leave default content in place.
       jdbcTemplate.update(
-          "WITH removed AS (DELETE FROM axon.event_content c USING axon.domain_event_entry e"
+          "UPDATE axon.event_content c SET content = c.content - 'originalFilename',"
+              + " erased_at = now() FROM axon.domain_event_entry e"
               + " WHERE c.event_id = e.event_identifier AND e.aggregate_identifier = ?"
-              + " AND e.payload_type = 'access.ApplicationDocumentUploaded' RETURNING c.*)"
-              + " INSERT INTO axon.event_content (event_id, tags, content, created_at)"
-              + " SELECT event_id, tags, content - 'originalFilename', created_at FROM removed",
+              + " AND e.payload_type = 'access.ApplicationDocumentUploaded'",
           applicationId.toString());
     }
     if (submitted) {

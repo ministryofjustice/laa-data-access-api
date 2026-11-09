@@ -23,6 +23,13 @@ public interface EventContentStore {
 
   Optional<ObjectNode> findByEventId(String eventId);
 
+  /**
+   * Hard-erases the content of the given events: replaces it with {@code replacement}, for example
+   * an empty object or default content, and stamps the erasure time. The rows are kept, so a
+   * missing row is never mistaken for erased content. Content already erased is left unchanged.
+   */
+  void erase(Collection<String> eventIds, ObjectNode replacement);
+
   /** Returns content keyed by event id for the given events; events without content are absent. */
   Map<String, ObjectNode> findByEventIds(Collection<String> eventIds);
 }

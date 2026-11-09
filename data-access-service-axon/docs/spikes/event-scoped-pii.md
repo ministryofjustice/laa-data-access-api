@@ -1465,7 +1465,43 @@ Split into two steps:
       before it reads the events, so an event committed between the two
       reads looks erased, and the delete returns "draft not found". The root
       cause is that a missing content row is read as erased. The next change
-      replaces that with an explicit erasure status.
+      replaces that with an explicit erasure status. Fixed by the hard
+      erasure change below.
+  - **Erasure lifecycle, direction agreed 2026-11-09 (not built in this
+    spike):**
+    - **Soft deletion is an event.** A GDPR erasure request raises one soft
+      deletion per genesis ID. It cascades as a soft-deleted event on the
+      stream of each dependent aggregate. Deleting a draft is not erasure.
+    - **Soft-deleted content stays stored but is hidden in code.** Folds and
+      read models treat it as erased. Read models listen for the soft-deleted
+      event and null their content fields.
+    - **Soft deletion is reversible.** For now only a developer working
+      directly in the database can undo it. Restoring content means
+      rebuilding the affected read models.
+    - **Hard erasure runs automatically** after a configured soft deletion
+      period (for example 90 days). It replaces the content row and stamps
+      `erased_at`; the row is kept.
+    - **A missing content row is an error, not erased,** whenever the event
+      type has content fields.
+  - **Hard erasure keeps the content row (done 2026-11-09):**
+    - **V41** adds `event_content.erased_at`. The trigger now rejects
+      DELETE and every UPDATE except erasure: stamping `erased_at` once and
+      replacing the content, with `{}` or default content.
+    - **Store:** `EventContentStore.erase(eventIds, replacement)`. Readers
+      join an erased row's replacement, so `{}` loads the fields as erased.
+    - **Missing rows:** the separator knows which event types have content
+      fields (record components not in the kept-field schema). For those
+      types, all three readers fail with `MissingEventContentException` when
+      there is no row.
+    - **Race fix:** sourcing reads content by tag before the events. It now
+      looks up any missing row by event ID before failing, which fixes the
+      PA-2 known failure.
+    - **Tests:** the test helpers that drop `originalFilename` now do a
+      partial erasure. New Postgres tests cover erasure (row kept, delete and
+      re-erasure rejected, aggregate still loads) and a lost row (sourcing
+      fails).
+    - **Validation:** unit tests 1298/1298 and integration tests 309/309
+      pass. Checkstyle: main clean, test 31, integration 47.
 
 1. Choose the declaration design: hash-bound review (recommended by the review)
    or persisted candidate. Agree version/hash transport, stale-response handling,

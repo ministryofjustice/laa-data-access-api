@@ -47,6 +47,14 @@ public class InMemoryEventContentStoreConfig {
     }
 
     @Override
+    public void erase(Collection<String> eventIds, ObjectNode replacement) {
+      eventIds.forEach(
+          id ->
+              rows.computeIfPresent(
+                  id, (key, row) -> new ContentRow(key, row.tags(), replacement.deepCopy())));
+    }
+
+    @Override
     public Map<String, ObjectNode> findByEventIds(Collection<String> eventIds) {
       return eventIds.stream()
           .filter(rows::containsKey)
