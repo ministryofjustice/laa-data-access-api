@@ -13,8 +13,8 @@ Sentry receives errors from this service through two underlying routes, configur
 What this document describes is the **application-level rule for what gets routed to which
 outcome** — every exception in this codebase is deliberately classified as either an expected,
 client-caused failure (breadcrumb-only `WARN`/`INFO`) or an unexpected, operator-actionable
-failure (a Sentry event, via `ERROR`). That classification happens at one of seven well-defined
-points in the code, described as Paths A–G below. The full agreed policy, with its enforcement
+failure (a Sentry event, via `ERROR`). That classification happens at one of eight well-defined
+points in the code, described as Paths A–H below. The full agreed policy, with its enforcement
 mechanisms and a checklist for adding new exceptions, is maintained in
 `docs/observability-sentry-policy.md` at the repository root; this document gives the detailed,
 code-level walkthrough of each path for engineers and reviewers.
@@ -33,7 +33,7 @@ producing a duplicate Sentry event.
 Every path below funnels through this one method, with one documented exception
 (`LoggingAspects`, Path D), which cannot depend on it for module-layering reasons.
 
-## The seven error-reporting paths
+## The eight error-reporting paths
 
 | Path | Trigger | Outcome | Key class/method |
 |---|---|---|---|
@@ -44,6 +44,7 @@ Every path below funnels through this one method, with one documented exception
 | E | Background (pooled-streaming) Axon projection failure | Sentry event, cooldown-limited | `ReportingErrorHandler.handleError` |
 | F | Data-integrity anomaly found during event replay (no throw) | Sentry event | `WorkListProjection`, `PriorAuthorityHistoryProjection` |
 | G | Scheduled job failure | Sentry event, not rethrown | `AssessmentReconciliation.run` |
+| H | `*DataStore` repository/deserialization failure | Sentry event, rethrown | `ApplicationDataStore.retrieve`, `PriorAuthorityDataStore.retrieve` |
 
 ---
 
@@ -511,17 +512,94 @@ scheduler won't see it a second time).
 
 ---
 
+### Path H — `*DataStore` repository/deserialization failure, reported then rethrown
+
+**Trigger:** `ApplicationDataStore.getAll`/`PriorAuthorityDataStore.findPayload`/`.get` (and any
+other `*DataStore` read) fails — either the repository call itself throws, or the stored JSON
+payload column fails to deserialize.
+
+**Flow:**
+
+```java
+// ApplicationDataStore / PriorAuthorityDataStore
+public Map<ApplicationDataId, ApplicationDataPayload> getAll(Collection<ApplicationDataId> ids) {
+  return retrieve("applicationDataIds", ids, () -> repository.findAllById(ids).stream()
+      .collect(Collectors.toMap(ApplicationData::getId, ApplicationData::getPayload)));
+}
+
+private <T> T retrieve(String identifierName, Object identifiers, Supplier<T> operation) {
+  try {
+    return operation.get();
+  } catch (RuntimeException exception) {
+    JacksonExceptionMessageBuilder.findJacksonException(exception)
+        .ifPresentOrElse(
+            jacksonException -> errorReporter.report(
+                "application_data JSON deserialization failed: %s=%s, jacksonExceptionType=%s, jacksonMessage=%s"
+                    .formatted(identifierName, identifiers, jacksonException.getClass().getSimpleName(),
+                        JacksonExceptionMessageBuilder.buildMessage(jacksonException)),
+                exception),
+            () -> errorReporter.report(
+                "application_data load failed: %s=%s".formatted(identifierName, identifiers),
+                exception));
+    throw exception;
+  }
+}
+```
+
+`PriorAuthorityDataStore` has an equivalent private `retrieve` helper with the same
+report-then-rethrow shape, using `prior_authority_data` in its messages.
+
+**Why report *and* rethrow:** this is the one path that both reports and rethrows the same
+exception instance. The rethrow is necessary because the caller (typically a command handler or
+projection) still needs to react to the failure (e.g. abort the command, fail the HTTP request via
+Path B/C). The explicit `errorReporter.report(...)` call here exists because, without it, a
+repository/deserialization failure deep inside a `*DataStore` would otherwise only be reported
+wherever it's eventually caught — which may be a generic backstop with a less specific message, or
+(depending on the call site) not reported at all if swallowed upstream. Reporting at the `*DataStore`
+boundary guarantees a consistent, column/identifier-specific Sentry message regardless of what the
+caller does with the rethrown exception, while `ErrorReporter`'s suppressed-marker dedup (see "The
+central primitive" above) guarantees that if an outer boundary (e.g.
+`ApplicationExceptionHandler.handleUnexpectedException`, Path C) also calls `report(...)` on the
+same instance, only one Sentry event is produced.
+
+The Jackson-specific branch exists because `*DataStore` classes persist JSON payload columns (e.g.
+`@JdbcTypeCode(SqlTypes.JSON)`); a corrupted/incompatible payload surfaces as a Jackson exception
+wrapped inside the repository call, and `JacksonExceptionMessageBuilder.findJacksonException`
+unwraps it so the reported message can include the specific Jackson exception type and message
+rather than a generic "load failed".
+
+**Convention enforcement:** `ErrorReporter`'s Javadoc documents this as the required convention for
+all `*DataStore` classes, and `AxonArchitectureTest#dataStoreClassesMustDependOnErrorReporter`
+enforces (via ArchUnit) that every class in a `..command..data..` package ending in `DataStore`
+depends on `ErrorReporter` — this rule was introduced after `PriorAuthorityDataStore` was initially
+missed, so a future sibling `*DataStore` class cannot silently skip Sentry reporting.
+
+**Test coverage:**
+- `ApplicationDataStoreTest` — `givenMissingVersion_whenRetrieved_thenReportsApplicationAndVersion`,
+  `givenNoStoredApplicationData_whenLatestVersionRetrieved_thenReportsApplication`,
+  `givenUnwrappedRepositoryFailure_whenPayloadsRetrieved_thenReportsIdentifiersAndRethrows`,
+  `givenRequestedVersions_whenRetrievedSuccessfully_thenDoesNotReportToSentry` (confirms the happy
+  path never calls `errorReporter.report`).
+- `PriorAuthorityDataStoreTest` —
+  `givenUnwrappedRepositoryFailure_whenPayloadRetrieved_thenReportsIdentifierAndRethrows`,
+  `givenMissingVersion_whenGet_thenReportsLoadFailureToSentry`,
+  `givenRequestedVersions_whenRetrievedSuccessfully_thenDoesNotReportToSentry`.
+
+---
+
 ## Cross-cutting observations for review
 
 - **Single reporting primitive, many call sites:** every path above funnels through exactly one
   method, `ErrorReporter.report(String, Throwable)` — checking "is this genuinely reported once"
-  only ever requires reasoning about that one method's dedup logic, not seven different ad-hoc
+  only ever requires reasoning about that one method's dedup logic, not eight different ad-hoc
   mechanisms.
 - **Dedup is structural, not a convention:** the suppressed-marker technique means a developer
   adding a new call to `errorReporter.report(...)` on a throwable that might already have passed
   through another boundary doesn't need to know that in advance — the no-op is automatic, and both
   inner (`*DataStore`) and outer (`handleUnexpectedException`) layers can call `report(...)` safely
-  on the same instance.
+  on the same instance. Path H is the clearest example: it reports at the `*DataStore` boundary and
+  then rethrows, relying entirely on the dedup marker to prevent a second event if an outer handler
+  (Path C) also reports the same rethrown instance.
 - **Reporting is deliberately isolated from the thing it reports on:** Path E's
   `ReportingErrorHandler.handleError` specifically guards against a reporting-infrastructure fault
   (e.g. Sentry down) ever changing Axon's retry/abort behaviour. Path C
