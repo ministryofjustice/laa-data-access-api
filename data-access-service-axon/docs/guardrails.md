@@ -70,9 +70,22 @@ serialized shape and order.
 
 ### `sendAndWait` does not make tracking projections current
 
-It waits for command completion. Tracking processors can still lag. Use subscription queries where
-the API explicitly needs read-your-write behaviour, or return an asynchronous result such as the
-creation endpoint's `202 Accepted`.
+It waits for command completion. Tracking processors can still lag. Use
+`ProjectionReadinessGateway` where the API explicitly needs read-your-write behaviour, or return an
+asynchronous result such as the creation endpoint's `202 Accepted`.
+
+### Do not use subscription queries to wait for projections
+
+Without Axon Server, the query bus and `QueryUpdateEmitter` are local to each JVM. When several
+replicas run, the instance that owns a processor segment emits the update, which a request waiting
+on another instance never sees. `ProjectionReadinessGateway` polls the shared read model instead,
+so projections do not need to emit query updates.
+
+Readiness queries must be Boolean and answer exactly whether the projection reflects the command,
+using a repository `exists...` check. Do not reuse entity-loading queries: the request's open
+persistence context returns cached, stale entities on later polls, and a merely readable row (such
+as a draft whose submission data is already written) can report ready before its event is
+projected.
 
 ### Understand the split linking failure semantics
 
