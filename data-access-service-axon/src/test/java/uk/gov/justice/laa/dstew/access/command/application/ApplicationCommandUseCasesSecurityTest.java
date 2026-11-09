@@ -18,7 +18,6 @@ import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocume
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.MakePriorAuthorityDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationUseCase;
-import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 import uk.gov.justice.laa.dstew.access.utils.BaseSecuredUseCaseTest;
 import uk.gov.justice.laa.dstew.access.utils.TestSecurityConfig;
@@ -45,7 +44,6 @@ class ApplicationCommandUseCasesSecurityTest extends BaseSecuredUseCaseTest {
   @Autowired private UploadDocumentUseCase uploadDocumentUseCase;
 
   @MockitoBean private RetryingCommandDispatcher dispatcher;
-  @MockitoBean private SubscriptionProjectionGateway projectionGateway;
   @MockitoBean private SdsService sdsService;
   @MockitoBean private QueryGateway queryGateway;
 
@@ -61,7 +59,7 @@ class ApplicationCommandUseCasesSecurityTest extends BaseSecuredUseCaseTest {
     assertDenied(() -> uploadDocumentUseCase.execute(null, null));
     assertDenied(() -> uploadDocumentUseCase.execute(null, null, null, null));
 
-    verifyNoInteractions(dispatcher, projectionGateway, sdsService, queryGateway);
+    verifyNoInteractions(dispatcher, sdsService, queryGateway);
   }
 
   @Test
@@ -77,7 +75,7 @@ class ApplicationCommandUseCasesSecurityTest extends BaseSecuredUseCaseTest {
     assertDenied(() -> uploadDocumentUseCase.execute(null, null));
     assertDenied(() -> uploadDocumentUseCase.execute(null, null, null, null));
 
-    verifyNoInteractions(dispatcher, projectionGateway, sdsService, queryGateway);
+    verifyNoInteractions(dispatcher, sdsService, queryGateway);
   }
 
   private void assertDenied(ThrowingInvocation invocation) {

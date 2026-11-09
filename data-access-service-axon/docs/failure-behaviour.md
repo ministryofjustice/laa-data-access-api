@@ -1,7 +1,7 @@
 # Failure Behaviour
 
 This reference describes expected outcomes for common command and projection failures. It helps
-distinguish a rejected command from a successfully committed command whose projection is delayed.
+distinguish a rejected command from a successfully committed command whose projections are delayed.
 
 | Scenario | HTTP result | Event committed? | Data version committed? | Expected action |
 |---|---|---:|---:|---|
@@ -11,10 +11,9 @@ distinguish a rejected command from a successfully committed command whose proje
 | Decision uses stale `applicationVersion` | `409 Conflict` | No | No | Reload current state and retry with the current version |
 | Request or schema validation fails | `400 Bad Request` | No | No | Correct the request |
 | Application ID is retried with different creation data | `409 Conflict` | No new event | No new row | Use the original data or a new ID |
-| Identical application creation is retried | `201` or `202` | No duplicate event | No duplicate row | Treat as an idempotent success |
+| Identical application creation is retried | `201` | No duplicate event | No duplicate row | Treat as an idempotent success |
 | `application_data` append fails | Server error | No | No new row | Diagnose database failure; retry only when safe |
 | Event persistence fails after data append begins | Server error | No | Rolled back with command transaction | Diagnose transaction/database failure |
-| Projection is not readable before timeout | `202 Accepted` with `Location` | Yes | Yes, if command changed data | Poll/read later; investigate only if lag persists |
 | Tracking projection handler fails transiently | Write may already have succeeded | Yes | Yes | Repair dependency/restart; processor retries without skipping event |
 | Tracking projection handler fails permanently | Writes continue unless separately restricted; reads may lag | Yes | Yes | Fix handler/data, then resume or reset processor |
 | Referenced sensitive payload was retention-deleted | Depends on endpoint; hydration may be absent or degraded | Existing thin events remain | Referenced row absent | Follow the proposed lifecycle in ADR 0003; current behaviour is not a stable contract |
@@ -33,14 +32,14 @@ public exception.
 
 ## Command failure versus projection delay
 
-A command failure means its transaction did not commit. A projection timeout does not mean the
-command failed: the event is durable, but a tracking processor did not make the read model visible
-within five seconds.
+A command failure means its transaction did not commit. A successful command response means the
+event is durable. Command endpoints do not wait for tracking projections: single-resource reads
+come from the sourced aggregate, so they reflect the write immediately. List and search reads come
+from projections and may briefly lag.
 
 ```text
 4xx/5xx from command handling → do not assume the write happened
-202 with Location            → write happened; read model is still catching up
-201/204/200                   → command completed with the endpoint's normal synchronous result
+201/204/200                   → command completed; the resource read reflects it
 ```
 
 Clients should not blindly retry non-idempotent commands after an ambiguous network failure. They

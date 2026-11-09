@@ -61,8 +61,6 @@ axon:
     flyway-table: ${AXON_FLYWAY_TABLE:flyway_schema_history}
 
 application:
-  projection:
-    timeout: 5s
   assessment:
     reconciliation:
       threshold: ${ASSESSMENT_RECONCILIATION_THRESHOLD:15m}

@@ -1292,6 +1292,41 @@ Split into two steps:
       handlers). Checkstyle main is clean; test warnings fall to 36 and
       integration warnings to 50.
 
+  - **Projection waits removed; prior authority reads from its aggregate
+    (done 2026-11-09):**
+    - **Why:** on `main`, endpoints that wait on a projection return 202
+      behind more than one pod. Subscription-query updates are in-memory per
+      pod, so the pod handling the request never hears that another pod's
+      tracking processor updated the read model; it waits the full timeout.
+      Reading the sourced aggregate removes the wait instead of polling for
+      it.
+    - **State:** `PriorAuthorityState.status()` derives DRAFT, SUBMITTED or
+      DECIDED from the `submitted` and `decided` flags.
+    - **Reads:** the new `PriorAuthorityQueryHandler` serves
+      `FindPriorAuthorityByPriorAuthorityIdQuery` and
+      `FindPriorAuthorityDocumentQuery` from the injected aggregate. It
+      checks the office scope against the aggregate's office code. Content
+      still comes from `PriorAuthorityDraftStore` or `PriorAuthorityDataStore`
+      at the aggregate's `dataVersion`; it is not event-scoped yet. A
+      submitted prior authority with no stored content now returns 404, not
+      500.
+    - **Projection:** `PriorAuthorityProjection` keeps only its event handlers
+      and reset; it serves the application list and work list.
+    - **Removed:** `SubscriptionProjectionGateway`,
+      `PriorAuthorityReadQueryGateway`,
+      `PriorAuthorityCurrentStateAccessPolicy`,
+      `PriorAuthoritySubmittedByPriorAuthorityIdQuery` and the
+      `application.projection.timeout` property. Prior authority draft create
+      always returns 201 and submit always returns 200. No endpoint returns
+      202 now; the OpenAPI spec still lists it.
+    - **Tests:** the query tests move to `PriorAuthorityQueryHandlerTest`,
+      which builds aggregates with the new test helper
+      `PriorAuthorityStateEvents.aggregateOf`. `DevTokenInMemoryTest` now
+      imports the in-memory event content store, because the GET sources the
+      aggregate.
+    - **Validation:** unit tests 1326/1326 and integration tests 308/308
+      pass. Checkstyle is unchanged: main clean, test 36, integration 50.
+
 ### Remaining gates
 1. Choose the declaration design: hash-bound review (recommended by the review)
    or persisted candidate. Agree version/hash transport, stale-response handling,

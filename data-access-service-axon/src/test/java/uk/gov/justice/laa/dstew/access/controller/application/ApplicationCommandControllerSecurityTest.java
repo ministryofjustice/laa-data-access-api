@@ -57,7 +57,6 @@ import uk.gov.justice.laa.dstew.access.config.SecurityConfig;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
 import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
-import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerFactory;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedUserId;
@@ -83,7 +82,6 @@ class ApplicationCommandControllerSecurityTest {
   @Autowired private TestRestTemplate restTemplate;
 
   @MockitoBean private RetryingCommandDispatcher dispatcher;
-  @MockitoBean private SubscriptionProjectionGateway projectionGateway;
   @MockitoBean private MakeApplicationDecisionUseCase makeDecisionUseCase;
   @MockitoBean private CreateNoteUseCase createNoteUseCase;
   @MockitoBean private RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase;
@@ -116,7 +114,7 @@ class ApplicationCommandControllerSecurityTest {
     org.assertj.core.api.Assertions.assertThat(response.getStatusCode())
         .isEqualTo(HttpStatus.UNAUTHORIZED);
 
-    verifyNoInteractions(commandMapper, dispatcher, projectionGateway);
+    verifyNoInteractions(commandMapper, dispatcher);
   }
 
   @Test

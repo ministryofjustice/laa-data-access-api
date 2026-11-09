@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -30,12 +29,11 @@ class CreatePriorAuthorityDraftUseCaseTest {
   @InjectMocks private CreatePriorAuthorityDraftUseCase useCase;
 
   @Test
-  void givenCommand_whenExecute_thenDispatchesCommandDirectlyAndReturnsTrue() {
+  void givenCommand_whenExecute_thenDispatchesCommandDirectly() {
     CreatePriorAuthorityDraftCommand command = stubCommand();
 
-    boolean result = useCase.execute(command);
+    useCase.execute(command);
 
-    assertThat(result).isTrue();
     verify(dispatcher).dispatch(command);
   }
 

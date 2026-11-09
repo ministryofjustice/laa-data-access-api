@@ -5,50 +5,38 @@ import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
-import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthoritySubmittedByPriorAuthorityIdQuery;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 
-/**
- * Dispatches a submit-prior-authority-draft command, waiting for the projection to confirm the
- * submission has transitioned to SUBMITTED.
- */
+/** Dispatches a submit-prior-authority-draft command once the parent application is granted. */
 @Component
 public class SubmitPriorAuthorityDraftUseCase {
 
   private final RetryingCommandDispatcher dispatcher;
-  private final SubscriptionProjectionGateway projectionGateway;
   private final PriorAuthorityDraftStore draftStore;
 
   /**
    * Constructs a new instance of SubmitPriorAuthorityDraftUseCase.
    *
    * @param dispatcher the command dispatcher used to send commands
-   * @param projectionGateway the gateway used to wait for projection updates
    * @param draftStore the store used to retrieve prior authority drafts
    */
   public SubmitPriorAuthorityDraftUseCase(
-      RetryingCommandDispatcher dispatcher,
-      SubscriptionProjectionGateway projectionGateway,
-      PriorAuthorityDraftStore draftStore) {
+      RetryingCommandDispatcher dispatcher, PriorAuthorityDraftStore draftStore) {
     this.dispatcher = dispatcher;
-    this.projectionGateway = projectionGateway;
     this.draftStore = draftStore;
   }
 
   /**
-   * Re-validates the application is still granted, dispatches the submit command, and waits for the
-   * projection to reflect the SUBMITTED status.
+   * Re-validates the application is still granted, then dispatches the submit command. The prior
+   * authority is readable from its aggregate once the command commits.
    *
    * <p>The application may have been granted when the draft was started but could have changed
    * state since — so eligibility is re-checked here.
    *
-   * @return {@code true} when the projection confirms within the configured timeout; {@code false}
-   *     on timeout — the command has still committed.
    * @throws RuntimeException propagated from validation if the application is not granted
    */
   @AllowApiCaseworker
-  public boolean submit(SubmitPriorAuthorityDraftCommand command) {
+  public void submit(SubmitPriorAuthorityDraftCommand command) {
     PriorAuthorityDataPayload draft =
         draftStore
             .find(command.priorAuthorityId())
@@ -57,8 +45,6 @@ public class SubmitPriorAuthorityDraftUseCase {
                     new ResourceNotFoundException(
                         "Prior Authority draft not found: " + command.priorAuthorityId()));
     dispatcher.dispatch(new ValidateApplicationGrantedCommand(draft.applicationId()));
-    return projectionGateway.awaitProjection(
-        new PriorAuthoritySubmittedByPriorAuthorityIdQuery(command.priorAuthorityId()),
-        () -> dispatcher.dispatch(command));
+    dispatcher.dispatch(command);
   }
 }
