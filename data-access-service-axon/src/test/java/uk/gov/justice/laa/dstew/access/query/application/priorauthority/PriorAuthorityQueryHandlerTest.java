@@ -408,7 +408,6 @@ class PriorAuthorityQueryHandlerTest {
         EXPERT.name(),
         1,
         dataVersion,
-        0L,
         STARTED_AT.plusSeconds(120));
   }
 

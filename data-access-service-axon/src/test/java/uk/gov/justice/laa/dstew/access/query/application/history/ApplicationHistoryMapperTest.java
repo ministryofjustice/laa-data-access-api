@@ -153,7 +153,7 @@ class ApplicationHistoryMapperTest {
   }
 
   private static PriorAuthoritySubmittedEvent submitted(UUID priorAuthorityId, String type) {
-    return new PriorAuthoritySubmittedEvent(priorAuthorityId, APPLICATION_ID, type, 1, 1L, 0L, AT);
+    return new PriorAuthoritySubmittedEvent(priorAuthorityId, APPLICATION_ID, type, 1, 1L, AT);
   }
 
   private static PriorAuthorityDecisionMadeEvent decision(

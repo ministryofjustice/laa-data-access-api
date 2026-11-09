@@ -24,12 +24,6 @@
     "dataVersion": {
       "type": "integer"
     },
-    "applicationDataVersion": {
-      "type": [
-        "integer",
-        "null"
-      ]
-    },
     "occurredAt": {
       "type": "string",
       "format": "date-time"
@@ -41,7 +35,6 @@
     "priorAuthorityType",
     "schemaVersion",
     "dataVersion",
-    "applicationDataVersion",
     "occurredAt"
   ],
   "additionalProperties": false

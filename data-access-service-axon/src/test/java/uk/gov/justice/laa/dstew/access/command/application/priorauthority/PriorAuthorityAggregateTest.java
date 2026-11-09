@@ -96,8 +96,7 @@ class PriorAuthorityAggregateTest {
   @DisplayName("submission event restores the data version")
   void submittedEventRestoresDataVersion() {
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
-    aggregate.on(
-        new PriorAuthoritySubmittedEvent(PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, 1L, null, NOW));
+    aggregate.on(new PriorAuthoritySubmittedEvent(PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, 1L, NOW));
 
     assertThat(aggregate.getPriorAuthorityId()).isEqualTo(PA_ID);
     assertThat(aggregate.getDataVersion()).isEqualTo(1L);

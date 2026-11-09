@@ -4,7 +4,6 @@ import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.axonframework.modelling.annotation.InjectEntity;
 import org.springframework.stereotype.Component;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecider;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.SubmitPriorAuthorityDraftCommand;
@@ -29,7 +28,6 @@ public class SubmitPriorAuthorityDraftCommandHandler {
       @AuthenticatedCallerResource SubmitPriorAuthorityDraftCommand command,
       PriorAuthorityDraftStore draftStore,
       PriorAuthorityDataStore dataStore,
-      ApplicationDataStore applicationDataStore,
       JsonSchemaValidator jsonSchemaValidator,
       @InjectEntity(idProperty = "priorAuthorityId") @WriteAccessResolverResource
           PriorAuthorityAggregate priorAuthority,
@@ -55,12 +53,7 @@ public class SubmitPriorAuthorityDraftCommandHandler {
         payload.serialisedRequest(),
         command.occurredAt());
 
-    long applicationDataVersion =
-        applicationDataStore.latestVersion(priorAuthority.getApplicationId());
-
-    eventAppender.append(
-        PriorAuthorityDecider.decideSubmit(
-            command, priorAuthority.getState(), applicationDataVersion));
+    eventAppender.append(PriorAuthorityDecider.decideSubmit(command, priorAuthority.getState()));
 
     draftStore.delete(command.priorAuthorityId());
   }

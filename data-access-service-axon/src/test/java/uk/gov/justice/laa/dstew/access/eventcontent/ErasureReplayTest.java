@@ -218,8 +218,7 @@ class ErasureReplayTest {
                 priorAuthorityId, documentId, Erasable.of("GATEWAY_EVIDENCE"), AT, applicationId),
             new PriorAuthorityDocumentDeletedEvent(
                 priorAuthorityId, deletedDocumentId, AT, applicationId),
-            new PriorAuthoritySubmittedEvent(
-                priorAuthorityId, applicationId, "EXPERT", 1, 0L, 3L, AT),
+            new PriorAuthoritySubmittedEvent(priorAuthorityId, applicationId, "EXPERT", 1, 0L, AT),
             new WorkItemAssigned(
                 priorAuthorityId,
                 WorkItemType.PRIOR_AUTHORITY,
@@ -252,8 +251,7 @@ class ErasureReplayTest {
     List<Object> decided =
         List.of(
             started(),
-            new PriorAuthoritySubmittedEvent(
-                priorAuthorityId, applicationId, "EXPERT", 1, 0L, 3L, AT),
+            new PriorAuthoritySubmittedEvent(priorAuthorityId, applicationId, "EXPERT", 1, 0L, AT),
             new WorkItemAssigned(
                 priorAuthorityId,
                 WorkItemType.PRIOR_AUTHORITY,

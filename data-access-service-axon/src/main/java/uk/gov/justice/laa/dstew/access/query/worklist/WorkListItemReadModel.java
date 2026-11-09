@@ -7,13 +7,10 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 
@@ -34,26 +31,6 @@ public class WorkListItemReadModel {
 
   @Column(name = "parent_application_id")
   private UUID parentApplicationId;
-
-  @Column(name = "laa_reference")
-  private String laaReference;
-
-  @Column(name = "used_delegated_functions")
-  private Boolean usedDelegatedFunctions;
-
-  @Column(name = "category_of_law")
-  private String categoryOfLaw;
-
-  @Column(name = "category_of_law_code")
-  private String categoryOfLawCode;
-
-  @JdbcTypeCode(SqlTypes.JSON)
-  @Column(name = "matter_types")
-  private List<String> matterTypes;
-
-  @JdbcTypeCode(SqlTypes.JSON)
-  @Column(name = "matter_type_codes")
-  private List<String> matterTypeCodes;
 
   @Column(name = "application_status")
   private String applicationStatus;
@@ -115,6 +92,11 @@ public class WorkListItemReadModel {
     this.assignmentVersion = 0L;
     this.itemVersion = itemVersion;
     this.projectionPosition = projectionPosition;
+  }
+
+  /** Returns the application whose summary describes this item: itself, or its parent. */
+  public UUID subjectApplicationId() {
+    return parentApplicationId == null ? id : parentApplicationId;
   }
 
   /** Makes the linked group the boundary that assignment changes apply to. */

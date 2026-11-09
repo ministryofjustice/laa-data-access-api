@@ -1045,6 +1045,17 @@ Split into two steps:
         need to reach them. In (iii) the work list reads them from event
         content instead of `application_data`. Slimming via the summary
         remains an option if the copies prove a maintenance cost.
+      - **Superseded 2026-11-09: the work list reads the summary.** When (iii)
+        came to replace the copies' source, the choice was a private
+        work-list facts table, fields on the Prior Authority event, or reading
+        `application_summary`. The summary was chosen: it is in the same
+        database, other read sides already use it, and it keeps one place
+        that derives these facts. The columns are dropped and the query
+        handler batch-loads summaries with `ApplicationSummaries.findByIds`
+        for each page. When the work list first filters on an application
+        fact, the query becomes a SQL join to `application_summary`. A
+        private facts table stays an option if the work list needs to
+        rebuild independently of the summary.
     - **GET details after erasure returns 404 (decided 2026-11-06).** Details
       load the aggregate; when its content is erased the response is 404, as
       today. Returning the kept fields (200 with an erased marker, or 410)
@@ -1336,7 +1347,32 @@ Split into two steps:
     - **Validation:** unit tests 1326/1326 and integration tests 308/308
       pass. Checkstyle is unchanged: main clean, test 36, integration 50.
 
-### Remaining gates
+  - **4b-3b(iii) commit 1, readers off `application_data` (done
+    2026-11-09):**
+    - **Group route:** `ApplicationGroupRouteProjection` takes the office
+      code from `ApplicationCreatedEvent.officeCode` instead of loading
+      `application_data`.
+    - **Prior Authority submit:** `PriorAuthoritySubmittedEvent` drops
+      `applicationDataVersion`, its compatibility test and its schema field.
+      Submit no longer calls `ApplicationDataStore.latestVersion`. Nothing
+      read the field after the work list stopped copying parent data.
+    - **Work list:** `WorkListItemReadModel` drops the six application
+      columns (V37). `FindWorkListItemsResult` carries the page's summaries,
+      keyed by subject application (`parentApplicationId` for Prior Authority
+      rows, else the item ID). `WorkListResponseMapper` maps the fields from
+      the summary and still omits category of law for Prior Authority rows.
+      The matter-pair derivation tests went; `ApplicationSummaryProjection`
+      covers the same derivation.
+    - **Lag:** the work list and the summary are separate processors, so an
+      item can briefly show empty application fields, and a summary rebuild
+      empties them until it catches up. A missing summary never hides an
+      item. Running both projections in one processor would remove the lag
+      if it matters.
+    - **Remaining writers:** only the seven application command handlers
+      still write `application_data`; commit 2 removes them and the table.
+    - **Validation:** unit tests 1322/1322 and integration tests 308/308
+      pass. Checkstyle is unchanged: main clean, test 36, integration 50.
+
 1. Choose the declaration design: hash-bound review (recommended by the review)
    or persisted candidate. Agree version/hash transport, stale-response handling,
    canonical-form and hash versioning, and access checks. The prototype exposes

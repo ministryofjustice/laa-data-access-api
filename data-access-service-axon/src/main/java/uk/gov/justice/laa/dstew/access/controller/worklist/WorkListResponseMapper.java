@@ -11,17 +11,26 @@ import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.model.WorkListItem;
 import uk.gov.justice.laa.dstew.access.model.WorkListItemType;
 import uk.gov.justice.laa.dstew.access.model.WorkListResponse;
+import uk.gov.justice.laa.dstew.access.query.application.summary.ApplicationSummaryReadModel;
 import uk.gov.justice.laa.dstew.access.query.worklist.FindWorkListItemsResult;
 import uk.gov.justice.laa.dstew.access.query.worklist.WorkListItemReadModel;
 
-/** Maps active work-list projection rows to the public work-list contract. */
+/**
+ * Maps active work-list projection rows to the public work-list contract. Application fields come
+ * from the subject application's summary and are empty while it lags.
+ */
 @Component
 public class WorkListResponseMapper {
 
   /** Maps one database-paged query result without consulting command-side routes. */
   public ResponseEntity<WorkListResponse> toResponse(FindWorkListItemsResult result) {
     WorkListResponse response = new WorkListResponse();
-    response.setItems(result.items().stream().map(this::toItem).toList());
+    response.setItems(
+        result.items().stream()
+            .map(
+                item ->
+                    toItem(item, result.applicationSummaries().get(item.subjectApplicationId())))
+            .toList());
 
     PagingResponse paging = new PagingResponse();
     paging.setPage(result.requestedPage());
@@ -32,7 +41,7 @@ public class WorkListResponseMapper {
     return ResponseEntity.ok(response);
   }
 
-  private WorkListItem toItem(WorkListItemReadModel item) {
+  private WorkListItem toItem(WorkListItemReadModel item, ApplicationSummaryReadModel summary) {
     WorkListItem response = new WorkListItem();
     response.setItemId(item.getId());
     response.setItemType(WorkListItemType.valueOf(item.getItemType().name()));
@@ -44,13 +53,16 @@ public class WorkListResponseMapper {
     response.setSubmittedAt(item.getSubmittedAt().atOffset(ZoneOffset.UTC));
     response.setAutoGranted(
         item.getAutoGranted() == null ? null : AutoGranted.valueOf(item.getAutoGranted().name()));
-    response.setLaaReference(item.getLaaReference());
-    response.setUsedDelegatedFunctions(item.getUsedDelegatedFunctions());
-    boolean priorAuthority = item.getItemType() == WorkItemType.PRIOR_AUTHORITY;
-    response.setCategoryOfLaw(priorAuthority ? null : item.getCategoryOfLaw());
-    response.setCategoryOfLawCode(priorAuthority ? null : item.getCategoryOfLawCode());
-    response.setMatterTypes(item.getMatterTypes());
-    response.setMatterTypeCodes(item.getMatterTypeCodes());
+    if (summary != null) {
+      response.setLaaReference(summary.getLaaReference());
+      response.setUsedDelegatedFunctions(summary.getUsedDelegatedFunctions());
+      if (item.getItemType() != WorkItemType.PRIOR_AUTHORITY) {
+        response.setCategoryOfLaw(summary.getCategoryOfLaw());
+        response.setCategoryOfLawCode(summary.getCategoryOfLawCode());
+      }
+      response.setMatterTypes(summary.getMatterTypes());
+      response.setMatterTypeCodes(summary.getMatterTypeCodes());
+    }
     response.setApplicationStatus(
         item.getApplicationStatus() == null
             ? null

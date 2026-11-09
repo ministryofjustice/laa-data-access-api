@@ -76,14 +76,13 @@ class PriorAuthorityDeciderTest {
     SubmitPriorAuthorityDraftCommand command =
         new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT);
 
-    PriorAuthoritySubmittedEvent event = PriorAuthorityDecider.decideSubmit(command, state, 4L);
+    PriorAuthoritySubmittedEvent event = PriorAuthorityDecider.decideSubmit(command, state);
 
     assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(event.applicationId()).isEqualTo(state.applicationId);
     assertThat(event.priorAuthorityType()).isEqualTo(PriorAuthorityType.COUNSEL.name());
     assertThat(event.schemaVersion()).isEqualTo(2);
     assertThat(event.dataVersion()).isEqualTo(0L);
-    assertThat(event.applicationDataVersion()).isEqualTo(4L);
     assertThat(event.occurredAt()).isEqualTo(OCCURRED_AT);
   }
 

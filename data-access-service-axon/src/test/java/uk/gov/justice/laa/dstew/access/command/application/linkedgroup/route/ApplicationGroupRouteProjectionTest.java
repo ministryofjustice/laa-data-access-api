@@ -7,7 +7,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
-import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
 
 import java.time.Instant;
 import java.util.List;
@@ -20,8 +19,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDissolvedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
@@ -36,7 +33,6 @@ class ApplicationGroupRouteProjectionTest {
   private static final String OFFICE_CODE = "1A001B";
 
   @Mock private ApplicationGroupRouteRepository routes;
-  @Mock private ApplicationDataStore applicationDataStore;
 
   @InjectMocks private ApplicationGroupRouteProjection projection;
 
@@ -44,9 +40,7 @@ class ApplicationGroupRouteProjectionTest {
   void createsAStandaloneRouteWhenAnApplicationIsCreated() {
     UUID applicationId = UUID.randomUUID();
     ApplicationCreatedEvent event = applicationCreatedEvent(applicationId, 7L, ROUTED_AT);
-    var applicationData = ApplicationDataPayload.from(applicationCreationDetails(applicationId));
     when(routes.findById(applicationId)).thenReturn(Optional.empty());
-    when(applicationDataStore.get(applicationId, 0L)).thenReturn(applicationData);
 
     projection.on(event);
 
@@ -74,7 +68,7 @@ class ApplicationGroupRouteProjectionTest {
 
     verify(routes).findById(applicationId);
     verify(routes, never()).save(any());
-    verifyNoMoreInteractions(routes, applicationDataStore);
+    verifyNoMoreInteractions(routes);
     assertThat(existingRoute.getRouteKind()).isEqualTo(ApplicationGroupRouteKind.LINKED_GROUP);
     assertThat(existingRoute.getGroupId()).isEqualTo(existingGroupId);
     assertThat(existingRoute.getUpdatedAt()).isEqualTo(ORIGINAL_OCCURRED_AT);
@@ -334,7 +328,7 @@ class ApplicationGroupRouteProjectionTest {
         1,
         occurredAt,
         Erasable.erased(),
-        null,
+        OFFICE_CODE,
         "LAA-123");
   }
 

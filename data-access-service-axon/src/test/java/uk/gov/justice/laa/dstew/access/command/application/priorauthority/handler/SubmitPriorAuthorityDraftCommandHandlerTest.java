@@ -17,7 +17,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityEvolve;
@@ -39,7 +38,6 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
 
   @Mock private PriorAuthorityDraftStore draftStore;
   @Mock private PriorAuthorityDataStore dataStore;
-  @Mock private ApplicationDataStore applicationDataStore;
   @Mock private JsonSchemaValidator jsonSchemaValidator;
   @Mock private PriorAuthorityAggregate priorAuthority;
   @Mock private EventAppender eventAppender;
@@ -64,17 +62,9 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(payload));
     when(priorAuthority.getApplicationId()).thenReturn(applicationId);
     when(priorAuthority.getState()).thenReturn(state);
-    when(applicationDataStore.latestVersion(applicationId)).thenReturn(3L);
 
     new SubmitPriorAuthorityDraftCommandHandler()
-        .handle(
-            command,
-            draftStore,
-            dataStore,
-            applicationDataStore,
-            jsonSchemaValidator,
-            priorAuthority,
-            eventAppender);
+        .handle(command, draftStore, dataStore, jsonSchemaValidator, priorAuthority, eventAppender);
 
     verify(jsonSchemaValidator).validate(content, "PriorAuthority.json", 1);
     verify(dataStore)
@@ -94,7 +84,6 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
                 PriorAuthorityType.EXPERT.name(),
                 1,
                 0L,
-                3L,
                 OCCURRED_AT));
     verify(draftStore).delete(priorAuthorityId);
   }
@@ -114,7 +103,6 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
                         command,
                         draftStore,
                         dataStore,
-                        applicationDataStore,
                         jsonSchemaValidator,
                         priorAuthority,
                         eventAppender))
@@ -122,7 +110,7 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
         .hasMessage("Prior Authority draft not found: " + priorAuthorityId);
 
     verify(draftStore).find(priorAuthorityId);
-    verifyNoInteractions(dataStore, applicationDataStore, jsonSchemaValidator, eventAppender);
+    verifyNoInteractions(dataStore, jsonSchemaValidator, eventAppender);
   }
 
   @Test
@@ -141,17 +129,9 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(payload));
     when(priorAuthority.getApplicationId()).thenReturn(applicationId);
     when(priorAuthority.getState()).thenReturn(state);
-    when(applicationDataStore.latestVersion(applicationId)).thenReturn(4L);
 
     new SubmitPriorAuthorityDraftCommandHandler()
-        .handle(
-            command,
-            draftStore,
-            dataStore,
-            applicationDataStore,
-            jsonSchemaValidator,
-            priorAuthority,
-            eventAppender);
+        .handle(command, draftStore, dataStore, jsonSchemaValidator, priorAuthority, eventAppender);
 
     verify(eventAppender)
         .append(
@@ -161,7 +141,6 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
                 PriorAuthorityType.EXPERT.name(),
                 4,
                 0L,
-                4L,
                 OCCURRED_AT));
     verify(jsonSchemaValidator).validate(content, "PriorAuthority.json", 4);
   }
