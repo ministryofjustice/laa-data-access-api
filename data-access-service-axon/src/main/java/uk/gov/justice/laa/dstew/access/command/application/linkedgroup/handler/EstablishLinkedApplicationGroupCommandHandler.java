@@ -40,20 +40,20 @@ public class EstablishLinkedApplicationGroupCommandHandler {
 
     var applications =
         LinkedGroupMembers.load(stateManager, command.memberApplicationIds(), context);
+    var createdWithJustification =
+        created
+            .get()
+            .withJustification(
+                justificationStore.save(
+                    command.groupId(), command.justification(), command.occurredAt()));
     var events = new ArrayList<>();
+    events.add(createdWithJustification);
     events.addAll(
         LinkedGroupAssignmentDecider.decideJoin(
             command.groupId(),
             List.of(applications.get(command.leadApplicationId())),
             applications.get(command.joiningApplicationId()),
             command.occurredAt()));
-    events.add(
-        0,
-        created
-            .get()
-            .withJustification(
-                justificationStore.save(
-                    command.groupId(), command.justification(), command.occurredAt())));
     eventAppender.append(events);
   }
 }

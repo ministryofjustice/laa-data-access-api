@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.command.application.linkedgroup.handler;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.core.unitofwork.ProcessingContext;
@@ -38,23 +39,23 @@ public class AddApplicationToLinkedGroupCommandHandler {
       return;
     }
 
-    var memberIds = List.copyOf(group.getState().memberIdsOrEmpty());
+    var memberIds = List.copyOf(Objects.requireNonNull(group).getState().memberIdsOrEmpty());
     var applicationIdsToLoad = new ArrayList<>(memberIds);
     applicationIdsToLoad.add(command.applicationId());
     var applications = LinkedGroupMembers.load(stateManager, applicationIdsToLoad, context);
     var existing = memberIds.stream().map(applications::get).toList();
     var joining = applications.get(command.applicationId());
-    var events = new ArrayList<>();
-    events.addAll(
-        LinkedGroupAssignmentDecider.decideJoin(
-            command.groupId(), existing, joining, command.occurredAt()));
-    events.add(
-        0,
+    var addedWithJustification =
         added
             .get()
             .withJustification(
                 justificationStore.save(
-                    command.groupId(), command.justification(), command.occurredAt())));
+                    command.groupId(), command.justification(), command.occurredAt()));
+    var events = new ArrayList<>();
+    events.add(addedWithJustification);
+    events.addAll(
+        LinkedGroupAssignmentDecider.decideJoin(
+            command.groupId(), existing, joining, command.occurredAt()));
     eventAppender.append(events);
   }
 }
