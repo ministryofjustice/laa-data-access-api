@@ -10,7 +10,6 @@ import java.util.function.UnaryOperator;
 import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
-import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
 import org.axonframework.messaging.queryhandling.annotation.QueryHandler;
 import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Component;
@@ -103,7 +102,8 @@ public class PriorAuthorityProjection {
   /** Confirms whether a current-state projection has reached SUBMITTED. */
   @QueryHandler
   public boolean handle(PriorAuthoritySubmittedByPriorAuthorityIdQuery query) {
-    return repository.findById(query.priorAuthorityId()).map(this::isPending).orElse(false);
+    return repository.existsByPriorAuthorityIdAndStatus(
+        query.priorAuthorityId(), PriorAuthorityStatus.SUBMITTED.name());
   }
 
   private String documentFilename(PriorAuthorityReadModel priorAuthority, UUID documentId) {
@@ -152,7 +152,7 @@ public class PriorAuthorityProjection {
    * original creation time when a draft row already exists.
    */
   @EventHandler
-  public void on(PriorAuthoritySubmittedEvent event, QueryUpdateEmitter queryUpdateEmitter) {
+  public void on(PriorAuthoritySubmittedEvent event) {
     repository
         .findById(event.priorAuthorityId())
         .ifPresent(
@@ -163,11 +163,6 @@ public class PriorAuthorityProjection {
               current.setModifiedAt(event.occurredAt());
               repository.save(current);
             });
-
-    queryUpdateEmitter.emit(
-        PriorAuthoritySubmittedByPriorAuthorityIdQuery.class,
-        query -> query.priorAuthorityId().equals(event.priorAuthorityId()),
-        Boolean.TRUE);
   }
 
   /** Updates a current-state data version after a terminal prior-authority decision. */
@@ -233,10 +228,6 @@ public class PriorAuthorityProjection {
         event.documentId(),
         event.occurredAt(),
         document -> document.withDocumentType(event.documentType()));
-  }
-
-  private boolean isPending(PriorAuthorityReadModel priorAuthority) {
-    return PriorAuthorityStatus.SUBMITTED.name().equals(priorAuthority.getStatus());
   }
 
   private void updateDocument(

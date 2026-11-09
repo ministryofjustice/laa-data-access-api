@@ -13,4 +13,7 @@ public interface ApplicationReadRepository
   List<ApplicationReadModel> findAllByStatus(String status);
 
   List<ApplicationReadModel> findAllByLinkedGroupId(UUID linkedGroupId);
+
+  /** Returns whether the Application's submission has been projected; always queries the table. */
+  boolean existsByApplicationIdAndSubmittedAtIsNotNull(UUID applicationId);
 }

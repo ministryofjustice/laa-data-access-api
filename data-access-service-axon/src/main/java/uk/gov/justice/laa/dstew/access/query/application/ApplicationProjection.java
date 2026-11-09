@@ -16,7 +16,6 @@ import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.core.annotation.SequencingPolicy;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
-import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
 import org.axonframework.messaging.queryhandling.annotation.QueryHandler;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Page;
@@ -85,6 +84,13 @@ public class ApplicationProjection {
   @QueryHandler
   public boolean handle(ApplicationProjectionExistsQuery query) {
     return applicationReadRepository.existsById(query.applicationId());
+  }
+
+  /** Returns whether the projection has processed the Application's submission. */
+  @QueryHandler
+  public boolean handle(ApplicationSubmissionProjectedQuery query) {
+    return applicationReadRepository.existsByApplicationIdAndSubmittedAtIsNotNull(
+        query.applicationId());
   }
 
   /** Returns a live document with its filename hydrated when available, or null if absent. */
@@ -206,7 +212,7 @@ public class ApplicationProjection {
 
   /** Creates the current-state row from an Application's creation event. */
   @EventHandler
-  public void on(ApplicationCreatedEvent event, QueryUpdateEmitter queryUpdateEmitter) {
+  public void on(ApplicationCreatedEvent event) {
     ApplicationDataPayload data =
         applicationDataStore.get(event.applicationId(), event.applicationDataVersion());
     ApplicationReadModel existing =
@@ -215,27 +221,22 @@ public class ApplicationProjection {
         event.officeCode() != null
             ? event.officeCode()
             : ApplicationReadModelAssembler.officeCode(data);
-    ApplicationReadModel saved =
-        applicationReadRepository.save(
-            ApplicationReadModel.builder()
-                .applicationId(event.applicationId())
-                .status(event.status())
-                .applicationDataVersion(event.applicationDataVersion())
-                .applicationVersion(0L)
-                .schemaVersion(event.schemaVersion())
-                .createdAt(existing == null ? event.occurredAt() : existing.getCreatedAt())
-                .submittedAt(event.occurredAt())
-                .modifiedAt(event.occurredAt())
-                .leadApplicationId(null)
-                .linkedGroupId(null)
-                .potentialDuplicates(event.potentialDuplicates())
-                .officeCode(officeCode)
-                .uploadedDocuments(existing == null ? List.of() : existing.getUploadedDocuments())
-                .build());
-    queryUpdateEmitter.emit(
-        FindApplicationByIdQuery.class,
-        query -> query.applicationId().equals(event.applicationId()),
-        saved);
+    applicationReadRepository.save(
+        ApplicationReadModel.builder()
+            .applicationId(event.applicationId())
+            .status(event.status())
+            .applicationDataVersion(event.applicationDataVersion())
+            .applicationVersion(0L)
+            .schemaVersion(event.schemaVersion())
+            .createdAt(existing == null ? event.occurredAt() : existing.getCreatedAt())
+            .submittedAt(event.occurredAt())
+            .modifiedAt(event.occurredAt())
+            .leadApplicationId(null)
+            .linkedGroupId(null)
+            .potentialDuplicates(event.potentialDuplicates())
+            .officeCode(officeCode)
+            .uploadedDocuments(existing == null ? List.of() : existing.getUploadedDocuments())
+            .build());
   }
 
   /** Updates application rows when a linked group is established explicitly. */
@@ -293,31 +294,28 @@ public class ApplicationProjection {
 
   /** Advances the current-state row to the immutable data version containing the decision. */
   @EventHandler
-  public void on(ApplicationDecisionMadeEvent event, QueryUpdateEmitter queryUpdateEmitter) {
+  public void on(ApplicationDecisionMadeEvent event) {
     advanceCurrentStateWithStatus(
         event.applicationId(),
         event.applicationVersion(),
         event.applicationDataVersion(),
         event.overallDecision(),
-        event.occurredAt(),
-        queryUpdateEmitter);
+        event.occurredAt());
   }
 
   /** Advances the current-state row to the immutable data version containing manual readiness. */
   @EventHandler
-  public void on(
-      ApplicationReadyForManualAssessmentEvent event, QueryUpdateEmitter queryUpdateEmitter) {
+  public void on(ApplicationReadyForManualAssessmentEvent event) {
     advanceCurrentState(
         event.applicationId(),
         event.applicationVersion(),
         event.applicationDataVersion(),
-        event.occurredAt(),
-        queryUpdateEmitter);
+        event.occurredAt());
   }
 
   /** Advances current state to the updated immutable data and status. */
   @EventHandler
-  public void on(ApplicationUpdatedEvent event, QueryUpdateEmitter queryUpdateEmitter) {
+  public void on(ApplicationUpdatedEvent event) {
     applicationReadRepository
         .findById(event.applicationId())
         .ifPresent(
@@ -330,11 +328,7 @@ public class ApplicationProjection {
                   ApplicationReadModelAssembler.officeCode(
                       applicationDataStore.get(
                           event.applicationId(), event.applicationDataVersion())));
-              ApplicationReadModel saved = applicationReadRepository.save(application);
-              queryUpdateEmitter.emit(
-                  FindApplicationByIdQuery.class,
-                  query -> query.applicationId().equals(event.applicationId()),
-                  saved);
+              applicationReadRepository.save(application);
             });
   }
 
@@ -418,7 +412,7 @@ public class ApplicationProjection {
 
   /** Creates the current-state row when an application draft is started. */
   @EventHandler
-  public void on(ApplicationDraftStartedEvent event, QueryUpdateEmitter queryUpdateEmitter) {
+  public void on(ApplicationDraftStartedEvent event) {
     ApplicationReadModel application =
         applicationReadRepository
             .findById(event.applicationId())
@@ -437,10 +431,6 @@ public class ApplicationProjection {
       application.setOfficeCode(event.officeCode());
     }
     applicationReadRepository.save(application);
-    queryUpdateEmitter.emit(
-        ApplicationProjectionExistsQuery.class,
-        query -> query.applicationId().equals(event.applicationId()),
-        true);
   }
 
   private void updateGroupMembership(
@@ -460,8 +450,7 @@ public class ApplicationProjection {
       UUID applicationId,
       long applicationVersion,
       long applicationDataVersion,
-      Instant occurredAt,
-      QueryUpdateEmitter queryUpdateEmitter) {
+      Instant occurredAt) {
     applicationReadRepository
         .findById(applicationId)
         .ifPresent(
@@ -472,11 +461,7 @@ public class ApplicationProjection {
               application.setOfficeCode(
                   ApplicationReadModelAssembler.officeCode(
                       applicationDataStore.get(applicationId, applicationDataVersion)));
-              ApplicationReadModel saved = applicationReadRepository.save(application);
-              queryUpdateEmitter.emit(
-                  FindApplicationByIdQuery.class,
-                  query -> query.applicationId().equals(applicationId),
-                  saved);
+              applicationReadRepository.save(application);
             });
   }
 
@@ -485,8 +470,7 @@ public class ApplicationProjection {
       long applicationVersion,
       long applicationDataVersion,
       String overallDecision,
-      Instant occurredAt,
-      QueryUpdateEmitter queryUpdateEmitter) {
+      Instant occurredAt) {
     ApplicationStatus applicationStatus;
     DecisionValue decision = DecisionValue.valueOf(overallDecision);
     applicationStatus =
@@ -504,11 +488,7 @@ public class ApplicationProjection {
                   ApplicationReadModelAssembler.officeCode(
                       applicationDataStore.get(applicationId, applicationDataVersion)));
               application.setStatus(applicationStatus.getValue());
-              ApplicationReadModel saved = applicationReadRepository.save(application);
-              queryUpdateEmitter.emit(
-                  FindApplicationByIdQuery.class,
-                  query -> query.applicationId().equals(applicationId),
-                  saved);
+              applicationReadRepository.save(application);
             });
   }
 

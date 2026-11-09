@@ -58,7 +58,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
 import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
 import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
-import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
+import uk.gov.justice.laa.dstew.access.query.ProjectionReadinessGateway;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerFactory;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedUserId;
@@ -84,7 +84,7 @@ class ApplicationCommandControllerSecurityTest {
   @Autowired private TestRestTemplate restTemplate;
 
   @MockitoBean private RetryingCommandDispatcher dispatcher;
-  @MockitoBean private SubscriptionProjectionGateway projectionGateway;
+  @MockitoBean private ProjectionReadinessGateway projectionGateway;
   @MockitoBean private MakeApplicationDecisionUseCase makeDecisionUseCase;
   @MockitoBean private CreateNoteUseCase createNoteUseCase;
   @MockitoBean private RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase;
