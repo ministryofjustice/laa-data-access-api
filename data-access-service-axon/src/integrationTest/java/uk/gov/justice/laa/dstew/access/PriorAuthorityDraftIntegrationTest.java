@@ -132,7 +132,7 @@ class PriorAuthorityDraftIntegrationTest {
         restTemplate.postForEntity(
             saveDraftUrl(), new HttpEntity<>(request, headers()), String.class);
 
-    assertThat(response.getStatusCode()).isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     SavePriorAuthorityDraftResponse body =
         objectMapper.readValue(response.getBody(), SavePriorAuthorityDraftResponse.class);
     UUID priorAuthorityId = body.getPriorAuthorityId();
@@ -369,7 +369,7 @@ class PriorAuthorityDraftIntegrationTest {
       String operation, boolean failInsert) throws Exception {
     CreationRace scenario = creationRace(operation, true);
     ExecutorService executor = Executors.newFixedThreadPool(2);
-    try (EventGate gate = pauseEvent("PriorAuthorityDraftStartedEvent", failInsert)) {
+    try (EventGate gate = pauseEvent("PriorAuthorityDraftStarted", failInsert)) {
       CompletableFuture<ResponseEntity<String>> creation =
           CompletableFuture.supplyAsync(() -> createDraft(scenario.applicationId()), executor);
       int creationPid = awaitBlockedBy(gate.backendPid());
@@ -569,7 +569,7 @@ class PriorAuthorityDraftIntegrationTest {
         restTemplate.postForEntity(
             saveDraftUrl(), new HttpEntity<>(request, headers()), String.class);
 
-    assertThat(response.getStatusCode()).isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     SavePriorAuthorityDraftResponse body =
         objectMapper.readValue(response.getBody(), SavePriorAuthorityDraftResponse.class);
     assertThat(body.getPriorAuthorityId()).isNotNull();
@@ -590,18 +590,12 @@ class PriorAuthorityDraftIntegrationTest {
         restTemplate.postForEntity(
             submitUrl(priorAuthorityId), new HttpEntity<>(null, headers()), String.class);
 
-    assertThat(response.getStatusCode()).isIn(HttpStatus.OK, HttpStatus.ACCEPTED);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     SubmitPriorAuthorityDraftResponse body =
         objectMapper.readValue(response.getBody(), SubmitPriorAuthorityDraftResponse.class);
     assertThat(body.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(body.getSubmittedAt()).isNotNull();
 
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT status FROM axon.prior_authority_current_state WHERE prior_authority_id = ?",
-                String.class,
-                priorAuthorityId))
-        .isEqualTo("SUBMITTED");
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.prior_authority_data"
@@ -715,7 +709,7 @@ class PriorAuthorityDraftIntegrationTest {
             submitUrl(priorAuthorityId), new HttpEntity<>(null, headers()), String.class);
     assertThat(submitResponse.getStatusCode())
         .withFailMessage("Submit response: %s", submitResponse.getBody())
-        .isIn(HttpStatus.OK, HttpStatus.ACCEPTED);
+        .isEqualTo(HttpStatus.OK);
 
     PriorAuthorityResponse priorAuthority = awaitSubmittedPriorAuthority(priorAuthorityId);
     assertThat(priorAuthority.getUploadedDocuments())
@@ -885,12 +879,19 @@ class PriorAuthorityDraftIntegrationTest {
     String suffix =
         filename.substring(
             filename.lastIndexOf('.') < 0 ? filename.length() : filename.lastIndexOf('.'));
-    String eventPayload =
-        jdbcTemplate.queryForObject(
-            "SELECT convert_from(payload, 'UTF8') FROM axon.domain_event_entry WHERE aggregate_identifier = ? AND payload_type LIKE '%PriorAuthorityDocumentUploadedEvent'",
-            String.class, priorAuthorityId.toString());
-    assertThat(objectMapper.readTree(eventPayload).get("fileSuffix").asString()).isEqualTo(suffix);
-    assertThat(eventPayload).doesNotContain(filename);
+    Map<String, Object> stored =
+        jdbcTemplate.queryForMap(
+            "SELECT convert_from(e.payload, 'UTF8') AS payload, c.content::text AS content"
+                + " FROM axon.domain_event_entry e"
+                + " JOIN axon.event_content c ON c.event_id = e.event_identifier"
+                + " WHERE e.aggregate_identifier = ?"
+                + " AND e.payload_type = 'access.PriorAuthorityDocumentUploaded'",
+            priorAuthorityId.toString());
+    String eventPayload = stored.get("payload").toString();
+    String eventContent = stored.get("content").toString();
+    assertThat(objectMapper.readTree(eventContent).get("fileSuffix").asString()).isEqualTo(suffix);
+    assertThat(eventPayload).doesNotContain(filename).doesNotContain("fileSuffix");
+    assertThat(eventContent).doesNotContain(filename);
     jdbcTemplate.update(
         "UPDATE axon.prior_authority_draft SET payload = jsonb_set(payload, '{documentFilenames}', '{}'::jsonb) WHERE prior_authority_id = ?",
         priorAuthorityId);
@@ -1023,9 +1024,9 @@ class PriorAuthorityDraftIntegrationTest {
 
   @org.junit.jupiter.params.ParameterizedTest
   @org.junit.jupiter.params.provider.CsvSource({
-    "POST,PriorAuthorityDocumentUploadedEvent",
-    "PATCH,PriorAuthorityDocumentTypeUpdatedEvent",
-    "DELETE,PriorAuthorityDocumentDeletedEvent"
+    "POST,PriorAuthorityDocumentUploaded",
+    "PATCH,PriorAuthorityDocumentTypeUpdated",
+    "DELETE,PriorAuthorityDocumentDeleted"
   })
   void givenDocumentEventInsertFails_whenMutated_thenDraftAndEventsRollBack(
       String method, String eventType) {
@@ -1268,7 +1269,7 @@ class PriorAuthorityDraftIntegrationTest {
     String eventPayload =
         jdbcTemplate.queryForObject(
             "SELECT convert_from(payload, 'UTF8') FROM axon.domain_event_entry"
-                + " WHERE aggregate_identifier = ? AND payload_type LIKE '%PriorAuthorityDraftUpdatedEvent'",
+                + " WHERE aggregate_identifier = ? AND payload_type LIKE '%PriorAuthorityDraftUpdated'",
             String.class, priorAuthorityId.toString());
     var eventJson = objectMapper.readTree(eventPayload);
     assertThat(eventJson.size()).isEqualTo(3);
@@ -1426,7 +1427,7 @@ class PriorAuthorityDraftIntegrationTest {
             submitUrl(priorAuthorityId), new HttpEntity<>(null, headers()), String.class);
     assertThat(submitResponse.getStatusCode())
         .withFailMessage("Submit response: %s", submitResponse.getBody())
-        .isIn(HttpStatus.OK, HttpStatus.ACCEPTED);
+        .isEqualTo(HttpStatus.OK);
 
     PriorAuthorityResponse priorAuthority = awaitSubmittedPriorAuthority(priorAuthorityId);
     assertThat(priorAuthority.getUploadedDocuments()).isEmpty();
@@ -1471,7 +1472,7 @@ class PriorAuthorityDraftIntegrationTest {
             submitUrl(priorAuthorityId), new HttpEntity<>(null, headers()), String.class);
     assertThat(submitResponse.getStatusCode())
         .withFailMessage("Submit response: %s", submitResponse.getBody())
-        .isIn(HttpStatus.OK, HttpStatus.ACCEPTED);
+        .isEqualTo(HttpStatus.OK);
 
     ResponseEntity<String> deleteResponse =
         restTemplate.exchange(
@@ -1557,7 +1558,7 @@ class PriorAuthorityDraftIntegrationTest {
     ResponseEntity<String> response =
         restTemplate.postForEntity(
             saveDraftUrl(), new HttpEntity<>(request, headers()), String.class);
-    assertThat(response.getStatusCode()).isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     UUID priorAuthorityId =
         objectMapper
             .readValue(response.getBody(), SavePriorAuthorityDraftResponse.class)
@@ -1714,7 +1715,7 @@ class PriorAuthorityDraftIntegrationTest {
             submitUrl(priorAuthorityId), new HttpEntity<>(null, headers()), String.class);
     assertThat(response.getStatusCode())
         .withFailMessage("Submit response: %s", response.getBody())
-        .isIn(HttpStatus.OK, HttpStatus.ACCEPTED);
+        .isEqualTo(HttpStatus.OK);
   }
 
   private PriorAuthorityResponse awaitSubmittedPriorAuthority(UUID priorAuthorityId) {
@@ -1762,7 +1763,7 @@ class PriorAuthorityDraftIntegrationTest {
     createApplication(applicationId, UUID.randomUUID());
     projectionAwaiter.awaitApplication(applicationId);
     grantApplication(applicationId);
-    projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
+    projectionAwaiter.awaitApplication(applicationId);
     return applicationId;
   }
 
@@ -1829,7 +1830,7 @@ class PriorAuthorityDraftIntegrationTest {
     return jdbcTemplate.queryForObject(
         """
                 SELECT COUNT(*) FROM axon.domain_event_entry
-                                WHERE payload_type LIKE '%PriorAuthorityDraftStartedEvent'
+                                WHERE payload_type LIKE '%PriorAuthorityDraftStarted'
                     AND convert_from(payload, 'UTF8')::jsonb ->> 'applicationId' = ?
                 """,
         Long.class, applicationId.toString());
@@ -1869,7 +1870,7 @@ class PriorAuthorityDraftIntegrationTest {
   private UUID assertCreatedDraft(ResponseEntity<String> response, UUID applicationId) {
     assertThat(response.getStatusCode())
         .withFailMessage("Creation response: %s", response.getBody())
-        .isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
+        .isEqualTo(HttpStatus.CREATED);
     UUID priorAuthorityId =
         objectMapper
             .readValue(response.getBody(), SavePriorAuthorityDraftResponse.class)
@@ -1893,7 +1894,7 @@ class PriorAuthorityDraftIntegrationTest {
       UUID targetId = grantedApplication();
       return new CreationRace(
           sourceId,
-          "LinkedApplicationGroupCreatedEvent",
+          "LinkedApplicationGroupCreated",
           () -> linkApplication(sourceId, targetId, null));
     }
     LinkedApplications linked = grantedLinkedApplications();
@@ -1912,9 +1913,9 @@ class PriorAuthorityDraftIntegrationTest {
     }
     String eventType =
         switch (operation) {
-          case "LEAD" -> "LinkedApplicationGroupLeadChangedEvent";
-          case "UNLINK" -> "MemberRemovedFromGroupEvent";
-          default -> "LinkedApplicationGroupDissolvedEvent";
+          case "LEAD" -> "LinkedApplicationGroupLeadChanged";
+          case "UNLINK" -> "MemberRemovedFromGroup";
+          default -> "LinkedApplicationGroupDissolved";
         };
     UUID applicationId =
         creationFirst || "LEAD".equals(operation)

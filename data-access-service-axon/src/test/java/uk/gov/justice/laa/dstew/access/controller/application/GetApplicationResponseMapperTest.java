@@ -131,7 +131,6 @@ class GetApplicationResponseMapperTest {
         .applicationId(UUID.randomUUID())
         .status("APPLICATION_SUBMITTED")
         .applicationVersion(1L)
-        .applicationDataVersion(1L)
         .createdAt(Instant.parse("2026-01-01T08:00:00Z"))
         .submittedAt(Instant.parse("2026-01-01T09:00:00Z"))
         .modifiedAt(Instant.parse("2026-01-01T10:00:00Z"))

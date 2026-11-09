@@ -10,7 +10,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -71,6 +71,7 @@ import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
 import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatusResponse;
+import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.model.ExpertDetails;
@@ -89,9 +90,9 @@ import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
 import uk.gov.justice.laa.dstew.access.model.WorkListAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.WorkListUnassignRequest;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadRepository;
-import uk.gov.justice.laa.dstew.access.query.application.history.PriorAuthorityHistoryReadRepository;
+import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryEventResult;
+import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
+import uk.gov.justice.laa.dstew.access.query.application.history.FindApplicationHistoryQuery;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 import util.ProjectionAwaiter;
@@ -117,10 +118,6 @@ class PostgresAxonIntegrationTest {
   @Autowired private EventStorageEngine eventStorageEngine;
 
   @Autowired private JdbcTemplate jdbcTemplate;
-
-  @Autowired private ApplicationHistoryReadRepository applicationHistoryReadRepository;
-
-  @Autowired private PriorAuthorityHistoryReadRepository priorAuthorityHistoryReadRepository;
 
   @Autowired private CommandGateway commandGateway;
 
@@ -159,7 +156,11 @@ class PostgresAxonIntegrationTest {
     assertThat(
             environment.getProperty("spring.main.allow-circular-references", Boolean.class, false))
         .isFalse();
-    assertThat(eventStorageEngine).isInstanceOf(AggregateBasedJpaEventStorageEngine.class);
+    assertThat(eventStorageEngine.getClass().getSimpleName())
+        .isEqualTo("ContentSeparatingStorageEngine");
+    assertThat(eventStorageEngine)
+        .extracting("delegate")
+        .isInstanceOf(AggregateBasedJpaEventStorageEngine.class);
     assertThat(axonTables).containsExactly("domain_event_entry", "token_entry");
   }
 
@@ -185,9 +186,11 @@ class PostgresAxonIntegrationTest {
 
     List<Map<String, Object>> events =
         jdbcTemplate.queryForList(
-            "SELECT aggregate_identifier, payload_type, sequence_number, convert_from(payload, 'UTF8') AS payload "
-                + "FROM axon.domain_event_entry "
-                + "WHERE aggregate_identifier = ? ORDER BY sequence_number",
+            "SELECT e.aggregate_identifier, e.payload_type, e.sequence_number, "
+                + "convert_from(e.payload, 'UTF8') AS payload, c.content::text AS content "
+                + "FROM axon.domain_event_entry e "
+                + "LEFT JOIN axon.event_content c ON c.event_id = e.event_identifier "
+                + "WHERE e.aggregate_identifier = ? ORDER BY e.sequence_number",
             applicationId.toString());
 
     assertThat(events)
@@ -196,43 +199,20 @@ class PostgresAxonIntegrationTest {
         .satisfies(
             event -> {
               assertThat(event.get("aggregate_identifier")).isEqualTo(applicationId.toString());
-              assertThat(event.get("payload_type"))
-                  .isEqualTo(
-                      "uk.gov.justice.laa.dstew.access.command.application"
-                          + ".ApplicationDocumentUploadedEvent");
+              assertThat(event.get("payload_type")).isEqualTo("access.ApplicationDocumentUploaded");
               assertThat(event.get("sequence_number")).isEqualTo(1L);
               assertThat(event.get("payload").toString())
-                  .doesNotContain("originalFilename.pdf", "originalFilename", "fileName");
-              assertThat(
-                      objectMapper
-                          .readTree(event.get("payload").toString())
-                          .get("fileSuffix")
-                          .asString())
-                  .isEqualTo(".pdf");
+                  .doesNotContain("originalFilename.pdf", "originalFilename", "fileName")
+                  .doesNotContain("fileSuffix");
+              var content = objectMapper.readTree(event.get("content").toString());
+              assertThat(content.get("fileSuffix").asString()).isEqualTo(".pdf");
+              assertThat(content.get("originalFilename").asString())
+                  .isEqualTo("originalFilename.pdf");
             });
 
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT payload -> 'documentFilenames' ->> ? FROM axon.application_draft WHERE application_id = ?",
-                String.class,
-                documentId.toString(),
-                applicationId))
-        .isEqualTo("originalFilename.pdf");
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isZero();
+    assertThat(uploadedFilenames(applicationId, documentId))
+        .containsExactly("originalFilename.pdf");
     commandGateway.sendAndWait(new SubmitApplicationDraftCommand(applicationId, Instant.now()));
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT payload -> 'documentFilenames' ->> ? FROM axon.application_data "
-                    + "WHERE application_id = ? AND version = 0",
-                String.class,
-                documentId.toString(),
-                applicationId))
-        .isEqualTo("originalFilename.pdf");
     await()
         .atMost(10, TimeUnit.SECONDS)
         .untilAsserted(
@@ -252,20 +232,6 @@ class PostgresAxonIntegrationTest {
                       });
               assertThat(application.getVersion()).isZero();
             });
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT uploaded_documents::text FROM axon.application_current_state WHERE application_id = ?",
-                String.class,
-                applicationId))
-        .contains(documentId.toString())
-        .contains("fileSuffix", ".pdf")
-        .doesNotContain("originalFilename.pdf", "fileName");
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_draft WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isZero();
     assertThatThrownBy(
             () ->
                 commandGateway.sendAndWait(
@@ -287,7 +253,7 @@ class PostgresAxonIntegrationTest {
   }
 
   @Test
-  void givenDocumentEventAppendFails_whenUploaded_thenDraftFilenameRollsBack() {
+  void givenDocumentEventAppendFails_whenUploaded_thenFilenameContentRollsBack() {
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
     createDocumentDraft(applicationId);
@@ -330,19 +296,7 @@ class PostgresAxonIntegrationTest {
       jdbcTemplate.execute("DROP FUNCTION IF EXISTS axon.reject_test_document_upload()");
     }
 
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isZero();
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT payload -> 'documentFilenames' ->> ? FROM axon.application_draft WHERE application_id = ?",
-                String.class,
-                documentId.toString(),
-                applicationId))
-        .isNull();
+    assertThat(uploadedFilenames(applicationId, documentId)).isEmpty();
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
@@ -351,14 +305,19 @@ class PostgresAxonIntegrationTest {
         .isEqualTo(1);
 
     commandGateway.sendAndWait(command);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT payload -> 'documentFilenames' ->> ? FROM axon.application_draft "
-                    + "WHERE application_id = ?",
-                String.class,
-                documentId.toString(),
-                applicationId))
-        .isEqualTo("client-report.pdf");
+    assertThat(uploadedFilenames(applicationId, documentId)).containsExactly("client-report.pdf");
+  }
+
+  private List<String> uploadedFilenames(UUID applicationId, UUID documentId) {
+    return jdbcTemplate.queryForList(
+        "SELECT c.content ->> 'originalFilename' FROM axon.domain_event_entry e"
+            + " JOIN axon.event_content c ON c.event_id = e.event_identifier"
+            + " WHERE e.aggregate_identifier = ?"
+            + " AND e.payload_type = 'access.ApplicationDocumentUploaded'"
+            + " AND convert_from(e.payload, 'UTF8')::jsonb ->> 'documentId' = ?",
+        String.class,
+        applicationId.toString(),
+        documentId.toString());
   }
 
   private void createDocumentDraft(UUID applicationId) {
@@ -407,40 +366,26 @@ class PostgresAxonIntegrationTest {
             ORDER BY sequence_name
             """,
             String.class);
-    List<String> applicationHistoryColumns =
-        jdbcTemplate.queryForList(
-            """
-            SELECT column_name
-            FROM information_schema.columns
-            WHERE table_schema = 'axon'
-              AND table_name = 'application_history'
-            """,
-            String.class);
 
     assertThat(appliedVersions).containsExactlyElementsOf(expectedMigrationVersions());
     assertThat(tables)
         .containsExactly(
-            "application_current_state",
-            "application_data",
-            "application_draft",
             "application_group_route",
-            "application_history",
-            "application_list_index",
+            "application_summary",
             "domain_event_entry",
+            "event_content",
             "flyway_schema_history",
+            "genesis_stream",
             "linked_application_group_current_state",
             "prior_authority_current_state",
             "prior_authority_data",
             "prior_authority_draft",
-            "prior_authority_history",
             "token_entry",
             "work_item_route",
             "work_list_group_member",
             "work_list_item");
-    assertThat(sequences).containsExactly("aggregate-event-global-index-sequence");
-    assertThat(applicationHistoryColumns)
-        .contains("data_version")
-        .doesNotContain("request_payload");
+    assertThat(sequences)
+        .containsExactly("aggregate-event-global-index-sequence", "genesis_stream_id_seq");
     assertThat(
             jdbcTemplate.queryForObject(
                 """
@@ -455,68 +400,7 @@ class PostgresAxonIntegrationTest {
   }
 
   @Test
-  void givenApplicationData_whenMutated_thenOnlyControlledRetentionDeleteIsAllowed() {
-    UUID applicationId = UUID.randomUUID();
-    applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
-    projectionAwaiter.awaitApplication(applicationId);
-
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ? AND version = 0",
-                Integer.class,
-                applicationId))
-        .isEqualTo(1);
-
-    assertThatThrownBy(
-            () ->
-                jdbcTemplate.update(
-                    "UPDATE axon.application_data SET payload_hash = ? WHERE application_id = ?",
-                    "tampered",
-                    applicationId))
-        .hasStackTraceContaining("application_data is append-only; UPDATE is prohibited");
-    assertThatThrownBy(
-            () ->
-                jdbcTemplate.update(
-                    "DELETE FROM axon.application_data WHERE application_id = ?", applicationId))
-        .hasStackTraceContaining("application_data is append-only; DELETE is prohibited");
-
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT axon.delete_application_data_for_retention(?)", Long.class, applicationId))
-        .isEqualTo(1L);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isZero();
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_current_state WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isEqualTo(1);
-
-    ResponseEntity<String> response =
-        restTemplate.exchange(
-            "http://localhost:" + port + "/api/v0/applications/" + applicationId,
-            HttpMethod.GET,
-            new HttpEntity<>(headers()),
-            String.class);
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-
-    List<String> currentStateColumns =
-        jdbcTemplate.queryForList(
-            "SELECT column_name FROM information_schema.columns "
-                + "WHERE table_schema = 'axon' AND table_name = 'application_current_state'",
-            String.class);
-    assertThat(currentStateColumns)
-        .contains("application_data_version")
-        .doesNotContain("laa_reference", "application_content", "individuals", "proceedings");
-  }
-
-  @Test
-  void givenValidRequest_whenPostApplication_thenPersistsEventAndCurrentStateProjection() {
+  void givenValidRequest_whenPostApplication_thenPersistsEventAndServesApplication() {
     UUID applicationId = UUID.randomUUID();
     UUID applyProceedingId = UUID.randomUUID();
     HttpHeaders headers = new HttpHeaders();
@@ -562,18 +446,9 @@ class PostgresAxonIntegrationTest {
         .singleElement()
         .satisfies(
             history -> {
-              assertThat(history.getEventType()).isEqualTo("APPLICATION_CREATED");
-              assertThat(history.getDataVersion()).isZero();
-              assertThat(history.getServiceName()).isEqualTo("CIVIL_APPLY");
+              assertThat(history.eventType()).isEqualTo("APPLICATION_CREATED");
+              assertThat(history.serviceName()).isEqualTo("CIVIL_APPLY");
             });
-
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT payload ->> 'laaReference' FROM axon.application_data "
-                    + "WHERE application_id = ? AND version = 0",
-                String.class,
-                applicationId))
-        .isEqualTo("LAA-123");
 
     List<Map<String, Object>> events =
         jdbcTemplate.queryForList(
@@ -584,9 +459,7 @@ class PostgresAxonIntegrationTest {
         .singleElement()
         .satisfies(
             event -> {
-              assertThat(event.get("payload_type"))
-                  .isEqualTo(
-                      "uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent");
+              assertThat(event.get("payload_type")).isEqualTo("access.ApplicationCreated");
               assertThat(event.get("sequence_number")).isEqualTo(0L);
             });
   }
@@ -602,15 +475,9 @@ class PostgresAxonIntegrationTest {
     ResponseEntity<Void> response = patchSubmitted(applicationId, submitted);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    ApplicationReadModel projected = projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
+    ApplicationReadModel projected = projectionAwaiter.awaitApplication(applicationId);
     assertThat(projected.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
     assertThat(projected.getAutoGranted()).isEqualTo(AutoGrantedState.PENDING);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isEqualTo(2);
     assertThat(
             jdbcTemplate.queryForMap(
                 "SELECT payload_type, convert_from(payload, 'UTF8') AS payload "
@@ -619,9 +486,9 @@ class PostgresAxonIntegrationTest {
                 applicationId.toString()))
         .satisfies(
             event -> {
-              assertThat(event.get("payload_type").toString()).endsWith("ApplicationUpdatedEvent");
+              assertThat(event.get("payload_type").toString()).endsWith("ApplicationUpdated");
               assertThat(event.get("payload").toString())
-                  .contains("applicationDataVersion", "APPLICATION_SUBMITTED")
+                  .contains("applicationVersion", "APPLICATION_SUBMITTED")
                   .doesNotContain(
                       "applicationContent", "proceedings", "individuals", "LAA-123", "Ada");
             });
@@ -672,12 +539,6 @@ class PostgresAxonIntegrationTest {
     assertThat(response.getStatusCode().is5xxServerError()).isTrue();
     assertThat(
             jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isEqualTo(1);
-    assertThat(
-            jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
                 Integer.class,
                 applicationId.toString()))
@@ -722,27 +583,31 @@ class PostgresAxonIntegrationTest {
             Void.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    ApplicationReadModel decided = projectionAwaiter.awaitApplicationVersion(applicationId, 2L);
+    ApplicationReadModel decided = projectionAwaiter.awaitApplication(applicationId);
     assertThat(decided.getDecisionStatus()).isEqualTo("REFUSED");
     assertThat(decided.getAutoGranted()).isEqualTo(AutoGrantedState.MANUAL);
     assertThat(decided.getMeritsDecisions().get(proceedingId).justification())
         .isEqualTo("The evidence did not meet the test");
 
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT payload ->> 'overallDecision' FROM axon.application_data "
-                    + "WHERE application_id = ? AND version = 2",
-                String.class,
-                applicationId))
-        .isEqualTo("REFUSED");
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT convert_from(payload, 'UTF8') FROM axon.domain_event_entry "
-                    + "WHERE aggregate_identifier = ? AND sequence_number = 3",
-                String.class,
-                applicationId.toString()))
-        .contains("applicationDataVersion", "REFUSED")
+    Map<String, Object> decisionEvent =
+        jdbcTemplate.queryForMap(
+            "SELECT convert_from(e.payload, 'UTF8') AS payload, c.content::text AS content "
+                + "FROM axon.domain_event_entry e "
+                + "JOIN axon.event_content c ON c.event_id = e.event_identifier "
+                + "WHERE e.aggregate_identifier = ? AND e.sequence_number = 3",
+            applicationId.toString());
+    assertThat(decisionEvent.get("payload").toString())
+        .contains("applicationVersion", "REFUSED")
         .doesNotContain("Insufficient evidence", "The evidence did not meet the test");
+    assertThat(
+            objectMapper
+                .readTree(decisionEvent.get("payload").toString())
+                .get("proceedingDecisions")
+                .get(proceedingId.toString())
+                .asString())
+        .isEqualTo("REFUSED");
+    assertThat(decisionEvent.get("content").toString())
+        .contains("The evidence did not meet the test");
 
     assertThat(
             awaitHistoryTypes(
@@ -779,12 +644,6 @@ class PostgresAxonIntegrationTest {
             new HttpEntity<>(request, headers()),
             Void.class);
     assertThat(staleResponse.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isEqualTo(3);
   }
 
   @Test
@@ -809,17 +668,11 @@ class PostgresAxonIntegrationTest {
             Void.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    ApplicationReadModel granted = projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
+    ApplicationReadModel granted = projectionAwaiter.awaitApplication(applicationId);
     assertThat(granted.getAutoGranted()).isEqualTo(AutoGrantedState.AUTOGRANTED);
     assertThat(granted.getDecisionStatus()).isEqualTo("GRANTED");
     assertThat(granted.getMeritsDecisions()).containsKey(proceedingId);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT payload -> 'certificate' ->> 'certificateNumber' "
-                    + "FROM axon.application_data WHERE application_id = ? AND version = 1",
-                String.class,
-                applicationId))
-        .isEqualTo("AUTO-2126");
+    assertThat(granted.getCertificate()).containsEntry("certificateNumber", "AUTO-2126");
   }
 
   @Test
@@ -841,16 +694,9 @@ class PostgresAxonIntegrationTest {
             Void.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    ApplicationReadModel ready = projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
+    ApplicationReadModel ready = projectionAwaiter.awaitApplication(applicationId);
     assertThat(ready.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
     assertThat(ready.getAutoGranted()).isEqualTo(AutoGrantedState.MANUAL);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT payload ->> 'autoGranted' FROM axon.application_data "
-                    + "WHERE application_id = ? AND version = 1",
-                String.class,
-                applicationId))
-        .isEqualTo("MANUAL");
     assertThat(
             jdbcTemplate.queryForMap(
                 "SELECT payload_type, convert_from(payload, 'UTF8') AS payload "
@@ -860,9 +706,9 @@ class PostgresAxonIntegrationTest {
         .satisfies(
             event -> {
               assertThat(event.get("payload_type").toString())
-                  .endsWith("ApplicationReadyForManualAssessmentEvent");
+                  .endsWith("ApplicationReadyForManualAssessment");
               assertThat(event.get("payload").toString())
-                  .contains("applicationDataVersion")
+                  .contains("applicationVersion")
                   .doesNotContain("applicationContent", "LAA-123");
             });
   }
@@ -907,7 +753,7 @@ class PostgresAxonIntegrationTest {
             new HttpEntity<>(request, headers()),
             Void.class);
     assertThat(decisionResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    projectionAwaiter.awaitApplicationVersion(applicationId, 2L);
+    projectionAwaiter.awaitApplication(applicationId);
 
     ResponseEntity<Map<String, Object>> certificateResponse =
         restTemplate.exchange(
@@ -1109,7 +955,7 @@ class PostgresAxonIntegrationTest {
     UUID createdApplicationId = applicationId(firstResponse);
     assertThat(awaitHistory(createdApplicationId, 1))
         .singleElement()
-        .satisfies(h -> assertThat(h.getEventType()).isEqualTo("APPLICATION_CREATED"));
+        .satisfies(h -> assertThat(h.eventType()).isEqualTo("APPLICATION_CREATED"));
 
     List<Map<String, Object>> events =
         jdbcTemplate.queryForList(
@@ -1285,7 +1131,7 @@ class PostgresAxonIntegrationTest {
         .singleElement()
         .satisfies(
             event -> {
-              assertThat(event.get("payload_type")).asString().contains("ApplicationCreatedEvent");
+              assertThat(event.get("payload_type")).asString().contains("ApplicationCreated");
               assertThat(event.get("sequence_number")).isEqualTo(0L);
             });
   }
@@ -1333,14 +1179,8 @@ class PostgresAxonIntegrationTest {
       executor.shutdown();
     }
 
-    assertThat(projectionAwaiter.awaitApplicationVersion(applicationId, 2L).getApplicationVersion())
+    assertThat(projectionAwaiter.awaitApplication(applicationId).getApplicationVersion())
         .isEqualTo(2L);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isEqualTo(3);
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
@@ -1378,14 +1218,8 @@ class PostgresAxonIntegrationTest {
       executor.shutdown();
     }
 
-    assertThat(projectionAwaiter.awaitApplicationVersion(applicationId, 1L).getAutoGranted())
+    assertThat(projectionAwaiter.awaitApplication(applicationId).getAutoGranted())
         .isEqualTo(AutoGrantedState.MANUAL);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isEqualTo(2);
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
@@ -1407,7 +1241,7 @@ class PostgresAxonIntegrationTest {
             Void.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
+    projectionAwaiter.awaitApplication(applicationId);
   }
 
   private UUID assignForManualDecision(UUID applicationId) {
@@ -1420,7 +1254,7 @@ class PostgresAxonIntegrationTest {
             Void.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(projectionAwaiter.awaitApplicationVersion(applicationId, 1L).getCaseworkerId())
+    assertThat(projectionAwaiter.awaitApplication(applicationId).getCaseworkerId())
         .isEqualTo(caseworkerId);
     return caseworkerId;
   }
@@ -1594,18 +1428,9 @@ class PostgresAxonIntegrationTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
 
-    // applicationDataVersion advances to 1; applicationVersion stays at 0
-    ApplicationReadModel model = projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
+    // A note does not advance applicationVersion
+    ApplicationReadModel model = projectionAwaiter.awaitApplication(applicationId);
     assertThat(model.getApplicationVersion()).isEqualTo(0L);
-
-    // Note text persisted in application_data JSONB at version 1
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT payload -> 'notes' -> 0 ->> 'noteText' FROM axon.application_data"
-                    + " WHERE application_id = ? AND version = 1",
-                String.class,
-                applicationId))
-        .isEqualTo("Integration test note");
 
     // NoteCreatedEvent is thin — note text must not appear in the event stream
     assertThat(
@@ -1614,7 +1439,7 @@ class PostgresAxonIntegrationTest {
                     + " WHERE aggregate_identifier = ? AND sequence_number = 1",
                 String.class,
                 applicationId.toString()))
-        .contains("applicationDataVersion")
+        .contains("occurredAt")
         .doesNotContain("Integration test note");
 
     awaitHistoryTypes(applicationId, "APPLICATION_CREATED", "APPLICATION_NOTE_CREATED");
@@ -1639,10 +1464,6 @@ class PostgresAxonIntegrationTest {
               assertThat(event.getEventDescription()).isEqualTo("Integration test note");
               assertThat(event.getCaseworkerId()).isEqualTo(TestJwtDecoderConfig.CASEWORKER_ID);
             });
-    assertThat(awaitHistoryTypes(applicationId, "APPLICATION_CREATED", "APPLICATION_NOTE_CREATED"))
-        .filteredOn(history -> history.getEventType().equals("APPLICATION_NOTE_CREATED"))
-        .singleElement()
-        .satisfies(history -> assertThat(history.getDataVersion()).isEqualTo(1L));
   }
 
   @Test
@@ -1718,7 +1539,7 @@ class PostgresAxonIntegrationTest {
         HttpMethod.POST,
         new HttpEntity<>(new CreateNoteRequest("Hello from GET notes test"), headers()),
         Void.class);
-    projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
+    projectionAwaiter.awaitApplication(applicationId);
 
     ResponseEntity<String> response =
         restTemplate.exchange(
@@ -1761,7 +1582,7 @@ class PostgresAxonIntegrationTest {
                 AutoGrantOutcome.AUTOGRANTED, Map.of("certificateNumber", "PA-CERT-001")),
             headers()),
         Void.class);
-    projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
+    projectionAwaiter.awaitApplication(applicationId);
 
     ResponseEntity<String> paResponse =
         restTemplate.postForEntity(
@@ -1786,11 +1607,7 @@ class PostgresAxonIntegrationTest {
     await()
         .atMost(10, TimeUnit.SECONDS)
         .pollInterval(50, TimeUnit.MILLISECONDS)
-        .until(
-            () ->
-                priorAuthorityHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
-                    applicationId),
-            rows -> rows.size() == 1);
+        .until(() -> priorAuthorityHistoryEvents(applicationId), rows -> rows.size() == 1);
 
     ResponseEntity<ApplicationHistoryResponse> historyResponse =
         restTemplate.exchange(
@@ -1834,7 +1651,7 @@ class PostgresAxonIntegrationTest {
                 AutoGrantOutcome.AUTOGRANTED, Map.of("certificateNumber", "PA-CERT-002")),
             headers()),
         Void.class);
-    projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
+    projectionAwaiter.awaitApplication(applicationId);
 
     ResponseEntity<String> paResponse =
         restTemplate.postForEntity(
@@ -1868,11 +1685,7 @@ class PostgresAxonIntegrationTest {
     await()
         .atMost(10, TimeUnit.SECONDS)
         .pollInterval(50, TimeUnit.MILLISECONDS)
-        .until(
-            () ->
-                priorAuthorityHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
-                    applicationId),
-            rows -> rows.size() == 2);
+        .until(() -> priorAuthorityHistoryEvents(applicationId), rows -> rows.size() == 2);
 
     ResponseEntity<ApplicationHistoryResponse> historyResponse =
         restTemplate.exchange(
@@ -1919,7 +1732,7 @@ class PostgresAxonIntegrationTest {
                 AutoGrantOutcome.AUTOGRANTED, Map.of("certificateNumber", "PA-CERT-003")),
             headers()),
         Void.class);
-    projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
+    projectionAwaiter.awaitApplication(applicationId);
 
     ResponseEntity<String> paResponse =
         restTemplate.postForEntity(
@@ -1961,11 +1774,7 @@ class PostgresAxonIntegrationTest {
     await()
         .atMost(10, TimeUnit.SECONDS)
         .pollInterval(50, TimeUnit.MILLISECONDS)
-        .until(
-            () ->
-                priorAuthorityHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
-                    applicationId),
-            rows -> rows.size() == 3);
+        .until(() -> priorAuthorityHistoryEvents(applicationId), rows -> rows.size() == 3);
 
     ResponseEntity<ApplicationHistoryResponse> historyResponse =
         restTemplate.exchange(
@@ -2029,7 +1838,7 @@ class PostgresAxonIntegrationTest {
                 AutoGrantOutcome.AUTOGRANTED, Map.of("certificateNumber", "PA-CERT-004")),
             headers()),
         Void.class);
-    projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
+    projectionAwaiter.awaitApplication(applicationId);
 
     ResponseEntity<String> paResponse =
         restTemplate.postForEntity(
@@ -2081,11 +1890,7 @@ class PostgresAxonIntegrationTest {
     await()
         .atMost(10, TimeUnit.SECONDS)
         .pollInterval(50, TimeUnit.MILLISECONDS)
-        .until(
-            () ->
-                priorAuthorityHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
-                    applicationId),
-            rows -> rows.size() == 4);
+        .until(() -> priorAuthorityHistoryEvents(applicationId), rows -> rows.size() == 4);
 
     ResponseEntity<ApplicationHistoryResponse> historyResponse =
         restTemplate.exchange(
@@ -2149,7 +1954,7 @@ class PostgresAxonIntegrationTest {
                 AutoGrantOutcome.AUTOGRANTED, Map.of("certificateNumber", "PA-CERT-005")),
             headers()),
         Void.class);
-    projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
+    projectionAwaiter.awaitApplication(applicationId);
 
     ResponseEntity<String> firstPaResponse =
         restTemplate.postForEntity(
@@ -2198,11 +2003,7 @@ class PostgresAxonIntegrationTest {
     await()
         .atMost(10, TimeUnit.SECONDS)
         .pollInterval(50, TimeUnit.MILLISECONDS)
-        .until(
-            () ->
-                priorAuthorityHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
-                    applicationId),
-            rows -> rows.size() == 3);
+        .until(() -> priorAuthorityHistoryEvents(applicationId), rows -> rows.size() == 3);
 
     ResponseEntity<ApplicationHistoryResponse> historyResponse =
         restTemplate.exchange(
@@ -2243,135 +2044,6 @@ class PostgresAxonIntegrationTest {
     assertThat(untouchedGroup.getEvents()).hasSize(1);
     assertThat(untouchedGroup.getEvents().getFirst().getEventType())
         .isEqualTo("PRIOR_AUTHORITY_SUBMITTED");
-  }
-
-  @Test
-  void
-      givenConflictingPriorAuthorityTypeRowsInDb_whenGetHistory_thenReturnsHttp500WithStableProblemDetail() {
-    UUID applicationId = UUID.randomUUID();
-    UUID priorAuthorityId = UUID.randomUUID();
-
-    jdbcTemplate.update(
-        """
-        INSERT INTO axon.prior_authority_history
-            (event_id, application_id, prior_authority_id, prior_authority_type,
-             event_type, item_version, service_name, occurred_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        "conflict-evt-1",
-        applicationId,
-        priorAuthorityId,
-        "EXPERT",
-        "PRIOR_AUTHORITY_SUBMITTED",
-        2L,
-        "CIVIL_APPLY",
-        OffsetDateTime.parse("2026-08-01T09:00:00Z"));
-
-    jdbcTemplate.update(
-        """
-        INSERT INTO axon.prior_authority_history
-            (event_id, application_id, prior_authority_id, prior_authority_type,
-             event_type, item_version, service_name, occurred_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        "conflict-evt-2",
-        applicationId,
-        priorAuthorityId,
-        "COUNSEL",
-        "PRIOR_AUTHORITY_SUBMITTED",
-        2L,
-        "CIVIL_APPLY",
-        OffsetDateTime.parse("2026-08-01T10:00:00Z"));
-
-    try {
-      ResponseEntity<String> response =
-          restTemplate.exchange(
-              "http://localhost:"
-                  + port
-                  + "/api/v0/applications/"
-                  + applicationId
-                  + "/history-search",
-              HttpMethod.GET,
-              new HttpEntity<>(headers()),
-              String.class);
-
-      assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-      var responseBody = objectMapper.readTree(response.getBody());
-      assertThat(responseBody.get("status").asInt()).isEqualTo(500);
-      assertThat(responseBody.get("detail").asText())
-          .isEqualTo("Application history data is inconsistent");
-      assertThat(response.getBody()).doesNotContain(applicationId.toString());
-      assertThat(response.getBody()).doesNotContain(priorAuthorityId.toString());
-      assertThat(response.getBody()).doesNotContain("conflicting");
-    } finally {
-      jdbcTemplate.update(
-          "DELETE FROM axon.prior_authority_history WHERE event_id IN (?, ?)",
-          "conflict-evt-1",
-          "conflict-evt-2");
-    }
-  }
-
-  @Test
-  void
-      givenSubmittedPriorAuthorityWithUploadedDocument_whenGetHistory_thenIncludesDocumentUploadedEvent() {
-    UUID applicationId = UUID.randomUUID();
-    UUID priorAuthorityId = UUID.randomUUID();
-
-    jdbcTemplate.update(
-        """
-        INSERT INTO axon.prior_authority_history
-            (event_id, application_id, prior_authority_id, prior_authority_type,
-             event_type, item_version, service_name, occurred_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        "pa-submit-evt-1",
-        applicationId,
-        priorAuthorityId,
-        "EXPERT",
-        "PRIOR_AUTHORITY_SUBMITTED",
-        2L,
-        "CIVIL_APPLY",
-        OffsetDateTime.parse("2026-09-18T10:00:00Z"));
-
-    jdbcTemplate.update(
-        """
-        INSERT INTO axon.prior_authority_history
-            (event_id, application_id, prior_authority_id, prior_authority_type,
-             event_type, item_version, service_name, occurred_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        "pa-upload-evt-1",
-        applicationId,
-        priorAuthorityId,
-        "EXPERT",
-        "PRIOR_AUTHORITY_DOCUMENT_UPLOADED",
-        2L,
-        "CIVIL_APPLY",
-        OffsetDateTime.parse("2026-09-18T11:00:00Z"));
-
-    ResponseEntity<ApplicationHistoryResponse> historyResponse =
-        restTemplate.exchange(
-            "http://localhost:"
-                + port
-                + "/api/v0/applications/"
-                + applicationId
-                + "/history-search",
-            HttpMethod.GET,
-            new HttpEntity<>(headers()),
-            ApplicationHistoryResponse.class);
-    assertThat(historyResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-
-    assertThat(historyResponse.getBody().getPriorAuthorities()).hasSize(1);
-    PriorAuthorityHistoryGroup group = historyResponse.getBody().getPriorAuthorities().get(0);
-    assertThat(group.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
-    assertThat(group.getPriorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT);
-    assertThat(group.getEvents())
-        .extracting(event -> event.getEventType())
-        .contains("PRIOR_AUTHORITY_SUBMITTED", "PRIOR_AUTHORITY_DOCUMENT_UPLOADED");
-    assertThat(group.getEvents())
-        .filteredOn(event -> event.getEventType().equals("PRIOR_AUTHORITY_DOCUMENT_UPLOADED"))
-        .singleElement()
-        .satisfies(event -> assertThat(event.getCaseworkerId()).isNull());
   }
 
   private CreatePriorAuthorityDraftRequest fixedRateExpertDraftRequest(UUID applicationId) {
@@ -2465,39 +2137,49 @@ class PostgresAxonIntegrationTest {
         response.getStatusCode());
   }
 
-  private List<ApplicationHistoryReadModel> awaitHistory(UUID applicationId, int expectedCount) {
+  private List<ApplicationHistoryEventResult> awaitHistory(UUID applicationId, int expectedCount) {
     return await()
-        .alias(
-            "application history projection to contain "
-                + expectedCount
-                + " events for "
-                + applicationId)
+        .alias("application history to contain " + expectedCount + " events for " + applicationId)
         .atMost(10, TimeUnit.SECONDS)
         .pollInterval(50, TimeUnit.MILLISECONDS)
-        .until(
-            () ->
-                applicationHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
-                    applicationId),
-            history -> history.size() == expectedCount);
+        .until(() -> history(applicationId), history -> history.size() == expectedCount);
   }
 
-  private List<ApplicationHistoryReadModel> awaitHistoryTypes(
+  private List<ApplicationHistoryEventResult> awaitHistoryTypes(
       UUID applicationId, String... expectedEventTypes) {
     List<String> expected = List.of(expectedEventTypes);
     return await()
-        .alias("application history projection to contain " + expected + " for " + applicationId)
+        .alias("application history to contain " + expected + " for " + applicationId)
         .atMost(10, TimeUnit.SECONDS)
         .pollInterval(50, TimeUnit.MILLISECONDS)
         .until(
-            () ->
-                applicationHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
-                    applicationId),
+            () -> history(applicationId),
             history -> {
               List<String> actual =
-                  history.stream().map(ApplicationHistoryReadModel::getEventType).toList();
+                  history.stream().map(ApplicationHistoryEventResult::eventType).toList();
               return actual.size() == expected.size()
                   && new HashSet<>(actual).equals(new HashSet<>(expected));
             });
+  }
+
+  private ApplicationHistoryResult historyResult(UUID applicationId) {
+    return queryGateway
+        .query(
+            new FindApplicationHistoryQuery(
+                applicationId,
+                Arrays.stream(DomainEventType.values()).map(DomainEventType::getValue).toList()),
+            ApplicationHistoryResult.class)
+        .join();
+  }
+
+  private List<ApplicationHistoryEventResult> history(UUID applicationId) {
+    return historyResult(applicationId).applicationHistoryEvents();
+  }
+
+  private List<?> priorAuthorityHistoryEvents(UUID applicationId) {
+    return historyResult(applicationId).priorAuthorityHistoryGroups().stream()
+        .flatMap(group -> group.events().stream())
+        .toList();
   }
 
   private static List<String> expectedMigrationVersions() throws IOException {

@@ -9,11 +9,13 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
@@ -28,6 +30,7 @@ import uk.gov.justice.laa.dstew.access.model.BillingType;
 import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.DisbursementDetails;
+import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.model.ExpertDetails;
@@ -44,12 +47,16 @@ import uk.gov.justice.laa.dstew.access.model.WorkListItem;
 import uk.gov.justice.laa.dstew.access.model.WorkListItemType;
 import uk.gov.justice.laa.dstew.access.model.WorkListResponse;
 import uk.gov.justice.laa.dstew.access.model.WorkListUnassignRequest;
+import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryEventResult;
+import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
+import uk.gov.justice.laa.dstew.access.query.application.history.FindApplicationHistoryQuery;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 /** Full HTTP/Postgres/Axon integration tests for delivered work-list behaviour. */
 class WorkListIntegrationTest extends BaseIntegrationTest {
 
   @Autowired private ObjectMapper objectMapper;
+  @Autowired private QueryGateway queryGateway;
 
   @Test
   void
@@ -311,7 +318,7 @@ class WorkListIntegrationTest extends BaseIntegrationTest {
             () -> {
               assertThat(
                       jdbcTemplate.queryForObject(
-                          "SELECT status FROM axon.application_current_state WHERE application_id = ?",
+                          "SELECT status FROM axon.application_summary WHERE application_id = ?",
                           String.class,
                           applicationId))
                   .isEqualTo("APPLICATION_GRANTED");
@@ -727,7 +734,7 @@ class WorkListIntegrationTest extends BaseIntegrationTest {
 
     grantApplication(parentApplicationId, proceedingId);
 
-    List<Map<String, Object>> historyBeforePriorAuthorityAssignment =
+    List<ApplicationHistoryEventResult> historyBeforePriorAuthorityAssignment =
         await()
             .atMost(15, TimeUnit.SECONDS)
             .until(
@@ -735,8 +742,7 @@ class WorkListIntegrationTest extends BaseIntegrationTest {
                 history ->
                     history.stream()
                         .anyMatch(
-                            row ->
-                                "APPLICATION_MAKE_DECISION_GRANTED".equals(row.get("event_type"))));
+                            row -> "APPLICATION_MAKE_DECISION_GRANTED".equals(row.eventType())));
 
     UUID priorAuthorityId = createAndSubmitPriorAuthorityDraft(parentApplicationId);
 
@@ -754,7 +760,7 @@ class WorkListIntegrationTest extends BaseIntegrationTest {
                     .extracting(WorkListItem::getItemId)
                     .contains(priorAuthorityId));
 
-    List<Map<String, Object>> historyAfterPriorAuthorityAssignment =
+    List<ApplicationHistoryEventResult> historyAfterPriorAuthorityAssignment =
         queryApplicationHistory(parentApplicationId);
 
     assertThat(historyAfterPriorAuthorityAssignment)
@@ -811,12 +817,15 @@ class WorkListIntegrationTest extends BaseIntegrationTest {
     assertThat(decided.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
   }
 
-  private List<Map<String, Object>> queryApplicationHistory(UUID applicationId) {
-    return jdbcTemplate.queryForList(
-        "SELECT event_id, event_type, caseworker_id, occurred_at "
-            + "FROM axon.application_history WHERE application_id = ? "
-            + "ORDER BY occurred_at, event_id",
-        applicationId);
+  private List<ApplicationHistoryEventResult> queryApplicationHistory(UUID applicationId) {
+    return queryGateway
+        .query(
+            new FindApplicationHistoryQuery(
+                applicationId,
+                Arrays.stream(DomainEventType.values()).map(DomainEventType::getValue).toList()),
+            ApplicationHistoryResult.class)
+        .join()
+        .applicationHistoryEvents();
   }
 
   @Test

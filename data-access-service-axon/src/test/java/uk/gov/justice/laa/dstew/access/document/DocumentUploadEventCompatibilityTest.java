@@ -23,12 +23,11 @@ class DocumentUploadEventCompatibilityTest {
          "documentId":"00000000-0000-0000-0000-000000000002",
          "documentType":"GATEWAY_EVIDENCE","uploadedAt":"2026-09-01T10:00:00Z",
          "size":12,"contentType":"application/pdf","checksum":"checksum",
-         "sourceService":"CIVIL_APPLY","applicationDataVersion":3}
+         "sourceService":"CIVIL_APPLY"}
         """;
     var event = objectMapper.readValue(json, ApplicationDocumentUploadedEvent.class);
-    assertThat(event.fileSuffix()).isNull();
-    assertThat(event.applicationDataVersion()).isEqualTo(3L);
-    assertThat(event.documentType()).isEqualTo("GATEWAY_EVIDENCE");
+    assertThat(event.fileSuffix().isErased()).isTrue();
+    assertThat(event.documentType().value()).isEqualTo("GATEWAY_EVIDENCE");
   }
 
   @Test
@@ -42,7 +41,7 @@ class DocumentUploadEventCompatibilityTest {
          "sourceService":"CIVIL_APPLY"}
         """;
     var event = objectMapper.readValue(json, PriorAuthorityDocumentUploadedEvent.class);
-    assertThat(event.fileSuffix()).isNull();
+    assertThat(event.fileSuffix().isErased()).isTrue();
     assertThat(event.parentApplicationId())
         .isEqualTo(UUID.fromString("00000000-0000-0000-0000-000000000003"));
   }
@@ -77,7 +76,6 @@ class DocumentUploadEventCompatibilityTest {
             "application/pdf",
             null,
             "CIVIL_APPLY",
-            null,
             suffix);
     var priorAuthority =
         new PriorAuthorityDocumentUploadedEvent(

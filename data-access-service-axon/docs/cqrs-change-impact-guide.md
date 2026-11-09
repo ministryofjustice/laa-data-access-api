@@ -174,8 +174,10 @@ bean in `AxonEventProcessingConfig`. No change to aggregate or existing projecti
   event").
 * Write the `application_data` row first, then append the event (same transaction).
 * `sendAndWait` returning means the event is committed, **not** that tracking projections are
-  current. Tests and endpoints that need read-your-writes use a subscription query
-  (`SubscriptionProjectionGateway`, as in `CreateApplicationUseCase`) or return `202`.
+  current. Endpoints that need read-your-writes read the sourced aggregate (as
+  `ApplicationQueryHandler` and `PriorAuthorityQueryHandler` do) rather than waiting on a
+  projection. Subscription-query updates are in-memory per pod, so a projection wait cannot be
+  relied on behind more than one pod. Tests that read a projection poll for it.
 * Concurrency: `RetryingCommandDispatcher` retries once on `ConcurrencyException` /
   `AppendEventsTransactionRejectedException` / unique-key violation. Handlers must therefore be safe
   to re-run.
@@ -206,7 +208,7 @@ bean in `AxonEventProcessingConfig`. No change to aggregate or existing projecti
 | Evolve/state | Aggregate replay tests (fold an event list, then apply a command that depends on it) |
 | Command handler | Handler tests with mocked stores / Axon test fixtures |
 | Event shape | Old-JSON fixture deserialisation test; sensitive-field absence assertion |
-| Projection | Projection unit tests incl. reset/replay; `src/integrationTest` against PostgreSQL (`PostgresAxonIntegrationTest`, `ApplicationProjectionSequencingIntegrationTest`) |
+| Projection | Projection unit tests incl. reset/replay; `src/integrationTest` against PostgreSQL (`PostgresAxonIntegrationTest`, `ApplicationSummarySequencingIntegrationTest`) |
 | API behaviour | Controller tests, integration tests, Pact provider states (`pactTest`) |
 
 See [Testing Axon code](testing-axon-code.md), [Guardrails](guardrails.md),

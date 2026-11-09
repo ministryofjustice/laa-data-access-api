@@ -64,9 +64,13 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
+import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
+import uk.gov.justice.laa.dstew.access.query.application.history.FindApplicationHistoryQuery;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
+import uk.gov.justice.laa.dstew.access.query.genesis.GenesisStreamProjection;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
+import uk.gov.justice.laa.dstew.access.testutils.EventTypeNames;
 import uk.gov.justice.laa.dstew.access.version.VersionToken;
 import util.ProjectionAwaiter;
 
@@ -193,6 +197,29 @@ public class ApplicationLinkMembershipIntegrationTest {
     assertThat(application(removedId).getLinkedApplications()).isEmpty();
     awaitHistory(removedId, "APPLICATION_GROUP_LEFT");
     awaitHistory(group.leadId(), "APPLICATION_GROUP_DISSOLVED");
+  }
+
+  @Test
+  void givenDissolvedGroup_whenGenesisStreamsRead_thenEachApplicationPointsToItsEventsInOrder() {
+    var group = createGroup(2);
+    UUID removedId = group.memberIds().get(1);
+
+    assertThat(unlink(removedId, token(group.groupId(), group.version())).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+
+    for (UUID applicationId : List.of(group.leadId(), removedId)) {
+      await()
+          .atMost(15, TimeUnit.SECONDS)
+          .pollInterval(100, TimeUnit.MILLISECONDS)
+          .until(
+              () ->
+                  genesisStream(applicationId).contains("access.LinkedApplicationGroupDissolved"));
+      assertThat(genesisStream(applicationId))
+          .containsSubsequence(
+              "access.ApplicationCreated",
+              "access.LinkedApplicationGroupCreated",
+              "access.LinkedApplicationGroupDissolved");
+    }
   }
 
   @Test
@@ -1290,14 +1317,14 @@ public class ApplicationLinkMembershipIntegrationTest {
                 """,
         Long.class,
         groupId.toString(),
-        eventType.getName());
+        EventTypeNames.of(eventType));
   }
 
   private long countAllDomainEvents(Class<?> eventType) {
     return jdbcTemplate.queryForObject(
         "SELECT COUNT(*) FROM axon.domain_event_entry WHERE payload_type = ?",
         Long.class,
-        eventType.getName());
+        EventTypeNames.of(eventType));
   }
 
   private static String token(UUID groupId, long version) {
@@ -1305,11 +1332,22 @@ public class ApplicationLinkMembershipIntegrationTest {
   }
 
   private long historyCount(UUID applicationId, String eventType) {
-    return jdbcTemplate.queryForObject(
-        "SELECT COUNT(*) FROM axon.application_history WHERE application_id = ? AND event_type = ?",
-        Long.class,
+    return queryGateway
+        .query(
+            new FindApplicationHistoryQuery(applicationId, List.of(eventType)),
+            ApplicationHistoryResult.class)
+        .join()
+        .applicationHistoryEvents()
+        .size();
+  }
+
+  private List<String> genesisStream(UUID applicationId) {
+    return jdbcTemplate.queryForList(
+        "SELECT event_name FROM axon.genesis_stream WHERE genesis_id = ? AND source = ?"
+            + " ORDER BY occurred_at, id",
+        String.class,
         applicationId,
-        eventType);
+        GenesisStreamProjection.LOCAL_SOURCE);
   }
 
   private void awaitHistory(UUID applicationId, String eventType) {

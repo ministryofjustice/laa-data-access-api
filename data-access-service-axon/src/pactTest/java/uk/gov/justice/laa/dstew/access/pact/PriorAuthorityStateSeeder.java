@@ -132,16 +132,9 @@ class PriorAuthorityStateSeeder {
     if (!DRAFT_STATUS.equals(current.status())) {
       return current;
     }
-    boolean projected =
-        submitDraftUseCase.submit(
-            new SubmitPriorAuthorityDraftCommand(
-                priorAuthorityId, Instant.now(), authenticatedCallerFactory.currentCaller()));
-    if (!projected) {
-      throw new IllegalStateException(
-          "Projection for prior authority "
-              + priorAuthorityId
-              + " did not become readable in time");
-    }
+    submitDraftUseCase.submit(
+        new SubmitPriorAuthorityDraftCommand(
+            priorAuthorityId, Instant.now(), authenticatedCallerFactory.currentCaller()));
     PriorAuthorityResult submitted =
         awaitPriorAuthority(priorAuthorityId, pa -> !DRAFT_STATUS.equals(pa.status()));
     applications.awaitWorkListItem(priorAuthorityId, Objects::nonNull);

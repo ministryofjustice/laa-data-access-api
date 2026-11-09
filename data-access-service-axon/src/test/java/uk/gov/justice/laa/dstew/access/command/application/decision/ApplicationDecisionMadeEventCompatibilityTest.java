@@ -26,7 +26,6 @@ class ApplicationDecisionMadeEventCompatibilityTest {
         {
           "applicationId": "%s",
           "applicationVersion": 3,
-          "applicationDataVersion": 5,
           "overallDecision": "GRANTED",
           "autoGranted": null,
           "caseworkerId": %s,
@@ -40,7 +39,6 @@ class ApplicationDecisionMadeEventCompatibilityTest {
 
     assertThat(event.applicationId()).isEqualTo(applicationId);
     assertThat(event.applicationVersion()).isEqualTo(3L);
-    assertThat(event.applicationDataVersion()).isEqualTo(5L);
     assertThat(event.overallDecision()).isEqualTo("GRANTED");
     assertThat(event.autoGranted()).isNull();
     assertThat(event.occurredAt()).isEqualTo(Instant.parse("2026-08-02T10:00:00Z"));

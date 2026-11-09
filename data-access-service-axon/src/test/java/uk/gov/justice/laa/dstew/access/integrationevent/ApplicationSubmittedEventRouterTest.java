@@ -26,6 +26,7 @@ import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
+import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 
 @ExtendWith(OutputCaptureExtension.class)
 class ApplicationSubmittedEventRouterTest {
@@ -88,7 +89,6 @@ class ApplicationSubmittedEventRouterTest {
         new ApplicationUpdatedEvent(
             id,
             4L,
-            7L,
             "APPLICATION_IN_PROGRESS",
             "APPLICATION_SUBMITTED",
             COMMITTED_AT.minusSeconds(1));
@@ -116,7 +116,7 @@ class ApplicationSubmittedEventRouterTest {
     UUID id = UUID.randomUUID();
     ApplicationUpdatedEvent event =
         new ApplicationUpdatedEvent(
-            id, 2L, 2L, "APPLICATION_SUBMITTED", "APPLICATION_SUBMITTED", COMMITTED_AT);
+            id, 2L, "APPLICATION_SUBMITTED", "APPLICATION_SUBMITTED", COMMITTED_AT);
 
     router.on(event, eventMessage(Map.of()), lifecycle);
 
@@ -172,7 +172,14 @@ class ApplicationSubmittedEventRouterTest {
   private ApplicationCreatedEvent createdEvent(String status) {
     UUID id = UUID.fromString("8c9e6c2e-4f1a-4e3a-9c2b-1a2b3c4d5e6f");
     return new ApplicationCreatedEvent(
-        id, 0L, "fingerprint", status, 1, COMMITTED_AT.minusSeconds(1), null, null);
+        id,
+        "fingerprint",
+        status,
+        1,
+        COMMITTED_AT.minusSeconds(1),
+        Erasable.erased(),
+        null,
+        "LAA-123");
   }
 
   private EventMessage eventMessage(Map<String, String> metadata) {

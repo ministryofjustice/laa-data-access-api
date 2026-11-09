@@ -165,18 +165,18 @@ class GetApplicationsIntegrationTest {
     assertThat(detail).isNotNull();
     assertThat(detail.getApplicationId()).isEqualTo(applicationId);
     assertThat(detail.getLaaReference()).isEqualTo("DETAIL-" + applicationId);
-    Instant createdAt =
-        jdbcTemplate.queryForObject(
-            "SELECT created_at FROM axon.application_current_state WHERE application_id = ?",
-            Instant.class,
-            applicationId);
     Instant submittedAt =
-        jdbcTemplate.queryForObject(
-            "SELECT submitted_at FROM axon.application_current_state WHERE application_id = ?",
-            Instant.class,
-            applicationId);
-    assertThat(createdAt).isEqualTo(submittedAt);
-    assertThat(detail.getCreatedAt().toInstant()).isEqualTo(createdAt);
+        await()
+            .atMost(15, TimeUnit.SECONDS)
+            .until(
+                () ->
+                    jdbcTemplate.query(
+                        "SELECT submitted_at FROM axon.application_summary WHERE application_id = ?",
+                        (rs, row) -> rs.getTimestamp(1).toInstant(),
+                        applicationId),
+                rows -> !rows.isEmpty())
+            .getFirst();
+    assertThat(detail.getCreatedAt().toInstant()).isEqualTo(submittedAt);
     assertThat(detail.getSubmittedAt().toInstant()).isEqualTo(submittedAt);
     assertThat(detail.getClient().getFirstName()).isEqualTo("Ada");
     assertThat(detail.getClient().getLastName()).isEqualTo("Lovelace");
@@ -523,7 +523,7 @@ class GetApplicationsIntegrationTest {
             new HttpEntity<>(new ApplicationUpdateRequest(updatedContent), headers()),
             Void.class);
     assertThat(update.getStatusCode()).isIn(HttpStatus.NO_CONTENT, HttpStatus.ACCEPTED);
-    awaitApplicationProjectionVersion(applicationId, 1L);
+    awaitApplicationProjection(applicationId);
 
     ResponseEntity<String> noLongerVisible =
         restTemplate.exchange(
@@ -731,19 +731,6 @@ class GetApplicationsIntegrationTest {
             java.util.Objects::nonNull);
   }
 
-  private ApplicationReadModel awaitApplicationProjectionVersion(UUID applicationId, long version) {
-    return await()
-        .alias("application projection to reach version " + version + " for " + applicationId)
-        .atMost(15, TimeUnit.SECONDS)
-        .pollInterval(100, TimeUnit.MILLISECONDS)
-        .until(
-            () ->
-                queryGateway
-                    .query(new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class)
-                    .join(),
-            projected -> projected != null && projected.getApplicationDataVersion() == version);
-  }
-
   private void grantApplication(UUID applicationId) {
     ResponseEntity<Void> response =
         restTemplate.exchange(
@@ -766,7 +753,7 @@ class GetApplicationsIntegrationTest {
     createApplication(applicationId);
     awaitApplicationProjection(applicationId);
     grantApplication(applicationId);
-    awaitApplicationProjectionVersion(applicationId, 1L);
+    awaitApplicationProjection(applicationId);
     return applicationId;
   }
 

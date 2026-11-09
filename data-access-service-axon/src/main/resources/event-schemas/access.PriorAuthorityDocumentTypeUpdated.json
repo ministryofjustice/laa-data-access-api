@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "access.PriorAuthorityDocumentTypeUpdated kept fields",
+  "description": "Fields kept on the stored event. Every other field is content, stored apart so that it can be erased. Content: documentType.",
+  "type": "object",
+  "properties": {
+    "priorAuthorityId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "documentId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "parentApplicationId": {
+      "type": "string",
+      "format": "uuid"
+    }
+  },
+  "required": [
+    "priorAuthorityId",
+    "documentId",
+    "occurredAt",
+    "parentApplicationId"
+  ],
+  "additionalProperties": false
+}

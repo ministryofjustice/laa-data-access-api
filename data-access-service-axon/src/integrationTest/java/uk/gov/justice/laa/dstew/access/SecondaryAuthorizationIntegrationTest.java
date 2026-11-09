@@ -209,7 +209,7 @@ class SecondaryAuthorizationIntegrationTest {
                 headers),
             Void.class);
     assertThat(grantResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    projectionAwaiter().awaitApplicationVersion(applicationId, 1L);
+    projectionAwaiter().awaitApplication(applicationId);
 
     var priorAuthorityResponse =
         restTemplate.postForEntity(

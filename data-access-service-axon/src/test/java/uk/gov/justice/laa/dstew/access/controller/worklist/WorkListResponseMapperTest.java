@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
@@ -12,6 +13,7 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.AutoGranted;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
+import uk.gov.justice.laa.dstew.access.query.application.summary.ApplicationSummaryReadModel;
 import uk.gov.justice.laa.dstew.access.query.worklist.FindWorkListItemsResult;
 import uk.gov.justice.laa.dstew.access.query.worklist.WorkListItemReadModel;
 
@@ -34,14 +36,21 @@ class WorkListResponseMapperTest {
     item.setAssigneeId(caseworkerId);
     assertThat(item.getAssignmentVersion()).isZero();
     item.setAssignmentVersion(3L);
-    item.setLaaReference("LAA-123");
     item.setSubmittedAt(Instant.parse("2026-08-28T09:00:00Z"));
     item.setPriorAuthorityType("EXPERT");
     item.setExpertType("Pathologist");
 
     var response =
         new WorkListResponseMapper()
-            .toResponse(new FindWorkListItemsResult(List.of(item), 1L, 2, 10));
+            .toResponse(
+                new FindWorkListItemsResult(
+                    List.of(item),
+                    Map.of(
+                        applicationId,
+                        ApplicationSummaryReadModel.builder().laaReference("LAA-123").build()),
+                    1L,
+                    2,
+                    10));
 
     assertThat(response.getBody().getPaging().getPage()).isEqualTo(2);
     assertThat(response.getBody().getPaging().getPageSize()).isEqualTo(10);
@@ -74,17 +83,22 @@ class WorkListResponseMapperTest {
             Instant.parse("2026-09-01T10:00:00Z"),
             1L,
             1L);
-    item.setUsedDelegatedFunctions(true);
-    item.setCategoryOfLaw("Family");
-    item.setCategoryOfLawCode("FAM");
-    item.setMatterTypes(List.of("Special Children Act"));
-    item.setMatterTypeCodes(List.of("SCA"));
+    ApplicationSummaryReadModel summary =
+        ApplicationSummaryReadModel.builder()
+            .usedDelegatedFunctions(true)
+            .categoryOfLaw("Family")
+            .categoryOfLawCode("FAM")
+            .matterTypes(List.of("Special Children Act"))
+            .matterTypeCodes(List.of("SCA"))
+            .build();
     item.setApplicationStatus("APPLICATION_SUBMITTED");
     item.setAutoGranted(AutoGrantedState.PENDING);
 
     var response =
         new WorkListResponseMapper()
-            .toResponse(new FindWorkListItemsResult(List.of(item), 1L, 1, 20));
+            .toResponse(
+                new FindWorkListItemsResult(
+                    List.of(item), Map.of(item.getId(), summary), 1L, 1, 20));
 
     assertThat(response.getBody().getItems())
         .singleElement()
@@ -115,14 +129,19 @@ class WorkListResponseMapperTest {
             Instant.parse("2026-09-01T10:00:00Z"),
             1L,
             1L);
-    item.setCategoryOfLaw("Unexpected category");
-    item.setCategoryOfLawCode("CAT-991");
-    item.setMatterTypes(List.of("Unexpected matter"));
-    item.setMatterTypeCodes(List.of("MAT-123"));
+    ApplicationSummaryReadModel summary =
+        ApplicationSummaryReadModel.builder()
+            .categoryOfLaw("Unexpected category")
+            .categoryOfLawCode("CAT-991")
+            .matterTypes(List.of("Unexpected matter"))
+            .matterTypeCodes(List.of("MAT-123"))
+            .build();
 
     var mapped =
         new WorkListResponseMapper()
-            .toResponse(new FindWorkListItemsResult(List.of(item), 1L, 1, 20))
+            .toResponse(
+                new FindWorkListItemsResult(
+                    List.of(item), Map.of(item.getId(), summary), 1L, 1, 20))
             .getBody()
             .getItems()
             .getFirst();
@@ -135,22 +154,27 @@ class WorkListResponseMapperTest {
 
   @Test
   void givenPriorAuthority_whenMapped_thenOmitsCategoryButKeepsParentMatterPairs() {
+    UUID parentId = UUID.randomUUID();
     WorkListItemReadModel item =
         new WorkListItemReadModel(
             WorkItemType.PRIOR_AUTHORITY,
             UUID.randomUUID(),
-            UUID.randomUUID(),
+            parentId,
             Instant.parse("2026-09-01T10:00:00Z"),
             1L,
             1L);
-    item.setCategoryOfLaw("Family");
-    item.setCategoryOfLawCode("FAM");
-    item.setMatterTypes(List.of("First", "Second"));
-    item.setMatterTypeCodes(List.of("M-1", "M-2"));
+    ApplicationSummaryReadModel parent =
+        ApplicationSummaryReadModel.builder()
+            .categoryOfLaw("Family")
+            .categoryOfLawCode("FAM")
+            .matterTypes(List.of("First", "Second"))
+            .matterTypeCodes(List.of("M-1", "M-2"))
+            .build();
 
     var mapped =
         new WorkListResponseMapper()
-            .toResponse(new FindWorkListItemsResult(List.of(item), 1L, 1, 20))
+            .toResponse(
+                new FindWorkListItemsResult(List.of(item), Map.of(parentId, parent), 1L, 1, 20))
             .getBody()
             .getItems()
             .getFirst();
@@ -160,5 +184,29 @@ class WorkListResponseMapperTest {
     assertThat(mapped.getMatterTypes()).containsExactly("First", "Second");
     assertThat(mapped.getMatterTypeCodes()).containsExactly("M-1", "M-2");
     assertThat(mapped.getAutoGranted()).isNull();
+  }
+
+  @Test
+  void givenLaggingSummary_whenMapped_thenApplicationFieldsAreEmpty() {
+    WorkListItemReadModel item =
+        new WorkListItemReadModel(
+            WorkItemType.APPLICATION,
+            UUID.randomUUID(),
+            null,
+            Instant.parse("2026-09-01T10:00:00Z"),
+            1L,
+            1L);
+
+    var mapped =
+        new WorkListResponseMapper()
+            .toResponse(new FindWorkListItemsResult(List.of(item), Map.of(), 1L, 1, 20))
+            .getBody()
+            .getItems()
+            .getFirst();
+
+    assertThat(mapped.getItemId()).isEqualTo(item.getId());
+    assertThat(mapped.getLaaReference()).isNull();
+    assertThat(mapped.getCategoryOfLaw()).isNull();
+    assertThat(mapped.getMatterTypes()).isNullOrEmpty();
   }
 }

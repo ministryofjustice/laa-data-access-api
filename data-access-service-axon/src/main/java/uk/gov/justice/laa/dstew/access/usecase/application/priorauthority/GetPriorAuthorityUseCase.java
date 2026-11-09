@@ -10,7 +10,7 @@ import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadAccessPo
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.FindPriorAuthorityByPriorAuthorityIdQuery;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 
-/** Retrieves a Prior Authority submission from its projection. */
+/** Retrieves a Prior Authority submission from its aggregate. */
 @Service
 public class GetPriorAuthorityUseCase {
 

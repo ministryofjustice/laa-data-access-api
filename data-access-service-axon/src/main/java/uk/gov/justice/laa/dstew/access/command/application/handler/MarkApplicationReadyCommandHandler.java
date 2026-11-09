@@ -10,7 +10,6 @@ import org.axonframework.modelling.annotation.InjectEntity;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDecider;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDecider;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedGroupAssignmentDecider;
@@ -28,7 +27,6 @@ public class MarkApplicationReadyCommandHandler {
   public ReadyApplicationResult handle(
       MarkApplicationReadyCommand command,
       @InjectEntity(idProperty = "applicationId") ApplicationAggregate application,
-      ApplicationDataStore applicationDataStore,
       EventAppender eventAppender,
       StateManager stateManager,
       ProcessingContext context) {
@@ -37,24 +35,12 @@ public class MarkApplicationReadyCommandHandler {
       return result;
     }
 
-    var current =
-        applicationDataStore.get(
-            command.applicationId(), application.getState().getApplicationDataVersion());
+    ApplicationCommandHandlerSupport.requireContentRetained(application);
     long nextApplicationVersion = application.getState().getApplicationVersion() + 1;
-    long nextDataVersion = application.getState().getApplicationDataVersion() + 1;
-    applicationDataStore.append(
-        command.applicationId(),
-        nextDataVersion,
-        current.withManualAssessmentRequired(),
-        command.serialisedRequest(),
-        command.occurredAt());
     List<Object> events = new ArrayList<>();
     events.add(
         new ApplicationReadyForManualAssessmentEvent(
-            command.applicationId(),
-            nextApplicationVersion,
-            nextDataVersion,
-            command.occurredAt()));
+            command.applicationId(), nextApplicationVersion, command.occurredAt()));
     if (command.linkedGroupId() != null) {
       var group =
           stateManager

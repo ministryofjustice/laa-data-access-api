@@ -35,7 +35,7 @@ import uk.gov.justice.laa.dstew.access.query.application.LinkedApplicationMember
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 
-/** Maps the typed current-state projection to the public application response. */
+/** Maps the aggregate-built Application read model to the public application response. */
 @Component
 public class GetApplicationResponseMapper {
 

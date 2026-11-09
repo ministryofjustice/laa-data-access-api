@@ -52,11 +52,7 @@ public class ApplicationTestDataSeeder {
       ApplicationCreateRequest request,
       ApplicationLifecycle lifecycle,
       UUID caseworkerId) {
-    boolean projectionFound =
-        createApplicationUseCase.execute(createApplicationCommandMapper.toCommand(request, 1));
-    if (!projectionFound) {
-      throw new IllegalStateException("Create projection did not become available");
-    }
+    createApplicationUseCase.execute(createApplicationCommandMapper.toCommand(request, 1));
     if (lifecycle.autoGranted()) {
       recordAutoGrantOutcomeUseCase.record(
           autoGrantOutcomeCommandMapper.toCommand(

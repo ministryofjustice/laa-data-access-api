@@ -3,7 +3,7 @@ package uk.gov.justice.laa.dstew.access;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
@@ -54,9 +54,9 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetailsFactory;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
+import uk.gov.justice.laa.dstew.access.command.application.handler.ApplicationDocumentUploadCommandHandler;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
@@ -74,7 +74,7 @@ import uk.gov.justice.laa.dstew.access.model.SaveApplicationDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.SubmitApplicationDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.UploadApplicationDocumentResponse;
 import uk.gov.justice.laa.dstew.access.model.WorkListAssignRequest;
-import uk.gov.justice.laa.dstew.access.query.application.ApplicationProjection;
+import uk.gov.justice.laa.dstew.access.query.application.summary.ApplicationSummaryProjection;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsUploadResult;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
@@ -105,11 +105,11 @@ class ApplicationDraftIntegrationTest {
 
   @MockitoBean private SdsService sdsService;
 
-  @MockitoSpyBean private ApplicationDraftStore draftStore;
+  @MockitoSpyBean private ApplicationDocumentUploadCommandHandler uploadHandler;
 
-  @MockitoSpyBean private ApplicationDataStore applicationDataStore;
+  @MockitoSpyBean private ApplicationCreationDetailsFactory creationDetailsFactory;
 
-  @MockitoSpyBean private ApplicationProjection applicationProjection;
+  @MockitoSpyBean private ApplicationSummaryProjection summaryProjection;
 
   private ProjectionAwaiter projectionAwaiter;
 
@@ -140,12 +140,7 @@ class ApplicationDraftIntegrationTest {
     assertThat(body.getApplicationId()).isEqualTo(applicationId);
     assertThat(body.getSavedAt()).isNotNull();
 
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_draft WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isEqualTo(1);
+    assertThat(draftContentCount(applicationId)).isEqualTo(1);
 
     ResponseEntity<String> getResponse =
         restTemplate.exchange(
@@ -199,12 +194,7 @@ class ApplicationDraftIntegrationTest {
         objectMapper.readValue(retry.getBody(), SaveApplicationDraftResponse.class);
     assertThat(body.getApplicationId()).isEqualTo(applicationId);
 
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_draft WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isEqualTo(1);
+    assertThat(draftContentCount(applicationId)).isEqualTo(1);
   }
 
   @Test
@@ -238,12 +228,7 @@ class ApplicationDraftIntegrationTest {
             saveDraftUrl(), new HttpEntity<>(request, headers()), String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_draft WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isZero();
+    assertThat(draftContentCount(applicationId)).isZero();
   }
 
   @Test
@@ -262,12 +247,7 @@ class ApplicationDraftIntegrationTest {
             saveDraftUrl(), new HttpEntity<>(request, headers()), String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_draft WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isZero();
+    assertThat(draftContentCount(applicationId)).isZero();
   }
 
   @Test
@@ -287,12 +267,7 @@ class ApplicationDraftIntegrationTest {
             saveDraftUrl(), new HttpEntity<>(request, headers()), String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_draft WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isZero();
+    assertThat(draftContentCount(applicationId)).isZero();
   }
 
   @Test
@@ -315,12 +290,7 @@ class ApplicationDraftIntegrationTest {
             saveDraftUrl(), new HttpEntity<>(request, headers()), String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_draft WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isZero();
+    assertThat(draftContentCount(applicationId)).isZero();
   }
 
   @Test
@@ -463,17 +433,12 @@ class ApplicationDraftIntegrationTest {
       executor.shutdown();
     }
 
-    // The draft store must contain exactly one row for this application ID.
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_draft WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isEqualTo(1);
+    // Exactly one draft, with its content, must be recorded for this application ID.
+    assertThat(draftContentCount(applicationId)).isEqualTo(1);
   }
 
   @Test
-  void givenValidDraft_whenSubmitApplicationDraft_thenCreatesApplicationAndDeletesDraft() {
+  void givenValidDraft_whenSubmitApplicationDraft_thenCreatesApplication() {
     UUID applicationId = saveValidDraft();
 
     ResponseEntity<String> response =
@@ -485,20 +450,6 @@ class ApplicationDraftIntegrationTest {
         objectMapper.readValue(response.getBody(), SubmitApplicationDraftResponse.class);
     assertThat(body.getApplicationId()).isEqualTo(applicationId);
     assertThat(body.getSubmittedAt()).isNotNull();
-
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_draft WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isZero();
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_data"
-                    + " WHERE application_id = ? AND version = 0",
-                Integer.class,
-                applicationId))
-        .isEqualTo(1);
 
     var application = projectionAwaiter.awaitApplication(applicationId);
     assertThat(application.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
@@ -613,20 +564,13 @@ class ApplicationDraftIntegrationTest {
     doAnswer(
             invocation -> {
               writeAttempts.incrementAndGet();
-              return invocation.callRealMethod();
-            })
-        .when(draftStore)
-        .upsert(any(), any(), any(), any());
-    doAnswer(
-            invocation -> {
-              Object draft = invocation.callRealMethod();
               if (gateDraftReads.get() && staleReadCount.incrementAndGet() <= 2) {
                 staleReads.await(10, TimeUnit.SECONDS);
               }
-              return draft;
+              return invocation.callRealMethod();
             })
-        .when(draftStore)
-        .find(applicationId);
+        .when(uploadHandler)
+        .handle(any(), any(), any());
     int eventsBefore = eventCount(applicationId);
 
     List<ResponseEntity<String>> responses =
@@ -655,20 +599,7 @@ class ApplicationDraftIntegrationTest {
     assertThat(documentIds).doesNotHaveDuplicates();
     assertThat(eventCount(applicationId)).isEqualTo(eventsBefore + 2);
     assertThat(writeAttempts.get()).isEqualTo(3);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT version FROM axon.application_draft WHERE application_id = ?",
-                Long.class,
-                applicationId))
-        .isEqualTo(2L);
     for (int index = 0; index < documentIds.size(); index++) {
-      assertThat(
-              jdbcTemplate.queryForObject(
-                  "SELECT payload -> 'documentFilenames' ->> ? FROM axon.application_draft WHERE application_id = ?",
-                  String.class,
-                  documentIds.get(index).toString(),
-                  applicationId))
-          .isEqualTo(index == 0 ? "first.pdf" : "second.PDF");
       byte[] content = "%PDF-1.4\ncontent".getBytes();
       when(sdsService.getEvidenceFile(
               applicationId,
@@ -722,10 +653,10 @@ class ApplicationDraftIntegrationTest {
         };
     if (uploadCommitsFirst) {
       doAnswer(gate)
-          .when(applicationDataStore)
-          .append(eq(applicationId), anyLong(), any(), any(), any());
+          .when(creationDetailsFactory)
+          .prepare(any(), any(), any(), any(), anyInt(), any());
     } else {
-      doAnswer(gate).when(draftStore).upsert(eq(applicationId), any(), any(), any());
+      doAnswer(gate).when(uploadHandler).handle(any(), any(), any());
     }
     int eventsBefore = eventCount(applicationId);
     Supplier<ResponseEntity<String>> upload =
@@ -758,26 +689,11 @@ class ApplicationDraftIntegrationTest {
         assertThat(losingResponse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
       }
       assertThat(eventCount(applicationId)).isEqualTo(eventsBefore + (uploadCommitsFirst ? 2 : 1));
-      assertThat(
-              jdbcTemplate.queryForObject(
-                  "SELECT COUNT(*) FROM axon.application_draft WHERE application_id = ?",
-                  Integer.class,
-                  applicationId))
-          .isZero();
-      assertThat(
-              jdbcTemplate.queryForObject(
-                  "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
-                  Integer.class,
-                  applicationId))
-          .isEqualTo(1);
-      var filenames = applicationDataStore.get(applicationId, 0L).documentFilenames();
       if (uploadCommitsFirst) {
-        assertThat(filenames).containsExactly(Map.entry(documentId.get(), "overlap.PDF"));
         assertThat(projectionAwaiter.awaitApplication(applicationId).getUploadedDocuments())
             .singleElement()
             .satisfies(document -> assertThat(document.documentId()).isEqualTo(documentId.get()));
       } else {
-        assertThat(filenames).isEmpty();
         assertThat(projectionAwaiter.awaitApplication(applicationId).getUploadedDocuments())
             .isNullOrEmpty();
       }
@@ -826,13 +742,6 @@ class ApplicationDraftIntegrationTest {
       assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
       assertThat(response.getBody()).contains("application draft");
       assertThat(eventCount(applicationId)).isEqualTo(eventsAfterSubmission);
-      assertThat(
-              jdbcTemplate.queryForObject(
-                  "SELECT COUNT(*) FROM axon.application_draft WHERE application_id = ?",
-                  Integer.class,
-                  applicationId))
-          .isZero();
-      assertThat(applicationDataStore.get(applicationId, 0L).documentFilenames()).isEmpty();
       assertThat(projectionAwaiter.awaitApplication(applicationId).getUploadedDocuments())
           .isNullOrEmpty();
       assertThat(documentId.get()).isNotNull();
@@ -845,8 +754,7 @@ class ApplicationDraftIntegrationTest {
   }
 
   @Test
-  void givenUploadProjectionPaused_whenDownloaded_thenNotFoundUntilMetadataIsProjected()
-      throws Exception {
+  void givenUploadProjectionPaused_whenDownloaded_thenServedFromAggregate() throws Exception {
     UUID applicationId = saveValidDraft();
     when(sdsService.saveEvidenceFile(any(), any(), any()))
         .thenReturn(new SdsUploadResult(null, null, "checksum"));
@@ -861,8 +769,8 @@ class ApplicationDraftIntegrationTest {
               }
               return invocation.callRealMethod();
             })
-        .when(applicationProjection)
-        .on(any(ApplicationDocumentUploadedEvent.class));
+        .when(summaryProjection)
+        .on(any(ApplicationDocumentUploadedEvent.class), any());
     try {
       UUID documentId = uploadDocument(applicationId, "projected.PDF");
       assertThat(projectionStarted.await(10, TimeUnit.SECONDS)).isTrue();
@@ -870,31 +778,19 @@ class ApplicationDraftIntegrationTest {
       when(sdsService.getEvidenceFile(applicationId, documentId, documentId + ".PDF"))
           .thenReturn(new ByteArrayResource(content));
 
-      ResponseEntity<byte[]> pending =
+      ResponseEntity<byte[]> duringLag =
           restTemplate.exchange(
               documentUrl(applicationId, documentId),
               HttpMethod.GET,
               new HttpEntity<>(headers()),
               byte[].class);
-      assertThat(pending.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-      verify(sdsService, never()).getEvidenceFile(any(), any(), any());
 
-      releaseProjection.countDown();
-      await()
-          .atMost(Duration.ofSeconds(10))
-          .untilAsserted(
-              () -> {
-                ResponseEntity<byte[]> projected =
-                    restTemplate.exchange(
-                        documentUrl(applicationId, documentId),
-                        HttpMethod.GET,
-                        new HttpEntity<>(headers()),
-                        byte[].class);
-                assertThat(projected.getStatusCode()).isEqualTo(HttpStatus.OK);
-                assertThat(projected.getHeaders().getContentDisposition().getFilename())
-                    .isEqualTo("projected.PDF");
-                assertThat(projected.getBody()).containsExactly(content);
-              });
+      assertThat(projectionStarted.getCount()).isZero();
+      assertThat(releaseProjection.getCount()).isEqualTo(1);
+      assertThat(duringLag.getStatusCode()).isEqualTo(HttpStatus.OK);
+      assertThat(duringLag.getHeaders().getContentDisposition().getFilename())
+          .isEqualTo("projected.PDF");
+      assertThat(duringLag.getBody()).containsExactly(content);
       verify(sdsService).getEvidenceFile(applicationId, documentId, documentId + ".PDF");
     } finally {
       releaseProjection.countDown();
@@ -912,8 +808,8 @@ class ApplicationDraftIntegrationTest {
               registrationAttempts.incrementAndGet();
               return invocation.callRealMethod();
             })
-        .when(draftStore)
-        .upsert(eq(applicationId), any(), any(), any());
+        .when(uploadHandler)
+        .handle(any(), any(), any());
     int eventsBefore = eventCount(applicationId);
     jdbcTemplate.execute(
         """
@@ -921,7 +817,7 @@ class ApplicationDraftIntegrationTest {
                 RETURNS trigger AS $$
                 BEGIN
                         IF NEW.aggregate_identifier = '%s'
-                                AND NEW.payload_type LIKE '%%ApplicationDocumentUploadedEvent' THEN
+                                AND NEW.payload_type LIKE '%%ApplicationDocumentUploaded' THEN
                                 RAISE EXCEPTION 'forced application upload concurrency failure'
                                         USING ERRCODE = '23505';
                         END IF;
@@ -946,13 +842,6 @@ class ApplicationDraftIntegrationTest {
       assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
       assertThat(registrationAttempts.get()).isEqualTo(2);
       assertThat(eventCount(applicationId)).isEqualTo(eventsBefore);
-      assertThat(draftStore.find(applicationId).orElseThrow().documentFilenames()).isEmpty();
-      assertThat(
-              jdbcTemplate.queryForObject(
-                  "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
-                  Integer.class,
-                  applicationId))
-          .isZero();
       verify(sdsService).saveEvidenceFile(eq(applicationId), any(), any());
       verify(sdsService, never()).deleteEvidenceFile(any(), any(), any());
     } finally {
@@ -978,10 +867,14 @@ class ApplicationDraftIntegrationTest {
         .thenReturn(new SdsUploadResult(null, null, "checksum"));
     final UUID documentId = uploadDocument(applicationId, "original evidence.pdf");
     if (missingFilename) {
+      // Content rows are immutable, so replace the row without its filename in one statement.
       jdbcTemplate.update(
-          "UPDATE axon.application_draft SET payload = jsonb_set(payload, '{documentFilenames}', '{}'::jsonb)"
-              + " WHERE application_id = ?",
-          applicationId);
+          "WITH removed AS (DELETE FROM axon.event_content c USING axon.domain_event_entry e"
+              + " WHERE c.event_id = e.event_identifier AND e.aggregate_identifier = ?"
+              + " AND e.payload_type = 'access.ApplicationDocumentUploaded' RETURNING c.*)"
+              + " INSERT INTO axon.event_content (event_id, tags, content, created_at)"
+              + " SELECT event_id, tags, content - 'originalFilename', created_at FROM removed",
+          applicationId.toString());
     }
     if (submitted) {
       ResponseEntity<String> submitResponse =
@@ -1061,6 +954,15 @@ class ApplicationDraftIntegrationTest {
     return new HttpEntity<>(body, multipartHeaders);
   }
 
+  private int draftContentCount(UUID applicationId) {
+    return jdbcTemplate.queryForObject(
+        "SELECT COUNT(*) FROM axon.domain_event_entry e"
+            + " JOIN axon.event_content c ON c.event_id = e.event_identifier"
+            + " WHERE e.aggregate_identifier = ? AND e.payload_type = 'access.ApplicationDraftStarted'",
+        Integer.class,
+        applicationId.toString());
+  }
+
   private int eventCount(UUID applicationId) {
     return jdbcTemplate.queryForObject(
         "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
@@ -1096,7 +998,7 @@ class ApplicationDraftIntegrationTest {
             new HttpEntity<>(new ManualOutcomeRequest(AutoGrantOutcome.MANUAL), headers()),
             Void.class);
     assertThat(ready.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    var application = projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
+    var application = projectionAwaiter.awaitApplication(applicationId);
     ResponseEntity<Void> assigned =
         restTemplate.exchange(
             "http://localhost:" + port + "/api/v0/work-list/" + applicationId + "/assign",
@@ -1129,9 +1031,8 @@ class ApplicationDraftIntegrationTest {
             new HttpEntity<>(decision, headers()),
             Void.class);
     assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    var decided = projectionAwaiter.awaitApplicationVersion(applicationId, 2L);
+    var decided = projectionAwaiter.awaitApplication(applicationId);
     assertThat(decided.getStatus()).isEqualTo("APPLICATION_REFUSED");
-    assertThat(decided.getApplicationDataVersion()).isEqualTo(2L);
   }
 
   private UUID saveDraft(UUID applicationId, String laaReference, Map<String, Object> content) {

@@ -5,14 +5,15 @@ import java.util.Map;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.summary.ApplicationSummaryReadModel;
 
 /**
- * Result returned by {@link FindAllApplicationsQuery}, carrying the page of application read
- * models, batch-fetched group data keyed by group ID, linked member details keyed by application
- * ID, batch-fetched prior authorities keyed by application ID, and validated pagination metadata.
+ * Result returned by {@link FindAllApplicationsQuery}, carrying the page of application summaries,
+ * batch-fetched group data keyed by group ID, linked member details keyed by application ID,
+ * batch-fetched prior authorities keyed by application ID, and validated pagination metadata.
  */
 public record FindAllApplicationsResult(
-    List<ApplicationReadModel> applications,
+    List<ApplicationSummaryReadModel> applications,
     Map<UUID, LinkedApplicationGroupReadModel> groupsByGroupId,
     Map<UUID, LinkedApplicationMemberDetails> linkedMemberDetails,
     Map<UUID, List<PriorAuthorityReadModel>> priorAuthoritiesByApplicationId,

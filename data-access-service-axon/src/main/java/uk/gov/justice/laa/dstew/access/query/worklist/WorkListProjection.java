@@ -1,10 +1,7 @@
 package uk.gov.justice.laa.dstew.access.query.worklist;
 
 import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
-import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.core.annotation.SequencingPolicy;
@@ -16,11 +13,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
-import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDissolvedEvent;
@@ -34,6 +28,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationRead
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
+import uk.gov.justice.laa.dstew.access.query.application.summary.ApplicationSummaries;
 
 /**
  * Replayable projection of active work; it is never consulted to route a command.
@@ -48,22 +43,25 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 public class WorkListProjection {
   private final WorkListItemReadRepository items;
   private final WorkListGroupMemberReadRepository groupMembers;
-  private final ApplicationDataStore applicationDataStore;
   private final PriorAuthorityDataStore priorAuthorityDataStore;
+  private final ApplicationSummaries applicationSummaries;
 
-  /** Creates a projection backed by its read repository and event data stores. */
+  /** Creates a projection backed by its read repositories and the application summary port. */
   public WorkListProjection(
       WorkListItemReadRepository items,
       WorkListGroupMemberReadRepository groupMembers,
-      ApplicationDataStore applicationDataStore,
-      PriorAuthorityDataStore priorAuthorityDataStore) {
+      PriorAuthorityDataStore priorAuthorityDataStore,
+      ApplicationSummaries applicationSummaries) {
     this.items = items;
     this.groupMembers = groupMembers;
-    this.applicationDataStore = applicationDataStore;
     this.priorAuthorityDataStore = priorAuthorityDataStore;
+    this.applicationSummaries = applicationSummaries;
   }
 
-  /** Returns a database-filtered page of active work, oldest submission first. */
+  /**
+   * Returns a database-filtered page of active work, oldest submission first. Application facts
+   * come from the application summary rather than copies on the work item.
+   */
   @QueryHandler
   public FindWorkListItemsResult handle(FindWorkListItemsQuery query) {
     Page<WorkListItemReadModel> page =
@@ -75,8 +73,14 @@ public class WorkListProjection {
                 Sort.by(Sort.Direction.ASC, "submittedAt")
                     .and(Sort.by(Sort.Direction.ASC, "itemType"))
                     .and(Sort.by(Sort.Direction.ASC, "id"))));
+    var summaries =
+        applicationSummaries.findByIds(
+            page.getContent().stream()
+                .map(WorkListItemReadModel::subjectApplicationId)
+                .distinct()
+                .toList());
     return new FindWorkListItemsResult(
-        page.getContent(), page.getTotalElements(), query.page(), query.pageSize());
+        page.getContent(), summaries, page.getTotalElements(), query.page(), query.pageSize());
   }
 
   /** Creates an application work item as soon as the application is submitted. */
@@ -92,9 +96,6 @@ public class WorkListProjection {
             message.identifier().hashCode());
     item.setAutoGranted(AutoGrantedState.PENDING);
     item.setApplicationStatus(event.status());
-    ApplicationDataPayload data =
-        applicationDataStore.get(event.applicationId(), event.applicationDataVersion());
-    populateApplicationFields(item, data);
     items.save(item);
   }
 
@@ -108,9 +109,6 @@ public class WorkListProjection {
                 () ->
                     new IllegalStateException(
                         "Missing application work-list item for " + event.applicationId()));
-    ApplicationDataPayload data =
-        applicationDataStore.get(event.applicationId(), event.applicationDataVersion());
-    populateApplicationFields(item, data);
     item.setReadyAt(event.occurredAt());
     item.setAutoGranted(AutoGrantedState.MANUAL);
     item.setApplicationStatus("APPLICATION_SUBMITTED");
@@ -135,9 +133,6 @@ public class WorkListProjection {
             event.dataVersion(),
             message.identifier().hashCode());
     item.setReadyAt(event.occurredAt());
-    ApplicationDataPayload parentData =
-        applicationDataStore.get(event.applicationId(), event.applicationDataVersion());
-    populateApplicationFields(item, parentData);
     PriorAuthorityDataPayload priorAuthorityData =
         priorAuthorityDataStore.get(event.priorAuthorityId(), event.dataVersion());
     String priorAuthorityType = priorAuthorityData.content().priorAuthorityType().name();
@@ -272,24 +267,5 @@ public class WorkListProjection {
     if (item.getItemType() != eventType) {
       throw new IllegalStateException("Work item type mismatch for " + workItemId);
     }
-  }
-
-  private void populateApplicationFields(WorkListItemReadModel item, ApplicationDataPayload data) {
-    record MatterPair(String name, String code) {}
-
-    item.setLaaReference(data.laaReference());
-    item.setCategoryOfLaw(data.categoryOfLaw());
-    item.setCategoryOfLawCode(data.categoryOfLawCode());
-    item.setUsedDelegatedFunctions(data.usedDelegatedFunctions());
-    List<MatterPair> matterPairs =
-        (data.proceedings() == null ? Stream.<Proceeding>empty() : data.proceedings().stream())
-            .filter(Objects::nonNull)
-            .map(
-                proceeding ->
-                    new MatterPair(proceeding.getMatterType(), proceeding.getMatterTypeCode()))
-            .distinct()
-            .toList();
-    item.setMatterTypes(matterPairs.stream().map(MatterPair::name).toList());
-    item.setMatterTypeCodes(matterPairs.stream().map(MatterPair::code).toList());
   }
 }

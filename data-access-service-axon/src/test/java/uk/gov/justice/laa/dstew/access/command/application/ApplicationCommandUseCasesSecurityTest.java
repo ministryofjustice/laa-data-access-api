@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.command.application;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
@@ -12,13 +13,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.MakePriorAuthorityDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationUseCase;
-import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 import uk.gov.justice.laa.dstew.access.utils.BaseSecuredUseCaseTest;
 import uk.gov.justice.laa.dstew.access.utils.TestSecurityConfig;
@@ -45,9 +44,8 @@ class ApplicationCommandUseCasesSecurityTest extends BaseSecuredUseCaseTest {
   @Autowired private UploadDocumentUseCase uploadDocumentUseCase;
 
   @MockitoBean private RetryingCommandDispatcher dispatcher;
-  @MockitoBean private SubscriptionProjectionGateway projectionGateway;
   @MockitoBean private SdsService sdsService;
-  @MockitoBean private ApplicationDraftStore draftStore;
+  @MockitoBean private QueryGateway queryGateway;
 
   @Test
   void givenNoRole_whenExecuteSecuredCommandUseCases_thenThrowsAuthorizationDeniedException() {
@@ -61,7 +59,7 @@ class ApplicationCommandUseCasesSecurityTest extends BaseSecuredUseCaseTest {
     assertDenied(() -> uploadDocumentUseCase.execute(null, null));
     assertDenied(() -> uploadDocumentUseCase.execute(null, null, null, null));
 
-    verifyNoInteractions(dispatcher, projectionGateway, sdsService, draftStore);
+    verifyNoInteractions(dispatcher, sdsService, queryGateway);
   }
 
   @Test
@@ -77,7 +75,7 @@ class ApplicationCommandUseCasesSecurityTest extends BaseSecuredUseCaseTest {
     assertDenied(() -> uploadDocumentUseCase.execute(null, null));
     assertDenied(() -> uploadDocumentUseCase.execute(null, null, null, null));
 
-    verifyNoInteractions(dispatcher, projectionGateway, sdsService, draftStore);
+    verifyNoInteractions(dispatcher, sdsService, queryGateway);
   }
 
   private void assertDenied(ThrowingInvocation invocation) {

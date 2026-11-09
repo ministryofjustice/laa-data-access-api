@@ -31,19 +31,6 @@ public class ProjectionAwaiter {
             Objects::nonNull);
   }
 
-  public ApplicationReadModel awaitApplicationVersion(UUID applicationId, long version) {
-    return await()
-        .alias("application projection to reach version " + version + " for " + applicationId)
-        .atMost(15, TimeUnit.SECONDS)
-        .pollInterval(100, TimeUnit.MILLISECONDS)
-        .until(
-            () ->
-                queryGateway
-                    .query(new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class)
-                    .join(),
-            projected -> projected != null && projected.getApplicationDataVersion() == version);
-  }
-
   public PriorAuthorityResult awaitPriorAuthority(UUID priorAuthorityId) {
     return await()
         .alias("prior authority projection to be populated for " + priorAuthorityId)

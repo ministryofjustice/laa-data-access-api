@@ -1,10 +1,5 @@
 package uk.gov.justice.laa.dstew.access.query.application;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.persistence.Transient;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -13,8 +8,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider;
@@ -25,9 +18,7 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMerit
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 
-/** Replayable current-state read model for an Application. */
-@Entity
-@Table(name = "application_current_state")
+/** Detached read model of a submitted Application, built from its aggregate. */
 @Data
 @Builder
 @NoArgsConstructor
@@ -35,82 +26,63 @@ import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 @ExcludeFromGeneratedCodeCoverage
 public class ApplicationReadModel {
 
-  @Id
-  @Column(name = "application_id")
   private UUID applicationId;
 
   private String status;
 
-  @Column(name = "application_data_version", nullable = false)
-  private long applicationDataVersion;
-
-  @Column(name = "application_version", nullable = false)
   private long applicationVersion;
 
-  @Transient private String laaReference;
+  private String laaReference;
 
-  @Transient private ApplicationClient client;
+  private ApplicationClient client;
 
-  @Transient private ApplicationProvider provider;
+  private ApplicationProvider provider;
 
-  @Column(name = "office_code")
   private String officeCode;
 
-  @Transient private List<Opponent> opponents;
+  private List<Opponent> opponents;
 
-  @Column(name = "schema_version")
   private int schemaVersion;
 
-  @Column(name = "lead_application_id")
   private UUID leadApplicationId;
 
-  @Column(name = "linked_group_id")
   private UUID linkedGroupId;
 
-  @Column(name = "caseworker_id")
   private UUID caseworkerId;
 
-  @Column(name = "submitted_at")
   private Instant submittedAt;
 
-  @Transient private Boolean usedDelegatedFunctions;
+  private Boolean usedDelegatedFunctions;
 
-  @Transient private String categoryOfLaw;
+  private String categoryOfLaw;
 
-  @Transient private String matterType;
+  private String matterType;
 
-  @Transient private String categoryOfLawCode;
+  private String categoryOfLawCode;
 
-  @Transient private String matterTypeCode;
+  private String matterTypeCode;
 
-  @Transient private List<Proceeding> proceedings;
+  private List<Proceeding> proceedings;
 
-  @Transient private String decisionStatus;
+  private String decisionStatus;
 
-  @Transient private AutoGrantedState autoGranted;
+  private AutoGrantedState autoGranted;
 
-  @Transient private Map<UUID, ApplicationMeritsDecision> meritsDecisions;
+  private Map<UUID, ApplicationMeritsDecision> meritsDecisions;
 
-  @Transient private Map<String, Object> certificate;
+  private Map<String, Object> certificate;
 
-  @Builder.Default
-  @Column(name = "uploaded_documents", nullable = false)
-  @JdbcTypeCode(SqlTypes.JSON)
-  private List<DocumentMetadata> uploadedDocuments = List.of();
+  @Builder.Default private List<DocumentMetadata> uploadedDocuments = List.of();
 
-  @Transient private Map<UUID, String> documentFilenames;
+  private Map<UUID, String> documentFilenames;
 
-  @Column(name = "potential_duplicates")
-  @JdbcTypeCode(SqlTypes.JSON)
   private List<PotentialDuplicate> potentialDuplicates;
 
-  @Column(name = "created_at")
   private Instant createdAt;
 
-  @Column(name = "modified_at")
   private Instant modifiedAt;
 
-  /** Returns the persisted access key, falling back to hydrated provider content for responses. */
+  /** Returns the office code, falling back to the provider in the content. */
   public String getOfficeCode() {
     return officeCode != null ? officeCode : provider == null ? null : provider.getOfficeCode();
   }

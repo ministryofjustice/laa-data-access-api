@@ -4,7 +4,7 @@ import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.query.utils.security.ReadAccessScope;
 import uk.gov.justice.laa.dstew.access.query.utils.security.UnrestrictedReadAccessScope;
 
-/** Query returning the current-state projection for a single prior-authority submission. */
+/** Query returning a single prior-authority submission with its content. */
 public record FindPriorAuthorityByPriorAuthorityIdQuery(
     UUID priorAuthorityId, ReadAccessScope accessScope) {
 

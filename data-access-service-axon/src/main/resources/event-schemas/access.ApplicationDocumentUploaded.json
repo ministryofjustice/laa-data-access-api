@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "access.ApplicationDocumentUploaded kept fields",
+  "description": "Fields kept on the stored event. Every other field is content, stored apart so that it can be erased. Content: contentType, documentType, fileSuffix, originalFilename, size, sourceService.",
+  "type": "object",
+  "properties": {
+    "applicationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "documentId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "uploadedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "checksum": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "applicationId",
+    "documentId",
+    "uploadedAt",
+    "checksum"
+  ],
+  "additionalProperties": false
+}

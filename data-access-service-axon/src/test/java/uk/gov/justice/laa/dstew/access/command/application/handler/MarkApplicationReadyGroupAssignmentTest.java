@@ -2,8 +2,6 @@ package uk.gov.justice.laa.dstew.access.command.application.handler;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -13,7 +11,6 @@ import static uk.gov.justice.laa.dstew.access.command.application.ApplicationSta
 import static uk.gov.justice.laa.dstew.access.command.application.ApplicationStateEvents.notReady;
 import static uk.gov.justice.laa.dstew.access.command.application.ApplicationStateEvents.resubmittedAfterAssignment;
 import static uk.gov.justice.laa.dstew.access.command.application.ApplicationStateEvents.stateOf;
-import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
 
 import java.time.Instant;
 import java.util.List;
@@ -29,8 +26,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupState;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationLinkConflictException;
@@ -52,7 +47,6 @@ class MarkApplicationReadyGroupAssignmentTest {
   @Mock private StateManager stateManager;
   @Mock private ProcessingContext context;
   @Mock private EventAppender eventAppender;
-  @Mock private ApplicationDataStore applicationDataStore;
 
   private MarkApplicationReadyCommandHandler handler;
   private ApplicationAggregate application;
@@ -70,17 +64,21 @@ class MarkApplicationReadyGroupAssignmentTest {
     givenGroup(List.of(APPLICATION_ID, OTHER_MEMBER_ID));
     givenMember(OTHER_MEMBER_ID, activeAssigned(OTHER_MEMBER_ID, CASEWORKER_ID));
 
-    var result =
-        handler.handle(
-            command(), application, applicationDataStore, eventAppender, stateManager, context);
+    var result = handler.handle(command(), application, eventAppender, stateManager, context);
 
     assertThat(result).isEqualTo(ReadyApplicationResult.RECORDED);
     verify(eventAppender)
         .append(
             List.of(
-                new ApplicationReadyForManualAssessmentEvent(APPLICATION_ID, 1L, 1L, OCCURRED_AT),
+                new ApplicationReadyForManualAssessmentEvent(APPLICATION_ID, 1L, OCCURRED_AT),
                 new WorkItemAssigned(
-                    APPLICATION_ID, WorkItemType.APPLICATION, 1L, 1L, CASEWORKER_ID, OCCURRED_AT)));
+                    APPLICATION_ID,
+                    WorkItemType.APPLICATION,
+                    APPLICATION_ID,
+                    1L,
+                    1L,
+                    CASEWORKER_ID,
+                    OCCURRED_AT)));
   }
 
   @Test
@@ -94,7 +92,6 @@ class MarkApplicationReadyGroupAssignmentTest {
         new MarkApplicationReadyCommand(APPLICATION_ID, 2L, "{}", OCCURRED_AT)
             .withLinkedGroupId(GROUP_ID),
         application,
-        applicationDataStore,
         eventAppender,
         stateManager,
         context);
@@ -102,9 +99,14 @@ class MarkApplicationReadyGroupAssignmentTest {
     verify(eventAppender)
         .append(
             List.of(
-                new ApplicationReadyForManualAssessmentEvent(APPLICATION_ID, 3L, 3L, OCCURRED_AT),
+                new ApplicationReadyForManualAssessmentEvent(APPLICATION_ID, 3L, OCCURRED_AT),
                 new WorkItemUnassigned(
-                    APPLICATION_ID, WorkItemType.APPLICATION, 3L, 2L, OCCURRED_AT)));
+                    APPLICATION_ID,
+                    WorkItemType.APPLICATION,
+                    APPLICATION_ID,
+                    3L,
+                    2L,
+                    OCCURRED_AT)));
   }
 
   @Test
@@ -112,17 +114,11 @@ class MarkApplicationReadyGroupAssignmentTest {
     givenApplicationState(stateOf(notReady(APPLICATION_ID)));
     givenDataStore(0L);
     handler.handle(
-        command().withLinkedGroupId(null),
-        application,
-        applicationDataStore,
-        eventAppender,
-        stateManager,
-        context);
+        command().withLinkedGroupId(null), application, eventAppender, stateManager, context);
 
     verify(eventAppender)
         .append(
-            List.of(
-                new ApplicationReadyForManualAssessmentEvent(APPLICATION_ID, 1L, 1L, OCCURRED_AT)));
+            List.of(new ApplicationReadyForManualAssessmentEvent(APPLICATION_ID, 1L, OCCURRED_AT)));
     verifyNoInteractions(stateManager);
   }
 
@@ -133,14 +129,7 @@ class MarkApplicationReadyGroupAssignmentTest {
     givenGroup(List.of());
 
     assertThatThrownBy(
-            () ->
-                handler.handle(
-                    command(),
-                    application,
-                    applicationDataStore,
-                    eventAppender,
-                    stateManager,
-                    context))
+            () -> handler.handle(command(), application, eventAppender, stateManager, context))
         .isInstanceOf(ApplicationLinkConflictException.class)
         .hasMessageContaining("membership of application " + APPLICATION_ID + " changed");
 
@@ -153,15 +142,12 @@ class MarkApplicationReadyGroupAssignmentTest {
         stateOf(
             List.of(
                 notReady(APPLICATION_ID).getFirst(),
-                new ApplicationReadyForManualAssessmentEvent(
-                    APPLICATION_ID, 1L, 1L, OCCURRED_AT))));
+                new ApplicationReadyForManualAssessmentEvent(APPLICATION_ID, 1L, OCCURRED_AT))));
 
-    var result =
-        handler.handle(
-            command(), application, applicationDataStore, eventAppender, stateManager, context);
+    var result = handler.handle(command(), application, eventAppender, stateManager, context);
 
     assertThat(result).isEqualTo(ReadyApplicationResult.ALREADY_RECORDED);
-    verifyNoInteractions(eventAppender, stateManager, applicationDataStore);
+    verifyNoInteractions(eventAppender, stateManager);
   }
 
   private MarkApplicationReadyCommand command() {
@@ -183,11 +169,7 @@ class MarkApplicationReadyGroupAssignmentTest {
     when(application.getState()).thenReturn(state);
   }
 
-  private void givenDataStore(long dataVersion) {
-    when(applicationDataStore.get(APPLICATION_ID, dataVersion))
-        .thenReturn(ApplicationDataPayload.from(applicationCreationDetails(APPLICATION_ID)));
-    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
-  }
+  private void givenDataStore(long dataVersion) {}
 
   private void givenMember(UUID applicationId, List<Object> events) {
     var aggregate = mock(ApplicationAggregate.class);

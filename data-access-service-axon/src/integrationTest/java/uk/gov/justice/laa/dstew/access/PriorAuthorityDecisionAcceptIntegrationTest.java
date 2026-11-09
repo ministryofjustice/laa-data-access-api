@@ -343,7 +343,7 @@ public class PriorAuthorityDecisionAcceptIntegrationTest {
     createApplication(applicationId, UUID.randomUUID());
     awaitApplicationProjection(applicationId);
     grantApplication(applicationId);
-    awaitApplicationProjectionVersion(applicationId, 1L);
+    awaitApplicationProjection(applicationId);
     return applicationId;
   }
 
@@ -375,19 +375,6 @@ public class PriorAuthorityDecisionAcceptIntegrationTest {
                     .query(new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class)
                     .join(),
             java.util.Objects::nonNull);
-  }
-
-  private ApplicationReadModel awaitApplicationProjectionVersion(UUID applicationId, long version) {
-    return await()
-        .alias("application projection to reach version " + version + " for " + applicationId)
-        .atMost(15, TimeUnit.SECONDS)
-        .pollInterval(100, TimeUnit.MILLISECONDS)
-        .until(
-            () ->
-                queryGateway
-                    .query(new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class)
-                    .join(),
-            projected -> projected != null && projected.getApplicationDataVersion() == version);
   }
 
   private PriorAuthorityResult awaitPriorAuthorityProjection(UUID priorAuthorityId) {

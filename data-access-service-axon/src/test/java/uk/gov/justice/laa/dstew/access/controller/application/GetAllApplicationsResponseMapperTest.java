@@ -16,18 +16,17 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthoritySummary;
-import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
 import uk.gov.justice.laa.dstew.access.query.application.LinkedApplicationMemberDetails;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.summary.ApplicationSummaryReadModel;
 import uk.gov.justice.laa.dstew.access.version.VersionToken;
 
 class GetAllApplicationsResponseMapperTest {
@@ -60,16 +59,13 @@ class GetAllApplicationsResponseMapperTest {
     UUID applicationId = UUID.randomUUID();
     UUID draftId = UUID.randomUUID();
     UUID submittedId = UUID.randomUUID();
-    ApplicationReadModel app =
-        ApplicationReadModel.builder()
+    ApplicationSummaryReadModel app =
+        ApplicationSummaryReadModel.builder()
             .autoGranted(AutoGrantedState.PENDING)
             .applicationId(applicationId)
             .status("APPLICATION_SUBMITTED")
             .laaReference("LAA-999")
-            .provider(
-                uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider.builder()
-                    .officeCode("2B002C")
-                    .build())
+            .officeCode("2B002C")
             .matterType("special children act (SCA)")
             .categoryOfLaw("FAMILY")
             .usedDelegatedFunctions(true)
@@ -126,8 +122,8 @@ class GetAllApplicationsResponseMapperTest {
 
   @Test
   void givenApplicationWithNoLeadId_whenToResponse_thenIsLeadFalse() {
-    ApplicationReadModel app =
-        ApplicationReadModel.builder()
+    ApplicationSummaryReadModel app =
+        ApplicationSummaryReadModel.builder()
             .autoGranted(AutoGrantedState.PENDING)
             .applicationId(UUID.randomUUID())
             .modifiedAt(Instant.now())
@@ -148,8 +144,8 @@ class GetAllApplicationsResponseMapperTest {
 
   @Test
   void givenApplicationWithLeadId_whenToResponse_thenIsLeadFalse() {
-    ApplicationReadModel app =
-        ApplicationReadModel.builder()
+    ApplicationSummaryReadModel app =
+        ApplicationSummaryReadModel.builder()
             .autoGranted(AutoGrantedState.PENDING)
             .applicationId(UUID.randomUUID())
             .modifiedAt(Instant.now())
@@ -169,19 +165,15 @@ class GetAllApplicationsResponseMapperTest {
   }
 
   @Test
-  void givenApplicationWithClientIndividual_whenToResponse_thenClientFieldsPopulated() {
-    ApplicationClient client =
-        ApplicationClient.builder()
-            .firstName("Ada")
-            .lastName("Lovelace")
-            .dateOfBirth(LocalDate.of(1815, 12, 10))
-            .build();
-    ApplicationReadModel app =
-        ApplicationReadModel.builder()
+  void givenApplicationWithClientNames_whenToResponse_thenClientFieldsPopulated() {
+    ApplicationSummaryReadModel app =
+        ApplicationSummaryReadModel.builder()
             .autoGranted(AutoGrantedState.PENDING)
             .applicationId(UUID.randomUUID())
             .modifiedAt(Instant.now())
-            .client(client)
+            .clientFirstName("Ada")
+            .clientLastName("Lovelace")
+            .clientDateOfBirth(LocalDate.of(1815, 12, 10))
             .build();
 
     ApplicationSummary summary =
@@ -204,8 +196,8 @@ class GetAllApplicationsResponseMapperTest {
     UUID memberId = UUID.randomUUID();
     UUID groupId = UUID.randomUUID();
 
-    ApplicationReadModel leadApp =
-        ApplicationReadModel.builder()
+    ApplicationSummaryReadModel leadApp =
+        ApplicationSummaryReadModel.builder()
             .autoGranted(AutoGrantedState.PENDING)
             .applicationId(leadId)
             .linkedGroupId(groupId)
@@ -256,8 +248,8 @@ class GetAllApplicationsResponseMapperTest {
 
   @Test
   void givenLeadProceeding_whenMapped_thenReturnsNamesAndCodes() {
-    ApplicationReadModel application =
-        ApplicationReadModel.builder()
+    ApplicationSummaryReadModel application =
+        ApplicationSummaryReadModel.builder()
             .applicationId(UUID.randomUUID())
             .status("APPLICATION_SUBMITTED")
             .laaReference("LAA-123")
@@ -282,8 +274,8 @@ class GetAllApplicationsResponseMapperTest {
 
   @Test
   void givenUnassignedApplication_whenMapped_thenAssignedToIsNull() {
-    ApplicationReadModel application =
-        ApplicationReadModel.builder()
+    ApplicationSummaryReadModel application =
+        ApplicationSummaryReadModel.builder()
             .applicationId(UUID.randomUUID())
             .status("APPLICATION_SUBMITTED")
             .autoGranted(AutoGrantedState.PENDING)
@@ -308,8 +300,8 @@ class GetAllApplicationsResponseMapperTest {
     UUID leadId = UUID.randomUUID();
     UUID memberId = UUID.randomUUID();
     UUID groupId = UUID.randomUUID();
-    ApplicationReadModel lead =
-        ApplicationReadModel.builder()
+    ApplicationSummaryReadModel lead =
+        ApplicationSummaryReadModel.builder()
             .applicationId(leadId)
             .linkedGroupId(groupId)
             .autoGranted(AutoGrantedState.PENDING)
@@ -354,8 +346,8 @@ class GetAllApplicationsResponseMapperTest {
     UUID leadId = UUID.randomUUID();
     UUID memberId = UUID.randomUUID();
     UUID groupId = UUID.randomUUID();
-    ApplicationReadModel memberApp =
-        ApplicationReadModel.builder()
+    ApplicationSummaryReadModel memberApp =
+        ApplicationSummaryReadModel.builder()
             .autoGranted(AutoGrantedState.PENDING)
             .applicationId(memberId)
             .linkedGroupId(groupId)
@@ -394,8 +386,8 @@ class GetAllApplicationsResponseMapperTest {
 
   @Test
   void givenApplicationWithNoGroup_whenToResponse_thenLinkedApplicationsEmpty() {
-    ApplicationReadModel app =
-        ApplicationReadModel.builder()
+    ApplicationSummaryReadModel app =
+        ApplicationSummaryReadModel.builder()
             .autoGranted(AutoGrantedState.PENDING)
             .applicationId(UUID.randomUUID())
             .modifiedAt(Instant.now())
@@ -416,8 +408,8 @@ class GetAllApplicationsResponseMapperTest {
 
   @Test
   void givenApplicationWithNoPriorAuthority_whenToResponse_thenPriorAuthoritiesEmpty() {
-    ApplicationReadModel app =
-        ApplicationReadModel.builder()
+    ApplicationSummaryReadModel app =
+        ApplicationSummaryReadModel.builder()
             .autoGranted(AutoGrantedState.PENDING)
             .applicationId(UUID.randomUUID())
             .modifiedAt(Instant.now())
@@ -440,8 +432,8 @@ class GetAllApplicationsResponseMapperTest {
   void givenDomainPriorAuthorityStatus_whenToResponse_thenApiStatusEnumAcceptsIt(
       PriorAuthorityStatus status) {
     UUID applicationId = UUID.randomUUID();
-    ApplicationReadModel app =
-        ApplicationReadModel.builder()
+    ApplicationSummaryReadModel app =
+        ApplicationSummaryReadModel.builder()
             .autoGranted(AutoGrantedState.PENDING)
             .applicationId(applicationId)
             .modifiedAt(Instant.now())

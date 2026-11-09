@@ -7,17 +7,16 @@ import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.AutoGranted;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.PagingResponse;
-import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
 import uk.gov.justice.laa.dstew.access.query.application.LinkedApplicationMemberDetails;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.summary.ApplicationSummaryReadModel;
 
 /** Maps a {@link FindAllApplicationsResult} to an {@link ApplicationSummaryResponse}. */
 @Component
@@ -41,7 +40,8 @@ public class GetAllApplicationsResponseMapper {
     return ResponseEntity.ok(response);
   }
 
-  private ApplicationSummary toSummary(ApplicationReadModel app, FindAllApplicationsResult result) {
+  private ApplicationSummary toSummary(
+      ApplicationSummaryReadModel app, FindAllApplicationsResult result) {
     var group =
         app.getLinkedGroupId() == null
             ? null
@@ -75,19 +75,16 @@ public class GetAllApplicationsResponseMapper {
     return summary;
   }
 
-  private void populateClientDetails(ApplicationSummary summary, ApplicationReadModel app) {
-    ApplicationClient client = app.getClient();
-    if (client != null) {
-      summary.setClientFirstName(client.getFirstName());
-      summary.setClientLastName(client.getLastName());
-      if (client.getDateOfBirth() != null) {
-        summary.setClientDateOfBirth(client.getDateOfBirth());
-      }
+  private void populateClientDetails(ApplicationSummary summary, ApplicationSummaryReadModel app) {
+    summary.setClientFirstName(app.getClientFirstName());
+    summary.setClientLastName(app.getClientLastName());
+    if (app.getClientDateOfBirth() != null) {
+      summary.setClientDateOfBirth(app.getClientDateOfBirth());
     }
   }
 
   private List<LinkedApplicationSummaryResponse> toLinkedSummaries(
-      ApplicationReadModel app,
+      ApplicationSummaryReadModel app,
       LinkedApplicationGroupReadModel group,
       Map<UUID, LinkedApplicationMemberDetails> linkedMemberDetails) {
     if (group == null) {

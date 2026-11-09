@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 
 /** State object reconstructed by folding a PriorAuthority aggregate's event stream. */
@@ -25,4 +26,12 @@ public class PriorAuthorityState {
   long assignmentVersion;
   String priorAuthorityType;
   List<DocumentMetadata> uploadedDocuments = new ArrayList<>();
+
+  /** Returns the processing status derived from the submitted and decided flags. */
+  public PriorAuthorityStatus status() {
+    if (decided) {
+      return PriorAuthorityStatus.DECIDED;
+    }
+    return submitted ? PriorAuthorityStatus.SUBMITTED : PriorAuthorityStatus.DRAFT;
+  }
 }

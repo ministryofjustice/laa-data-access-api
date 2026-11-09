@@ -1,24 +1,37 @@
 package uk.gov.justice.laa.dstew.access.config;
 
 import org.axonframework.extension.spring.config.EventProcessorDefinition;
+import org.axonframework.messaging.eventhandling.conversion.EventConverter;
 import org.axonframework.messaging.eventhandling.processing.errorhandling.PropagatingErrorHandler;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
+import uk.gov.justice.laa.dstew.access.eventcontent.EventContentSeparator;
+import uk.gov.justice.laa.dstew.access.eventcontent.EventContentStore;
+import uk.gov.justice.laa.dstew.access.eventcontent.RegisteredContentReaders;
+import uk.gov.justice.laa.dstew.access.eventcontent.axon.ContentReadingEventSource;
+import uk.gov.justice.laa.dstew.access.query.genesis.GenesisStreamProjection;
 
 /** Defines isolated processors for projections and synchronous command-side route updates. */
 @Configuration
 @ExcludeFromGeneratedCodeCoverage
 public class AxonEventProcessingConfig {
 
+  /** Builds the application summary from event content. */
   @Bean
-  EventProcessorDefinition applicationProjectionProcessor() {
-    return pooledStreamingProcessor("application-projection");
+  EventProcessorDefinition applicationSummaryProcessor(
+      ObjectProvider<EventContentSeparator> separator,
+      ObjectProvider<EventContentStore> store,
+      ObjectProvider<EventConverter> converter) {
+    return contentReadingProcessor(
+        RegisteredContentReaders.APPLICATION_SUMMARY, separator, store, converter);
   }
 
+  /** Writes genesis stream pointers; it needs no content, only IDs and timestamps. */
   @Bean
-  EventProcessorDefinition applicationHistoryProjectionProcessor() {
-    return pooledStreamingProcessor("application-history-projection");
+  EventProcessorDefinition genesisStreamProcessor() {
+    return pooledStreamingProcessor(GenesisStreamProjection.PROCESSING_GROUP);
   }
 
   @Bean
@@ -32,8 +45,12 @@ public class AxonEventProcessingConfig {
   }
 
   @Bean
-  EventProcessorDefinition priorAuthorityProjectionProcessor() {
-    return pooledStreamingProcessor("prior-authority-projection");
+  EventProcessorDefinition priorAuthorityProjectionProcessor(
+      ObjectProvider<EventContentSeparator> separator,
+      ObjectProvider<EventContentStore> store,
+      ObjectProvider<EventConverter> converter) {
+    return contentReadingProcessor(
+        RegisteredContentReaders.PRIOR_AUTHORITY_PROJECTION, separator, store, converter);
   }
 
   /** Keeps the disposable work-list projection replayable and isolated from command routing. */
@@ -66,6 +83,26 @@ public class AxonEventProcessingConfig {
     return EventProcessorDefinition.subscribingMatching("application-submitted-publisher")
         .customized(
             configuration -> configuration.errorHandler(PropagatingErrorHandler.instance()));
+  }
+
+  /** A streaming processor that receives event content; it must be a registered content reader. */
+  private EventProcessorDefinition contentReadingProcessor(
+      String processingGroup,
+      ObjectProvider<EventContentSeparator> separator,
+      ObjectProvider<EventContentStore> store,
+      ObjectProvider<EventConverter> converter) {
+    return EventProcessorDefinition.pooledStreamingMatching(processingGroup)
+        .customized(
+            configuration ->
+                configuration
+                    .eventSource(
+                        ContentReadingEventSource.forProcessor(
+                            processingGroup,
+                            configuration.eventSource(),
+                            separator::getObject,
+                            store::getObject,
+                            converter::getObject))
+                    .errorHandler(PropagatingErrorHandler.instance()));
   }
 
   private EventProcessorDefinition pooledStreamingProcessor(String processingGroup) {

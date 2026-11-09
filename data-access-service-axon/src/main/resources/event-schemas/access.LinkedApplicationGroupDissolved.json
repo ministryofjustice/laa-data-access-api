@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "access.LinkedApplicationGroupDissolved kept fields",
+  "description": "Fields kept on the stored event. Every other field is content, stored apart so that it can be erased.",
+  "type": "object",
+  "properties": {
+    "groupId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "formerLeadApplicationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "removedApplicationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "memberApplicationIds": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string",
+        "format": "uuid"
+      }
+    },
+    "groupVersion": {
+      "type": "integer"
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "groupId",
+    "formerLeadApplicationId",
+    "removedApplicationId",
+    "memberApplicationIds",
+    "groupVersion",
+    "occurredAt"
+  ],
+  "additionalProperties": false
+}

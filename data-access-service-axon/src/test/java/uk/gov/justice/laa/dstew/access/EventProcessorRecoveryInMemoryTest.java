@@ -39,9 +39,10 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
-import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
-import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
+import uk.gov.justice.laa.dstew.access.query.application.summary.ApplicationSummaryReadRepository;
+import uk.gov.justice.laa.dstew.access.query.genesis.GenesisStreamRepository;
+import uk.gov.justice.laa.dstew.access.testsupport.InMemoryEventContentStoreConfig;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 /** Verifies replay and transient-failure recovery using real tracking event processors. */
@@ -56,7 +57,11 @@ import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
       "spring.datasource.url=jdbc:h2:mem:axon-recovery;DB_CLOSE_DELAY=-1"
     })
 @AutoConfigureTestRestTemplate
-@Import({EventProcessorRecoveryInMemoryTest.RecoveryConfig.class, TestJwtDecoderConfig.class})
+@Import({
+  EventProcessorRecoveryInMemoryTest.RecoveryConfig.class,
+  TestJwtDecoderConfig.class,
+  InMemoryEventContentStoreConfig.class
+})
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class EventProcessorRecoveryInMemoryTest {
 
@@ -64,8 +69,8 @@ class EventProcessorRecoveryInMemoryTest {
   @Autowired private AxonConfiguration axonConfiguration;
   @Autowired private EventStore eventStore;
   @Autowired private CommandGateway commandGateway;
-  @Autowired private ApplicationReadRepository applicationReadRepository;
-  @Autowired private ApplicationHistoryReadRepository applicationHistoryReadRepository;
+  @Autowired private ApplicationSummaryReadRepository summaryRepository;
+  @Autowired private GenesisStreamRepository genesisStreamRepository;
   @Autowired private LinkedApplicationGroupReadRepository groupReadRepository;
   @Autowired private FailOnceProjection failOnceProjection;
   @Autowired private PermanentlyFailingProjection permanentlyFailingProjection;
@@ -108,11 +113,11 @@ class EventProcessorRecoveryInMemoryTest {
         .atMost(Duration.ofSeconds(5))
         .until(
             () ->
-                applicationReadRepository.existsById(applicationId)
-                    && applicationHistoryReadRepository
-                            .findAllByApplicationIdOrderByOccurredAtAsc(applicationId)
+                summaryRepository.existsById(applicationId)
+                    && genesisStreamRepository
+                            .findAllByGenesisIdOrderByOccurredAtAscIdAsc(applicationId)
                             .size()
-                        == 1
+                        > 0
                     && groupReadRepository.count() == 0);
 
     assertThat(
@@ -159,17 +164,26 @@ class EventProcessorRecoveryInMemoryTest {
                           assertThat(document.getFileName()).isEqualTo("client-report.pdf");
                         }));
 
+    final int pointers =
+        await()
+            .atMost(Duration.ofSeconds(5))
+            .until(
+                () ->
+                    genesisStreamRepository
+                        .findAllByGenesisIdOrderByOccurredAtAscIdAsc(applicationId)
+                        .size(),
+                count -> count > 0);
     var processors =
         List.of(
-            processor("application-projection"),
-            processor("application-history-projection"),
+            processor("application-summary"),
+            processor("genesis-stream"),
             processor("linked-application-group-projection"));
     processors.forEach(processor -> processor.shutdown().join());
-    applicationReadRepository.deleteAllInBatch();
-    applicationHistoryReadRepository.deleteAllInBatch();
+    summaryRepository.deleteAllInBatch();
+    genesisStreamRepository.deleteAllInBatch();
     groupReadRepository.deleteAllInBatch();
-    assertThat(applicationReadRepository.existsById(applicationId)).isFalse();
-    assertThat(applicationHistoryReadRepository.count()).isZero();
+    assertThat(summaryRepository.existsById(applicationId)).isFalse();
+    assertThat(genesisStreamRepository.count()).isZero();
     assertThat(groupReadRepository.count()).isZero();
 
     processors.forEach(processor -> processor.resetTokens().join());
@@ -179,11 +193,11 @@ class EventProcessorRecoveryInMemoryTest {
         .atMost(Duration.ofSeconds(5))
         .until(
             () ->
-                applicationReadRepository.existsById(applicationId)
-                    && applicationHistoryReadRepository
-                            .findAllByApplicationIdOrderByOccurredAtAsc(applicationId)
+                summaryRepository.existsById(applicationId)
+                    && genesisStreamRepository
+                            .findAllByGenesisIdOrderByOccurredAtAscIdAsc(applicationId)
                             .size()
-                        == 1
+                        == pointers
                     && groupReadRepository.count() == 0);
     assertThat(
             restTemplate

@@ -32,8 +32,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataRepository;
+import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteKind;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteRepository;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
@@ -51,12 +50,15 @@ import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatusResponse;
 import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 import uk.gov.justice.laa.dstew.access.model.WorkListResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
-import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadRepository;
+import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryEventResult;
+import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
+import uk.gov.justice.laa.dstew.access.query.application.history.FindApplicationHistoryQuery;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
+import uk.gov.justice.laa.dstew.access.query.application.summary.ApplicationSummaryReadRepository;
+import uk.gov.justice.laa.dstew.access.testsupport.InMemoryEventContentStoreConfig;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
+import uk.gov.justice.laa.dstew.access.testutils.EventTypeNames;
 
 @SpringBootTest(
     classes = DataAccessServiceAxonApplication.class,
@@ -71,20 +73,18 @@ import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
       "feature.enable-dev-token=false"
     })
 @AutoConfigureTestRestTemplate
-@Import(TestJwtDecoderConfig.class)
+@Import({TestJwtDecoderConfig.class, InMemoryEventContentStoreConfig.class})
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class CreateApplicationInMemoryTest {
 
   @Autowired private TestRestTemplate restTemplate;
 
-  @Autowired private ApplicationReadRepository applicationReadRepository;
-  @Autowired private ApplicationHistoryReadRepository applicationHistoryReadRepository;
+  @Autowired private ApplicationSummaryReadRepository summaryRepository;
   @Autowired private LinkedApplicationGroupReadRepository groupReadRepository;
   @Autowired private ApplicationGroupRouteRepository routeRepository;
   @Autowired private AxonConfiguration axonConfiguration;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private QueryGateway queryGateway;
-  @Autowired private ApplicationDataRepository applicationDataRepository;
 
   @ParameterizedTest
   @CsvSource({
@@ -253,7 +253,6 @@ class CreateApplicationInMemoryTest {
     ApplicationReadModel current = awaitApplicationVersion(applicationId, 1L);
     assertThat(current.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
     assertThat(current.getAutoGranted()).isEqualTo(AutoGrantedState.PENDING);
-    assertThat(current.getApplicationDataVersion()).isEqualTo(1L);
     assertThat(awaitHistoryTypes(applicationId, "APPLICATION_CREATED", "APPLICATION_UPDATED"))
         .hasSize(2);
   }
@@ -436,22 +435,13 @@ class CreateApplicationInMemoryTest {
         .singleElement()
         .satisfies(
             history -> {
-              assertThat(history.getEventType()).isEqualTo("APPLICATION_CREATED");
-              assertThat(history.getDataVersion()).isZero();
-              assertThat(history.getServiceName()).isEqualTo("CIVIL_APPLY");
-            });
-
-    assertThat(applicationDataRepository.findById(new ApplicationDataId(createdApplicationId, 0L)))
-        .isPresent()
-        .hasValueSatisfying(
-            data -> {
-              assertThat(data.getPayload().laaReference()).isEqualTo("LAA-123");
-              assertThat(data.getPayloadHash()).hasSize(64);
+              assertThat(history.eventType()).isEqualTo("APPLICATION_CREATED");
+              assertThat(history.serviceName()).isEqualTo("CIVIL_APPLY");
             });
 
     var processors = axonConfiguration.getComponents(StreamingEventProcessor.class);
-    assertThat(processors.get("application-projection")).isNotNull();
-    assertThat(processors.get("application-history-projection")).isNotNull();
+    assertThat(processors.get("application-summary")).isNotNull();
+    assertThat(processors.get("genesis-stream")).isNotNull();
   }
 
   @Test
@@ -600,10 +590,15 @@ class CreateApplicationInMemoryTest {
             proceeding ->
                 assertThat(proceeding.getMeritsDecision())
                     .isEqualTo(MeritsDecisionStatusResponse.GRANTED));
-    assertThat(applicationDataRepository.findById(new ApplicationDataId(applicationId, 1L)))
-        .get()
-        .extracting(data -> data.getPayload().certificate())
-        .isEqualTo(Map.of("certificateNumber", "AUTO-2126"));
+    assertThat(
+            restTemplate
+                .exchange(
+                    "/api/v0/applications/" + applicationId + "/certificate",
+                    HttpMethod.GET,
+                    new HttpEntity<>(headers()),
+                    String.class)
+                .getBody())
+        .contains("AUTO-2126");
 
     ResponseEntity<Void> repeated =
         restTemplate.exchange(
@@ -612,7 +607,14 @@ class CreateApplicationInMemoryTest {
             new HttpEntity<>(request, headers()),
             Void.class);
     assertThat(repeated.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    assertThat(applicationDataRepository.countByIdApplicationId(applicationId)).isEqualTo(2L);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM domain_event_entry"
+                    + " WHERE aggregate_identifier = ? AND payload_type = ?",
+                Integer.class,
+                applicationId.toString(),
+                EventTypeNames.of(ApplicationDecisionMadeEvent.class)))
+        .isOne();
   }
 
   @Test
@@ -703,7 +705,7 @@ class CreateApplicationInMemoryTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     assertThat(response.getBody()).contains("Generic Validation Error");
-    assertThat(applicationReadRepository.findById(applicationId)).isEmpty();
+    assertThat(summaryRepository.findById(applicationId)).isEmpty();
   }
 
   @Test
@@ -730,7 +732,7 @@ class CreateApplicationInMemoryTest {
     UUID createdApplicationId = applicationId(firstResponse);
     assertThat(awaitHistory(createdApplicationId, 1))
         .singleElement()
-        .satisfies(h -> assertThat(h.getEventType()).isEqualTo("APPLICATION_CREATED"));
+        .satisfies(h -> assertThat(h.eventType()).isEqualTo("APPLICATION_CREATED"));
   }
 
   @Test
@@ -792,7 +794,7 @@ class CreateApplicationInMemoryTest {
     assertThat(groupReadRepository.count()).isZero();
     assertThat(awaitHistory(createdApplicationId, 1))
         .singleElement()
-        .satisfies(history -> assertThat(history.getEventType()).isEqualTo("APPLICATION_CREATED"));
+        .satisfies(history -> assertThat(history.eventType()).isEqualTo("APPLICATION_CREATED"));
   }
 
   @Test
@@ -957,34 +959,38 @@ class CreateApplicationInMemoryTest {
             application -> application != null && application.getApplicationVersion() == version);
   }
 
-  private List<ApplicationHistoryReadModel> awaitHistory(UUID applicationId, int expectedCount) {
+  private List<ApplicationHistoryEventResult> awaitHistory(UUID applicationId, int expectedCount) {
     return await()
         .atMost(10, TimeUnit.SECONDS)
         .pollInterval(50, TimeUnit.MILLISECONDS)
-        .until(
-            () ->
-                applicationHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
-                    applicationId),
-            history -> history.size() == expectedCount);
+        .until(() -> history(applicationId), history -> history.size() == expectedCount);
   }
 
-  private List<ApplicationHistoryReadModel> awaitHistoryTypes(
+  private List<ApplicationHistoryEventResult> awaitHistoryTypes(
       UUID applicationId, String... expectedEventTypes) {
     List<String> expected = List.of(expectedEventTypes);
     return await()
         .atMost(10, TimeUnit.SECONDS)
         .pollInterval(50, TimeUnit.MILLISECONDS)
         .until(
-            () ->
-                applicationHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
-                    applicationId),
+            () -> history(applicationId),
             history ->
-                history.size() == expected.size()
-                    && new java.util.HashSet<>(
-                            history.stream()
-                                .map(ApplicationHistoryReadModel::getEventType)
-                                .toList())
-                        .equals(new java.util.HashSet<>(expected)));
+                history.stream().map(ApplicationHistoryEventResult::eventType).toList().size()
+                        == expected.size()
+                    && history.stream()
+                        .map(ApplicationHistoryEventResult::eventType)
+                        .collect(java.util.stream.Collectors.toSet())
+                        .equals(java.util.Set.copyOf(expected)));
+  }
+
+  private List<ApplicationHistoryEventResult> history(UUID applicationId) {
+    return queryGateway
+        .query(
+            new FindApplicationHistoryQuery(
+                applicationId, List.of("APPLICATION_CREATED", "APPLICATION_UPDATED")),
+            ApplicationHistoryResult.class)
+        .join()
+        .applicationHistoryEvents();
   }
 
   private void assertRejectedApplicationWasRolledBack(UUID applicationId) {
@@ -994,8 +1000,7 @@ class CreateApplicationInMemoryTest {
                 Integer.class,
                 applicationId.toString()))
         .isZero();
-    assertThat(applicationDataRepository.countByIdApplicationId(applicationId)).isZero();
-    assertThat(applicationReadRepository.findById(applicationId)).isEmpty();
-    assertThat(applicationHistoryReadRepository.countByApplicationId(applicationId)).isZero();
+    assertThat(summaryRepository.findById(applicationId)).isEmpty();
+    assertThat(history(applicationId)).isEmpty();
   }
 }

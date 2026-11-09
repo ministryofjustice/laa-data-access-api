@@ -1,28 +1,33 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
+import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 
 /** Unit tests for {@link ApplicationEvolve} decision-fold behaviour. */
 class ApplicationEvolveTest {
 
-  @ParameterizedTest
-  @NullSource
-  @ValueSource(longs = 3L)
-  void givenDocumentUploadVersion_whenApplied_thenAdvancesOnlyReferencedDataVersion(Long version) {
+  @Test
+  void givenDocumentUpload_whenApplied_thenRecordsDocumentWithoutAdvancingApplicationVersion() {
     ApplicationState state = new ApplicationState();
-    state.applicationDataVersion = 2L;
     state.applicationVersion = 7L;
     ApplicationEvolve.apply(
         state,
@@ -34,16 +39,14 @@ class ApplicationEvolveTest {
             12L,
             "application/pdf",
             "checksum",
-            "CIVIL_APPLY",
-            version));
+            "CIVIL_APPLY"));
 
-    assertThat(state.applicationDataVersion).isEqualTo(version == null ? 2L : version);
     assertThat(state.applicationVersion).isEqualTo(7L);
     assertThat(state.uploadedDocuments.getFirst().deleted()).isFalse();
   }
 
   @Test
-  void givenLegacySerializedUpload_whenDeserialized_thenPreservesDataVersion() throws Exception {
+  void givenLegacySerializedUpload_whenDeserialized_thenFoldsDocument() throws Exception {
     String json =
         """
         {"applicationId":"00000000-0000-0000-0000-000000000001",
@@ -57,12 +60,9 @@ class ApplicationEvolveTest {
             .findAndRegisterModules()
             .readValue(json, ApplicationDocumentUploadedEvent.class);
     ApplicationState state = new ApplicationState();
-    state.applicationDataVersion = 2L;
 
     ApplicationEvolve.apply(state, event);
 
-    assertThat(event.applicationDataVersion()).isNull();
-    assertThat(state.applicationDataVersion).isEqualTo(2L);
     assertThat(state.uploadedDocuments).hasSize(1);
     assertThat(state.uploadedDocuments.getFirst().documentType()).isEqualTo("INVOICE");
   }
@@ -118,7 +118,7 @@ class ApplicationEvolveTest {
     state.applicationId = applicationId;
     ApplicationDecisionMadeEvent event =
         new ApplicationDecisionMadeEvent(
-            applicationId, 1L, 1L, "GRANTED", AutoGrantedState.AUTOGRANTED, Instant.now());
+            applicationId, 1L, "GRANTED", AutoGrantedState.AUTOGRANTED, Instant.now());
 
     ApplicationEvolve.apply(state, event);
 
@@ -132,7 +132,7 @@ class ApplicationEvolveTest {
     state.applicationId = applicationId;
     ApplicationDecisionMadeEvent event =
         new ApplicationDecisionMadeEvent(
-            applicationId, 1L, 1L, "REFUSED", AutoGrantedState.MANUAL, Instant.now());
+            applicationId, 1L, "REFUSED", AutoGrantedState.MANUAL, Instant.now());
 
     ApplicationEvolve.apply(state, event);
 
@@ -148,7 +148,7 @@ class ApplicationEvolveTest {
     ApplicationEvolve.apply(
         state,
         new ApplicationDecisionMadeEvent(
-            UUID.randomUUID(), 2L, 2L, overallDecision, AutoGrantedState.MANUAL, Instant.now()));
+            UUID.randomUUID(), 2L, overallDecision, AutoGrantedState.MANUAL, Instant.now()));
 
     assertThat(state.status).isEqualTo(expectedStatus);
   }
@@ -161,7 +161,7 @@ class ApplicationEvolveTest {
     ApplicationEvolve.apply(
         state,
         new ApplicationDecisionMadeEvent(
-            UUID.randomUUID(), 2L, 2L, null, AutoGrantedState.MANUAL, Instant.now()));
+            UUID.randomUUID(), 2L, null, AutoGrantedState.MANUAL, Instant.now()));
 
     assertThat(state.status).isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED.getValue());
   }
@@ -200,5 +200,148 @@ class ApplicationEvolveTest {
         .extracting(DocumentMetadata::documentId)
         .containsExactly(firstDocumentId, secondDocumentId);
     assertThat(state.uploadedDocuments.getFirst().documentType()).isEqualTo("GATEWAY_EVIDENCE");
+  }
+
+  @Test
+  void givenDraftThenSubmitThenNote_whenFolded_thenKeepsDraftCreatedAtAndTracksTimestamps() {
+    UUID applicationId = UUID.randomUUID();
+    Instant draftStartedAt = Instant.parse("2026-11-01T09:00:00Z");
+    Instant noteAt = Instant.parse("2026-11-03T12:00:00Z");
+    ApplicationState state = new ApplicationState();
+
+    ApplicationEvolve.apply(
+        state,
+        new ApplicationDraftStartedEvent(
+            applicationId,
+            1,
+            "fingerprint",
+            draftStartedAt,
+            null,
+            "APPLICATION_SUBMITTED",
+            "LAA-123",
+            Erasable.of(Map.of()),
+            Erasable.of("{}"),
+            Erasable.of(List.of())));
+    ApplicationCreatedEvent created =
+        ApplicationDecider.decideSubmitDraft(
+            applicationId, "fingerprint", applicationCreationDetails(applicationId));
+    ApplicationEvolve.apply(state, created);
+    ApplicationEvolve.apply(state, new NoteCreatedEvent(applicationId, noteAt, "note"));
+
+    assertThat(state.getCreatedAt()).isEqualTo(draftStartedAt);
+    assertThat(state.getSubmittedAt()).isEqualTo(created.occurredAt());
+    assertThat(state.getModifiedAt()).isEqualTo(noteAt);
+  }
+
+  @Test
+  void givenDraftDocumentFilename_whenSubmitted_thenContentCarriesTheFilename() {
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Instant at = Instant.parse("2026-11-01T09:00:00Z");
+    ApplicationState state = new ApplicationState();
+
+    ApplicationEvolve.apply(
+        state,
+        new ApplicationDraftStartedEvent(
+            applicationId,
+            1,
+            "fingerprint",
+            at,
+            null,
+            "APPLICATION_SUBMITTED",
+            "LAA-123",
+            Erasable.of(Map.of()),
+            Erasable.of("{}"),
+            Erasable.of(List.of())));
+    ApplicationEvolve.apply(
+        state,
+        new ApplicationDocumentUploadedEvent(
+            applicationId,
+            documentId,
+            "GATEWAY_EVIDENCE",
+            at,
+            12L,
+            "application/pdf",
+            "checksum",
+            "CIVIL_APPLY",
+            ".pdf",
+            "client-report.pdf"));
+    ApplicationEvolve.apply(
+        state,
+        ApplicationDecider.decideSubmitDraft(
+            applicationId, "fingerprint", applicationCreationDetails(applicationId)));
+
+    assertThat(state.content.value().documentFilenames())
+        .containsEntry(documentId, "client-report.pdf");
+  }
+
+  @Test
+  void givenSubmittedHistory_whenFolded_thenContentMatchesStoredApplicationData() {
+    UUID applicationId = UUID.randomUUID();
+    Instant at = Instant.parse("2026-11-02T10:00:00Z");
+    ApplicationCreationDetails details = applicationCreationDetails(applicationId);
+    UUID firstProceedingId = details.proceedings().getFirst().getId();
+    UUID secondProceedingId = UUID.randomUUID();
+    ApplicationMeritsDecision granted = new ApplicationMeritsDecision("GRANTED", "r1", "j1");
+    ApplicationMeritsDecision refused = new ApplicationMeritsDecision("REFUSED", "r2", "j2");
+    Map<String, Object> certificate = Map.of("reference", "CERT-1");
+    ApplicationState state = new ApplicationState();
+
+    ApplicationEvolve.apply(
+        state, ApplicationDecider.decideSubmitDraft(applicationId, "fingerprint", details));
+    ApplicationEvolve.apply(
+        state, new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, at));
+    ApplicationEvolve.apply(state, new NoteCreatedEvent(applicationId, at, "note"));
+    ApplicationEvolve.apply(
+        state,
+        new ApplicationDecisionMadeEvent(
+            applicationId,
+            2L,
+            "GRANTED",
+            AutoGrantedState.MANUAL,
+            at,
+            "fp1",
+            Map.of(firstProceedingId, granted),
+            certificate,
+            "{\"d\":1}",
+            "first"));
+    ApplicationEvolve.apply(
+        state,
+        new ApplicationDecisionMadeEvent(
+            applicationId,
+            3L,
+            "REFUSED",
+            AutoGrantedState.MANUAL,
+            at,
+            "fp2",
+            Map.of(secondProceedingId, refused),
+            null,
+            "{\"d\":2}",
+            "second"));
+
+    assertThat(state.content.value())
+        .isEqualTo(
+            ApplicationDataPayload.from(details)
+                .withManualAssessmentRequired()
+                .withNote("note", at)
+                .withDecision(
+                    "GRANTED",
+                    AutoGrantedState.MANUAL,
+                    Map.of(firstProceedingId, granted),
+                    certificate,
+                    "{\"d\":1}",
+                    "first")
+                .withDecision(
+                    "REFUSED",
+                    AutoGrantedState.MANUAL,
+                    Map.of(firstProceedingId, granted, secondProceedingId, refused),
+                    null,
+                    "{\"d\":2}",
+                    "second"));
+    assertThat(state.proceedingIds).containsExactly(firstProceedingId);
+    assertThat(state.decisionRequestFingerprint).isEqualTo("fp2");
+    assertThat(state.proceedingDecisions)
+        .containsExactlyInAnyOrderEntriesOf(
+            Map.of(firstProceedingId, "GRANTED", secondProceedingId, "REFUSED"));
   }
 }

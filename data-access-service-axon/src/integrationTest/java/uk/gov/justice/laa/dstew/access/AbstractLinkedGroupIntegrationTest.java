@@ -26,6 +26,7 @@ import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.WorkListAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.WorkListUnassignRequest;
+import uk.gov.justice.laa.dstew.access.testutils.EventTypeNames;
 import uk.gov.justice.laa.dstew.access.version.VersionToken;
 
 /** Shared HTTP and database helpers for linked-group integration tests. */
@@ -190,7 +191,7 @@ public abstract class AbstractLinkedGroupIntegrationTest extends BaseIntegration
             """,
             Long.class,
             aggregateId.toString(),
-            eventType.getName()));
+            EventTypeNames.of(eventType)));
   }
 
   /** Adds a trigger that rejects event appends for {@code aggregateId}. */
