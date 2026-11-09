@@ -20,6 +20,98 @@ building one enriched current-state read model per aggregate instance. Keep
 command aggregate state and replay independent of the sensitive store. Make the
 owning stream's expected version the concurrency authority for ordinary writes.
 
+## Why move content out of the content stores
+
+Before this spike, events were the record of what happened, but the content was
+not in them. It lived in separate stores that held state, not events:
+
+- **Drafts were mutable current state.** `application_draft` and
+  `prior_authority_draft` were overwritten in place (`upsert`). A draft event
+  said that something changed, but not what. The earlier content was lost.
+- **Submitted content was whole-body snapshots.** `application_data` and
+  `prior_authority_data` stored a complete body per data version. Events
+  pointed at a data version instead of carrying the facts they introduced.
+
+This had several consequences:
+
+- **The event stream was not the source of truth for content.** The aggregate,
+  read models and history could not be rebuilt from events alone. Replay
+  depended on the side store still holding the pinned version.
+- **History had to be inferred** by comparing snapshots rather than reading
+  the events that made each change.
+- **Concurrency had three versions.** The stream version, the drafts' JPA
+  `@Version` and the `applicationDataVersion` sequence were separate, alongside
+  the public application version.
+- **Every change rewrote the whole body.** Updates, decisions, notes and
+  marking ready each read and appended a complete new version, so small changes
+  amplified writes.
+- **Personal data was copied into every version.** Erasure meant finding and
+  rewriting every snapshot. Deleting a row for retention hid details without
+  any event recording it.
+
+The spike's direction: **each event carries the content it introduced.** The
+stream becomes the full, ordered history of content as well as control facts,
+and current state is always a fold of events.
+
+**Before:** content was held as state beside the events.
+
+```mermaid
+flowchart LR
+  cmd[Command handlers]
+  subgraph write[Written by commands]
+    events[(domain_event_entry<br/>events: control facts<br/>+ data version pointer)]
+    draft[(application_draft<br/>prior_authority_draft<br/>mutable, overwritten)]
+    data[(application_data<br/>prior_authority_data<br/>whole body per version)]
+  end
+  subgraph read[Projections]
+    cur[(application_current_state<br/>prior_authority_current_state)]
+    hist[(application_history<br/>prior_authority_history)]
+    list[(application_list_index)]
+  end
+  cmd -->|append| events
+  cmd -->|upsert| draft
+  cmd -->|read + append new version| data
+  events --> cur & hist & list
+  data -.->|looked up by version| cur & hist & list
+  api[GET details / history] --> cur & hist
+```
+
+**After:** events carry their content and current state is a fold.
+
+```mermaid
+flowchart LR
+  cmd[Command handlers]
+  subgraph write[Written atomically per event]
+    events[(domain_event_entry<br/>kept fields)]
+    content[(event_content<br/>content per event<br/>erased_at)]
+  end
+  genesis[(genesis_stream<br/>event pointers<br/>per application)]
+  summary[(application_summary)]
+  agg[Aggregate fold<br/>events + content]
+  cmd -->|append| events
+  cmd -->|append| content
+  events --> genesis
+  events & content --> summary
+  events & content --> agg
+  api1[GET details] --> agg
+  api2[GET history] --> genesis
+  api3[Lists / search] --> summary
+```
+- The stream version is the only concurrency authority.
+- Content is written atomically with its event.
+- Erasure targets exactly the event content rows holding the data.
+- Projections and history are rebuildable.
+
+The content is kept in `event_content`, beside the event rather than inside
+it, so erasure can replace it without rewriting immutable events.
+
+This has costs:
+- Reads must join the two tables consistently.
+- Content now needs a schema-evolution policy, like kept fields.
+- Aggregates fold content at load time.
+
+These trade-offs are recorded in the decision entries below.
+
 ## Baseline inspected
 
 These are source observations at the recorded commit, not deployed-environment
