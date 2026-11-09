@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
  * must <em>not</em> be routed through this method — log them at {@code INFO}/{@code WARN}/{@code
  * DEBUG} as appropriate, so they remain breadcrumbs rather than Sentry events.
  *
- * <p>Axon's 4 synchronous "subscribing" event processors (command-side routes/publishers) are a
+ * <p>Axon's synchronous "subscribing" event processors (command-side routes/publishers) are a
  * deliberate, documented exception to the rule above: their failures propagate back through the
  * originating command's call stack to the HTTP boundary, so they are already reported there and
  * must not also be routed through this method directly from processor code (that would
