@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.pact;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import au.com.dius.pact.provider.junitsupport.State;
 import au.com.dius.pact.provider.junitsupport.StateChangeAction;
@@ -16,6 +17,7 @@ import org.awaitility.Awaitility;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.DeletePriorAuthorityDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.FindPriorAuthorityByPriorAuthorityIdQuery;
@@ -35,6 +37,7 @@ class PactProviderBootCheckTest extends AbstractProviderPactTests {
   @Autowired private QueryGateway queryGateway;
   @Autowired private DeletePriorAuthorityDocumentUseCase deleteDocumentUseCase;
   @Autowired private AuthenticatedCallerFactory authenticatedCallerFactory;
+  @Autowired private ApplicationDraftStore applicationDraftStore;
 
   @Test
   void everyApplicationStateCanBeSeeded() {
@@ -64,6 +67,34 @@ class PactProviderBootCheckTest extends AbstractProviderPactTests {
         .containsKeys("priorAuthorityId", "applicationId");
     assertThat(states.newPriorAuthorityDraftWithDocumentExists())
         .containsKeys("priorAuthorityId", "applicationId", "documentId");
+  }
+
+  @Test
+  void applicationDraftStateUsesTheConsumersIdentifier() {
+    // Consumers submit and upload against these, so each interaction brings its own identifier.
+    UUID applicationId = UUID.randomUUID();
+    Map<String, Object> parameters = Map.of("applicationId", applicationId.toString());
+
+    states.applicationDraftExists(parameters);
+    states.applicationDraftExists(parameters);
+
+    assertThat(applicationDraftStore.find(applicationId)).isPresent();
+  }
+
+  @Test
+  void applicationDraftStateRefusesAMissingOrSubmittedIdentifier() {
+    assertThatThrownBy(() -> states.applicationDraftExists(Map.of()))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("applicationId");
+
+    // A submitted application can never become a draft again, so the state says so up front.
+    states.submittedApplicationExists();
+    assertThatThrownBy(
+            () ->
+                states.applicationDraftExists(
+                    Map.of("applicationId", PactIds.APPLICATION_SUBMITTED.toString())))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("already submitted");
   }
 
   @Test

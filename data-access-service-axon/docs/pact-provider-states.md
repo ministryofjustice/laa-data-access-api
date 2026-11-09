@@ -41,7 +41,13 @@ each state through the real use cases, and `DataAccessApiProviderTests` replays 
    authority cannot be put back: once `…a001` is submitted, its draft is gone for the rest of the
    run and the identifier can never be created again, so every later interaction on it fails. A
    deleted document stays deleted in the same way.
-8. **Agree a new state before publishing a pact that needs it.** A state with no handler fails
+8. **Some states take a parameter, and then your identifier is used.** `an application draft
+   exists` reads `applicationId` from the state parameters and creates the draft under it, so a
+   request that submits or uploads to a draft owns its identifier the same way POST applications
+   does. Give every such interaction its own UUID, and never reuse the ID your POST applications
+   pact sends: the database is shared across the run, submitting a draft removes it, and the
+   state fails with an explanation if the ID already names a submitted application (see below).
+9. **Agree a new state before publishing a pact that needs it.** A state with no handler fails
    verification with "missing state". Raise it with the Data Access team and the handler lands with
    your pact.
 
@@ -59,6 +65,7 @@ each state through the real use cases, and `DataAccessApiProviderTests` replays 
 | `applications 00000000-0000-0000-0000-000000000007 and 00000000-0000-0000-0000-000000000008 are linked with 007 as lead` | Both submitted, one family group, `…0007` is lead, `…0008` is member, linked group version 0 | | GET by id with linked group, POST unlink, POST make-lead |
 | `no application exists with id 00000000-0000-0000-0000-00000000dead` | That ID is never created | | Any application endpoint expecting 404 |
 | `the application read model is lagging` | The application projection is paused for this interaction, so POST applications returns 202 with a Location after the configured wait | | POST applications expecting 202 |
+| `an application draft exists` (parameter `applicationId`) | A draft under the `applicationId` you pass: in the draft store, submittable, accepts document uploads, content schema version 1, office code `1A001B`, status on submission `APPLICATION_SUBMITTED`. Not returned by GET application by id until submitted | Anything time-based. The `applicationId` parameter is required and must not name an application another interaction submits | POST application-drafts/{id}/submit, POST applications/{id}/documents |
 
 ## Work list
 
@@ -131,6 +138,31 @@ builder
 Assert on the response by type for these, not by the example identifier, because every
 verification sees a different one. A request body that needs the parent application can use the
 fixed `00000000-0000-0000-0000-000000000009`, which is also returned as `applicationId`.
+
+### Passing an identifier to a state
+
+`an application draft exists` works the other way round from injection: you choose the
+identifier and pass it as a state parameter, and the handler creates the draft under it. Use a
+different UUID for every interaction that submits or uploads, because submitting removes the
+draft for the rest of the run and no interaction order is guaranteed.
+
+```ruby
+new_interaction
+  .given("an application draft exists", applicationId: "74c694d7-1a96-4c1f-8adc-f2160f1c9c82")
+  .upon_receiving("a request to submit an application draft")
+  .with_request(
+    method: :post,
+    path: "/api/v0/application-drafts/74c694d7-1a96-4c1f-8adc-f2160f1c9c82/submit",
+  )
+```
+
+```java
+builder
+    .given("an application draft exists", Map.of("applicationId", "74c694d7-1a96-4c1f-8adc-f2160f1c9c82"))
+    .uponReceiving("submit an application draft")
+    .path("/api/v0/application-drafts/74c694d7-1a96-4c1f-8adc-f2160f1c9c82/submit")
+    .method("POST")
+```
 
 ## Running verification
 

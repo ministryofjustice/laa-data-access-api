@@ -111,6 +111,16 @@ public class DataAccessApiProviderTests extends AbstractProviderPactTests {
     states.noApplicationWithId();
   }
 
+  /**
+   * POST application-drafts/{id}/submit, POST applications/{id}/documents on a draft. Creates a
+   * draft under the {@code applicationId} the consumer passes as a state parameter, so every
+   * interaction that changes a draft can use its own identifier.
+   */
+  @State(PactStates.APPLICATION_DRAFT_EXISTS)
+  public void applicationDraftExists(Map<String, Object> parameters) {
+    states.applicationDraftExists(parameters);
+  }
+
   /** POST applications expecting 202. */
   @State(PactStates.APPLICATION_READ_MODEL_LAGGING)
   public void applicationReadModelLagging() {

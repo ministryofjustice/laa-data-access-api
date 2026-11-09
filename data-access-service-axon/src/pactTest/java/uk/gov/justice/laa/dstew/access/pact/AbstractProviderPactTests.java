@@ -21,7 +21,9 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import uk.gov.justice.laa.dstew.access.DataAccessServiceAxonApplication;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.draft.CreateApplicationDraftUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityDraftUseCase;
@@ -34,6 +36,7 @@ import uk.gov.justice.laa.dstew.access.controller.application.AutoGrantOutcomeCo
 import uk.gov.justice.laa.dstew.access.controller.application.CreateApplicationCommandMapper;
 import uk.gov.justice.laa.dstew.access.controller.application.CreateNoteCommandMapper;
 import uk.gov.justice.laa.dstew.access.controller.application.MakeDecisionCommandMapper;
+import uk.gov.justice.laa.dstew.access.controller.application.SaveApplicationDraftCommandMapper;
 import uk.gov.justice.laa.dstew.access.controller.application.SavePriorAuthorityDraftCommandMapper;
 import uk.gov.justice.laa.dstew.access.query.worklist.WorkListItemReadRepository;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerFactory;
@@ -65,6 +68,10 @@ public abstract class AbstractProviderPactTests {
   private static final String STATE_SETUP_PRINCIPAL = "pact-provider-state-setup";
   private static final String ACCESS_AS_USER = "access_as_user";
 
+  /** 64 lowercase hex characters, the SHA-256 shape SDS returns and consumers match on. */
+  private static final String PACT_CHECKSUM =
+      "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+
   @Autowired private QueryGateway queryGateway;
   @Autowired private AxonConfiguration axonConfiguration;
   @Autowired private WorkListItemReadRepository workListItemReadRepository;
@@ -73,6 +80,8 @@ public abstract class AbstractProviderPactTests {
   @Autowired private AssignWorkItemUseCase assignWorkItemUseCase;
   @Autowired private MakeApplicationDecisionUseCase makeApplicationDecisionUseCase;
   @Autowired private CreateNoteUseCase createNoteUseCase;
+  @Autowired private CreateApplicationDraftUseCase createApplicationDraftUseCase;
+  @Autowired private ApplicationDraftStore applicationDraftStore;
   @Autowired private LinkApplicationUseCase linkApplicationUseCase;
   @Autowired private CreatePriorAuthorityDraftUseCase createPriorAuthorityDraftUseCase;
   @Autowired private SubmitPriorAuthorityDraftUseCase submitPriorAuthorityDraftUseCase;
@@ -82,6 +91,7 @@ public abstract class AbstractProviderPactTests {
   @Autowired private AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper;
   @Autowired private MakeDecisionCommandMapper makeDecisionCommandMapper;
   @Autowired private CreateNoteCommandMapper createNoteCommandMapper;
+  @Autowired private SaveApplicationDraftCommandMapper saveApplicationDraftCommandMapper;
   @Autowired private SavePriorAuthorityDraftCommandMapper savePriorAuthorityDraftCommandMapper;
   @Autowired private AuthenticatedCallerFactory authenticatedCallerFactory;
 
@@ -116,7 +126,10 @@ public abstract class AbstractProviderPactTests {
             createApplicationCommandMapper,
             autoGrantOutcomeCommandMapper,
             makeDecisionCommandMapper,
-            createNoteCommandMapper);
+            createNoteCommandMapper,
+            createApplicationDraftUseCase,
+            saveApplicationDraftCommandMapper,
+            applicationDraftStore);
     PriorAuthorityStateSeeder priorAuthorities =
         new PriorAuthorityStateSeeder(
             queryGateway,
@@ -139,7 +152,7 @@ public abstract class AbstractProviderPactTests {
   private void stubSecureDocumentStorage() {
     SdsUploadResult uploaded =
         new SdsUploadResult(
-            "pact-bucket/evidence.pdf", "File uploaded successfully", "pact-checksum-0001");
+            "pact-bucket/evidence.pdf", "File uploaded successfully", PACT_CHECKSUM);
     Mockito.when(
             sdsService.saveEvidenceFile(
                 ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))

@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.pact;
 
+import static uk.gov.justice.laa.dstew.access.pact.PactApplicationFixtures.applicationDraft;
 import static uk.gov.justice.laa.dstew.access.pact.PactApplicationFixtures.submittedApplication;
 import static uk.gov.justice.laa.dstew.access.pact.PactApplicationFixtures.submittedApplication001;
 
@@ -97,6 +98,20 @@ class ProviderStates {
   /** Nothing to set up: the ID is reserved and never created. */
   void noApplicationWithId() {
     log.info("State: {}", PactStates.NO_APPLICATION_WITH_ID);
+  }
+
+  /**
+   * A draft under the {@code applicationId} the consumer passes as a state parameter, so a request
+   * that submits it or uploads to it cannot collide with a fixed-ID state or another interaction.
+   * The consumer owns application identifiers, as it does for POST applications, so nothing is
+   * injected back.
+   */
+  void applicationDraftExists(Map<String, Object> parameters) {
+    log.info("State: {} {}", PactStates.APPLICATION_DRAFT_EXISTS, parameters);
+    UUID applicationId = requiredUuid(parameters, "applicationId");
+    String referenceSuffix = applicationId.toString().substring(0, 4).toUpperCase();
+    applications.ensureDraft(
+        applicationDraft(applicationId, "LAA-REF-D" + referenceSuffix, "Dee", "Draft"));
   }
 
   /**
@@ -227,6 +242,25 @@ class ProviderStates {
   }
 
   // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+  /** Reads a UUID the consumer passed as a state parameter; the state is unusable without it. */
+  private static UUID requiredUuid(Map<String, Object> parameters, String name) {
+    Object value = parameters == null ? null : parameters.get(name);
+    if (value == null) {
+      throw new IllegalStateException(
+          "State parameter '"
+              + name
+              + "' is required: pass it in .given(\"...\", "
+              + name
+              + ": <uuid>)");
+    }
+    try {
+      return UUID.fromString(value.toString());
+    } catch (IllegalArgumentException cause) {
+      throw new IllegalStateException(
+          "State parameter '" + name + "' must be a UUID, got '" + value + "'", cause);
+    }
+  }
 
   private static ApplicationCreateRequest priorAuthorityParent() {
     return application(PactIds.APPLICATION_PA_PARENT, "0009", "Ida", "Ince");
