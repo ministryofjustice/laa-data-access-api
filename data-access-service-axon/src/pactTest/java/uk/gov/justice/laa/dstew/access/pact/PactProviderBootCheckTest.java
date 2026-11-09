@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.access.pact;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import au.com.dius.pact.provider.junitsupport.State;
 import au.com.dius.pact.provider.junitsupport.StateChangeAction;
@@ -51,6 +50,7 @@ class PactProviderBootCheckTest extends AbstractProviderPactTests {
     states.applicationsLinked();
     states.noApplicationWithId();
     states.workListItemsExist();
+    assertThat(states.newApplicationDraftExists()).containsKey("applicationId");
   }
 
   @Test
@@ -70,31 +70,14 @@ class PactProviderBootCheckTest extends AbstractProviderPactTests {
   }
 
   @Test
-  void applicationDraftStateUsesTheConsumersIdentifier() {
-    // Consumers submit and upload against these, so each interaction brings its own identifier.
-    UUID applicationId = UUID.randomUUID();
-    Map<String, Object> parameters = Map.of("applicationId", applicationId.toString());
+  void freshApplicationDraftStateCreatesAnotherDraftEveryTime() {
+    // Consumers submit and upload against it, so no two interactions may share one.
+    UUID first = applicationDraft(states.newApplicationDraftExists());
+    UUID second = applicationDraft(states.newApplicationDraftExists());
 
-    states.applicationDraftExists(parameters);
-    states.applicationDraftExists(parameters);
-
-    assertThat(applicationDraftStore.find(applicationId)).isPresent();
-  }
-
-  @Test
-  void applicationDraftStateRefusesAMissingOrSubmittedIdentifier() {
-    assertThatThrownBy(() -> states.applicationDraftExists(Map.of()))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("applicationId");
-
-    // A submitted application can never become a draft again, so the state says so up front.
-    states.submittedApplicationExists();
-    assertThatThrownBy(
-            () ->
-                states.applicationDraftExists(
-                    Map.of("applicationId", PactIds.APPLICATION_SUBMITTED.toString())))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("already submitted");
+    assertThat(first).isNotEqualTo(second);
+    assertThat(applicationDraftStore.find(first)).isPresent();
+    assertThat(applicationDraftStore.find(second)).isPresent();
   }
 
   @Test
@@ -160,6 +143,10 @@ class PactProviderBootCheckTest extends AbstractProviderPactTests {
 
   private PriorAuthorityResult priorAuthority(Map<String, Object> injected) {
     return find(UUID.fromString((String) injected.get("priorAuthorityId")));
+  }
+
+  private static UUID applicationDraft(Map<String, Object> injected) {
+    return UUID.fromString((String) injected.get("applicationId"));
   }
 
   private PriorAuthorityResult find(UUID priorAuthorityId) {

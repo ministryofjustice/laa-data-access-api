@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.pact;
 
 import static org.awaitility.Awaitility.await;
+import static uk.gov.justice.laa.dstew.access.pact.PactApplicationFixtures.applicationDraft;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -116,38 +117,28 @@ class ApplicationStateSeeder {
   }
 
   /**
-   * A draft under the consumer's ID: in the draft store, which is what submit and document upload
-   * look up, and in the application projection. A draft is not returned by GET application by id
-   * until it is submitted.
-   *
-   * <p>A draft cannot be put back once submitted. An ID that already names a submitted application
-   * therefore fails here, with the reason, instead of letting the replayed request fail with 404 or
-   * 409.
+   * A brand-new draft under a generated identifier: in the draft store, which is what submit and
+   * document upload look up, and in the application projection. Every call creates another one, so
+   * nothing an earlier interaction did can be observed. A draft is not returned by GET application
+   * by id until it is submitted.
    */
-  void ensureDraft(CreateApplicationDraftRequest request) {
-    if (applicationDraftStore.find(request.getId()).isPresent()) {
-      return;
-    }
-    if (find(request.getId()) != null) {
-      throw new IllegalStateException(
-          "Application "
-              + request.getId()
-              + " was already submitted in this verification run, so no draft can exist for it."
-              + " Give every interaction that submits, links or uploads its own applicationId.");
-    }
+  UUID newDraft() {
+    UUID applicationId = UUID.randomUUID();
+    String referenceSuffix = applicationId.toString().substring(0, 4).toUpperCase();
+    CreateApplicationDraftRequest request =
+        applicationDraft(applicationId, "LAA-REF-D" + referenceSuffix, "Dee", "Draft");
     boolean projected =
         createApplicationDraftUseCase.execute(
             saveApplicationDraftCommandMapper.toCreateCommand(request, 1));
     if (!projected) {
       throw new IllegalStateException(
-          "Projection for application draft "
-              + request.getId()
-              + " did not become readable in time");
+          "Projection for application draft " + applicationId + " did not become readable in time");
     }
     await()
         .atMost(PROJECTION_WAIT)
         .pollInterval(POLL_INTERVAL)
-        .until(() -> applicationDraftStore.find(request.getId()).isPresent());
+        .until(() -> applicationDraftStore.find(applicationId).isPresent());
+    return applicationId;
   }
 
   /** Submitted, auto-grant outcome still pending. Application version 0. */
