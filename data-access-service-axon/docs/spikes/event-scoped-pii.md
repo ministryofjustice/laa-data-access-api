@@ -1372,6 +1372,27 @@ Split into two steps:
       still write `application_data`; commit 2 removes them and the table.
     - **Validation:** unit tests 1322/1322 and integration tests 308/308
       pass. Checkstyle is unchanged: main clean, test 36, integration 50.
+  - **4b-3b(iii) commit 2a, `application_data` removed (done 2026-11-09):**
+    - **Writers:** the seven application command handlers no longer append
+      content rows. Content lives only in the event-scoped payloads and the
+      aggregate folds it from them.
+    - **Erased content:** `ApplicationCommandHandlerSupport.requireContentRetained`
+      replaces `currentContent`. Commands against erased content are still
+      rejected.
+    - **Fingerprint:** create and draft submit compute the request fingerprint
+      with `PayloadFingerprint`, without building a stored payload.
+    - **Removed:** `ApplicationDataStore`, the entity, the ID, the repository
+      and `ApplicationUpdateDetailsFactory.prepare`. V38 drops the table, its
+      immutability trigger function and the retention-delete function.
+    - **Tests:** tests of the store, its immutability, and append failures
+      went. Integration assertions now use the projection, the API (the
+      certificate) or domain event counts. A new evolve test checks that a
+      draft's document filename carries into the submitted content.
+    - **Pending (2b):** the six application events still carry
+      `applicationDataVersion`; 2b removes it from them, their schemas, the
+      state and the read model.
+    - **Validation:** unit tests 1307/1307 and integration tests 307/307
+      pass. Checkstyle is unchanged.
 
 1. Choose the declaration design: hash-bound review (recommended by the review)
    or persisted candidate. Agree version/hash transport, stale-response handling,

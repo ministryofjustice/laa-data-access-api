@@ -9,7 +9,6 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDecider;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.command.application.decision.RecordAutoGrantedOutcomeCommand;
@@ -24,22 +23,16 @@ public class RecordAutoGrantedOutcomeCommandHandler {
   public void handle(
       RecordAutoGrantedOutcomeCommand command,
       @InjectEntity(idProperty = "applicationId") ApplicationAggregate application,
-      ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
     validateAutomaticOutcome(command, application);
     if (application.getState().getAutoGranted() == AutoGrantedState.AUTOGRANTED) {
       return;
     }
 
-    var current = ApplicationCommandHandlerSupport.currentContent(application);
+    ApplicationCommandHandlerSupport.requireContentRetained(application);
     MakeApplicationDecisionCommand decision = automaticGrantDecision(command, application);
     MakeApplicationDecisionCommandHandler.recordDecision(
-        decision,
-        AutoGrantedState.AUTOGRANTED,
-        current,
-        application,
-        applicationDataStore,
-        eventAppender);
+        decision, AutoGrantedState.AUTOGRANTED, application, eventAppender);
   }
 
   private static void validateAutomaticOutcome(

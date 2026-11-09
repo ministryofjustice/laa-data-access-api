@@ -12,7 +12,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDe
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDecider;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
+import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 
 /** Handles creation of applications. */
@@ -25,31 +25,26 @@ public class CreateApplicationCommandHandler {
       CreateApplicationCommand command,
       @InjectEntity(idProperty = "applicationId") @Nullable ApplicationAggregate application,
       ApplicationCreationDetailsFactory factory,
-      ApplicationDataStore applicationDataStore,
       JsonSchemaValidator jsonSchemaValidator,
       EventAppender eventAppender) {
     jsonSchemaValidator.validate(
         command.applicationContent(), command.schemaName(), command.schemaVersion());
     if (application == null) {
       ApplicationCreationDetails details = factory.prepare(command);
-      long applicationDataVersion = 0L;
-      String fingerprint =
-          applicationDataStore.append(command.applicationId(), applicationDataVersion, details);
       ApplicationDecider.decideCreate(
               new ApplicationState(),
               command.applicationId(),
               command.schemaVersion(),
-              fingerprint,
+              PayloadFingerprint.compute(details.serialisedRequest()),
               details,
-              applicationDataVersion)
+              0L)
           .forEach(eventAppender::append);
     } else {
-      String fingerprint = ApplicationDataStore.fingerprint(command.serialisedRequest());
       ApplicationDecider.decideCreate(
           application.getState(),
           command.applicationId(),
           command.schemaVersion(),
-          fingerprint,
+          PayloadFingerprint.compute(command.serialisedRequest()),
           null,
           0L);
     }

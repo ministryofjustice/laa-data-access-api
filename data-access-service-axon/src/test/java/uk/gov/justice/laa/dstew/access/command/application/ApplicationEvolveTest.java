@@ -243,6 +243,49 @@ class ApplicationEvolveTest {
   }
 
   @Test
+  void givenDraftDocumentFilename_whenSubmitted_thenContentCarriesTheFilename() {
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Instant at = Instant.parse("2026-11-01T09:00:00Z");
+    ApplicationState state = new ApplicationState();
+
+    ApplicationEvolve.apply(
+        state,
+        new ApplicationDraftStartedEvent(
+            applicationId,
+            1,
+            "fingerprint",
+            at,
+            null,
+            "APPLICATION_SUBMITTED",
+            "LAA-123",
+            Erasable.of(Map.of()),
+            Erasable.of("{}"),
+            Erasable.of(List.of())));
+    ApplicationEvolve.apply(
+        state,
+        new ApplicationDocumentUploadedEvent(
+            applicationId,
+            documentId,
+            "GATEWAY_EVIDENCE",
+            at,
+            12L,
+            "application/pdf",
+            "checksum",
+            "CIVIL_APPLY",
+            null,
+            ".pdf",
+            "client-report.pdf"));
+    ApplicationEvolve.apply(
+        state,
+        ApplicationDecider.decideSubmitDraft(
+            applicationId, 0L, "fingerprint", applicationCreationDetails(applicationId)));
+
+    assertThat(state.content.value().documentFilenames())
+        .containsEntry(documentId, "client-report.pdf");
+  }
+
+  @Test
   void givenSubmittedHistory_whenFolded_thenContentMatchesStoredApplicationData() {
     UUID applicationId = UUID.randomUUID();
     Instant at = Instant.parse("2026-11-02T10:00:00Z");

@@ -2,7 +2,6 @@ package uk.gov.justice.laa.dstew.access.command.application;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -14,7 +13,6 @@ import org.axonframework.test.fixture.AxonTestFixture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.handler.DirectApplicationWorkItemAssignmentCommandHandler;
 import uk.gov.justice.laa.dstew.access.command.application.handler.DirectApplicationWorkItemUnassignmentCommandHandler;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
@@ -28,11 +26,9 @@ import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 class DirectApplicationWorkItemAssignmentTest {
   private AxonTestFixture fixture;
-  private ApplicationDataStore dataStore;
 
   @BeforeEach
   void setUp() {
-    dataStore = mock(ApplicationDataStore.class);
     fixture =
         AxonTestFixture.with(
             EventSourcingConfigurer.create()
@@ -48,10 +44,7 @@ class DirectApplicationWorkItemAssignmentTest {
                                             new DirectApplicationWorkItemAssignmentCommandHandler())
                                     .autodetectedCommandHandlingComponent(
                                         c ->
-                                            new DirectApplicationWorkItemUnassignmentCommandHandler())))
-                .componentRegistry(
-                    registry ->
-                        registry.registerComponent(ApplicationDataStore.class, c -> dataStore)));
+                                            new DirectApplicationWorkItemUnassignmentCommandHandler()))));
   }
 
   @Test
@@ -66,7 +59,6 @@ class DirectApplicationWorkItemAssignmentTest {
         .command(new DirectWorkItemAssignmentCommand(id, caseworkerId, 0L, "{}", "Assigned", when))
         .then()
         .events(new WorkItemAssigned(id, WorkItemType.APPLICATION, id, 1L, 1L, caseworkerId, when));
-    verifyNoInteractions(dataStore);
   }
 
   @Test

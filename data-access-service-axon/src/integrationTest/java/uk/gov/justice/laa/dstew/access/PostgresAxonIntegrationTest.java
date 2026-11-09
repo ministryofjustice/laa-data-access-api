@@ -212,21 +212,7 @@ class PostgresAxonIntegrationTest {
 
     assertThat(uploadedFilenames(applicationId, documentId))
         .containsExactly("originalFilename.pdf");
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isZero();
     commandGateway.sendAndWait(new SubmitApplicationDraftCommand(applicationId, Instant.now()));
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT payload -> 'documentFilenames' ->> ? FROM axon.application_data "
-                    + "WHERE application_id = ? AND version = 0",
-                String.class,
-                documentId.toString(),
-                applicationId))
-        .isEqualTo("originalFilename.pdf");
     await()
         .atMost(10, TimeUnit.SECONDS)
         .untilAsserted(
@@ -310,12 +296,6 @@ class PostgresAxonIntegrationTest {
       jdbcTemplate.execute("DROP FUNCTION IF EXISTS axon.reject_test_document_upload()");
     }
 
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isZero();
     assertThat(uploadedFilenames(applicationId, documentId)).isEmpty();
     assertThat(
             jdbcTemplate.queryForObject(
@@ -390,7 +370,6 @@ class PostgresAxonIntegrationTest {
     assertThat(appliedVersions).containsExactlyElementsOf(expectedMigrationVersions());
     assertThat(tables)
         .containsExactly(
-            "application_data",
             "application_group_route",
             "application_summary",
             "domain_event_entry",
@@ -418,53 +397,6 @@ class PostgresAxonIntegrationTest {
             """,
                 String.class))
         .isEqualTo("NO");
-  }
-
-  @Test
-  void givenApplicationData_whenMutated_thenOnlyControlledRetentionDeleteIsAllowed() {
-    UUID applicationId = UUID.randomUUID();
-    applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
-    projectionAwaiter.awaitApplication(applicationId);
-
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ? AND version = 0",
-                Integer.class,
-                applicationId))
-        .isEqualTo(1);
-
-    assertThatThrownBy(
-            () ->
-                jdbcTemplate.update(
-                    "UPDATE axon.application_data SET payload_hash = ? WHERE application_id = ?",
-                    "tampered",
-                    applicationId))
-        .hasStackTraceContaining("application_data is append-only; UPDATE is prohibited");
-    assertThatThrownBy(
-            () ->
-                jdbcTemplate.update(
-                    "DELETE FROM axon.application_data WHERE application_id = ?", applicationId))
-        .hasStackTraceContaining("application_data is append-only; DELETE is prohibited");
-
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT axon.delete_application_data_for_retention(?)", Long.class, applicationId))
-        .isEqualTo(1L);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isZero();
-
-    ResponseEntity<String> response =
-        restTemplate.exchange(
-            "http://localhost:" + port + "/api/v0/applications/" + applicationId,
-            HttpMethod.GET,
-            new HttpEntity<>(headers()),
-            String.class);
-    // Details read the aggregate, whose content comes from the events, not application_data.
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
   }
 
   @Test
@@ -518,14 +450,6 @@ class PostgresAxonIntegrationTest {
               assertThat(history.serviceName()).isEqualTo("CIVIL_APPLY");
             });
 
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT payload ->> 'laaReference' FROM axon.application_data "
-                    + "WHERE application_id = ? AND version = 0",
-                String.class,
-                applicationId))
-        .isEqualTo("LAA-123");
-
     List<Map<String, Object>> events =
         jdbcTemplate.queryForList(
             "SELECT payload_type, sequence_number FROM axon.domain_event_entry "
@@ -554,12 +478,6 @@ class PostgresAxonIntegrationTest {
     ApplicationReadModel projected = projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
     assertThat(projected.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
     assertThat(projected.getAutoGranted()).isEqualTo(AutoGrantedState.PENDING);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isEqualTo(2);
     assertThat(
             jdbcTemplate.queryForMap(
                 "SELECT payload_type, convert_from(payload, 'UTF8') AS payload "
@@ -621,12 +539,6 @@ class PostgresAxonIntegrationTest {
     assertThat(response.getStatusCode().is5xxServerError()).isTrue();
     assertThat(
             jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isEqualTo(1);
-    assertThat(
-            jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
                 Integer.class,
                 applicationId.toString()))
@@ -677,13 +589,6 @@ class PostgresAxonIntegrationTest {
     assertThat(decided.getMeritsDecisions().get(proceedingId).justification())
         .isEqualTo("The evidence did not meet the test");
 
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT payload ->> 'overallDecision' FROM axon.application_data "
-                    + "WHERE application_id = ? AND version = 2",
-                String.class,
-                applicationId))
-        .isEqualTo("REFUSED");
     Map<String, Object> decisionEvent =
         jdbcTemplate.queryForMap(
             "SELECT convert_from(e.payload, 'UTF8') AS payload, c.content::text AS content "
@@ -739,12 +644,6 @@ class PostgresAxonIntegrationTest {
             new HttpEntity<>(request, headers()),
             Void.class);
     assertThat(staleResponse.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isEqualTo(3);
   }
 
   @Test
@@ -773,13 +672,7 @@ class PostgresAxonIntegrationTest {
     assertThat(granted.getAutoGranted()).isEqualTo(AutoGrantedState.AUTOGRANTED);
     assertThat(granted.getDecisionStatus()).isEqualTo("GRANTED");
     assertThat(granted.getMeritsDecisions()).containsKey(proceedingId);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT payload -> 'certificate' ->> 'certificateNumber' "
-                    + "FROM axon.application_data WHERE application_id = ? AND version = 1",
-                String.class,
-                applicationId))
-        .isEqualTo("AUTO-2126");
+    assertThat(granted.getCertificate()).containsEntry("certificateNumber", "AUTO-2126");
   }
 
   @Test
@@ -804,13 +697,6 @@ class PostgresAxonIntegrationTest {
     ApplicationReadModel ready = projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
     assertThat(ready.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
     assertThat(ready.getAutoGranted()).isEqualTo(AutoGrantedState.MANUAL);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT payload ->> 'autoGranted' FROM axon.application_data "
-                    + "WHERE application_id = ? AND version = 1",
-                String.class,
-                applicationId))
-        .isEqualTo("MANUAL");
     assertThat(
             jdbcTemplate.queryForMap(
                 "SELECT payload_type, convert_from(payload, 'UTF8') AS payload "
@@ -1297,12 +1183,6 @@ class PostgresAxonIntegrationTest {
         .isEqualTo(2L);
     assertThat(
             jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isEqualTo(3);
-    assertThat(
-            jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
                 Integer.class,
                 applicationId.toString()))
@@ -1340,12 +1220,6 @@ class PostgresAxonIntegrationTest {
 
     assertThat(projectionAwaiter.awaitApplicationVersion(applicationId, 1L).getAutoGranted())
         .isEqualTo(AutoGrantedState.MANUAL);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isEqualTo(2);
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
@@ -1557,15 +1431,6 @@ class PostgresAxonIntegrationTest {
     // applicationDataVersion advances to 1; applicationVersion stays at 0
     ApplicationReadModel model = projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
     assertThat(model.getApplicationVersion()).isEqualTo(0L);
-
-    // Note text persisted in application_data JSONB at version 1
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT payload -> 'notes' -> 0 ->> 'noteText' FROM axon.application_data"
-                    + " WHERE application_id = ? AND version = 1",
-                String.class,
-                applicationId))
-        .isEqualTo("Integration test note");
 
     // NoteCreatedEvent is thin — note text must not appear in the event stream
     assertThat(

@@ -6,28 +6,20 @@ import org.axonframework.modelling.annotation.InjectEntity;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDecider;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 
 /** Handles application note creation. */
 @Component
 public class CreateNoteCommandHandler {
 
-  /** Appends a note to the application's immutable data. */
+  /** Records a note against the application. */
   @CommandHandler
   public void handle(
       CreateNoteCommand command,
       @InjectEntity(idProperty = "applicationId") ApplicationAggregate application,
-      ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
     var event = ApplicationDecider.decideNote(application.getState(), command);
-    var current = ApplicationCommandHandlerSupport.currentContent(application);
-    applicationDataStore.append(
-        command.applicationId(),
-        event.applicationDataVersion(),
-        current.withNote(command.noteText(), command.occurredAt()),
-        command.serialisedNoteRequest(),
-        command.occurredAt());
+    ApplicationCommandHandlerSupport.requireContentRetained(application);
     eventAppender.append(event);
   }
 }

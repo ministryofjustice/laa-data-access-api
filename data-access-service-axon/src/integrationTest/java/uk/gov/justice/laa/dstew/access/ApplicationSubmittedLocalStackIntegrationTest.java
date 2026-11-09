@@ -236,12 +236,6 @@ class ApplicationSubmittedLocalStackIntegrationTest {
     assertThat(response.getStatusCode()).isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
     assertThat(
             jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isEqualTo(1);
-    assertThat(
-            jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
                 Integer.class,
                 applicationId.toString()))

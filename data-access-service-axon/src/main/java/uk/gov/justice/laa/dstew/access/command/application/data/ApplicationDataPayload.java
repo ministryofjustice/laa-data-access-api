@@ -42,9 +42,8 @@ public record ApplicationDataPayload(
     Map<UUID, String> documentFilenames) {
 
   /**
-   * Normalises a null {@code notes} and {@code opponents} lists to empty lists so that existing
-   * {@code application_data} JSONB rows (which pre-date these fields) deserialise cleanly when
-   * Jackson passes {@code null} for the absent keys.
+   * Normalises null {@code notes} and {@code opponents} lists to empty lists, and a null {@code
+   * autoGranted} to pending.
    */
   public ApplicationDataPayload {
     notes = notes == null ? List.of() : List.copyOf(notes);

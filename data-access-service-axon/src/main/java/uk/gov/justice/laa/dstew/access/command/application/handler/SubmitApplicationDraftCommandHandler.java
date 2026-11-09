@@ -9,10 +9,9 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetails;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetailsFactory;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDecider;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftContent;
 import uk.gov.justice.laa.dstew.access.command.application.draft.SubmitApplicationDraftCommand;
+import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
 /** Handles submission of application drafts. */
 @Component
@@ -24,7 +23,6 @@ public class SubmitApplicationDraftCommandHandler {
       SubmitApplicationDraftCommand command,
       @InjectEntity(idProperty = "applicationId") ApplicationAggregate application,
       ApplicationCreationDetailsFactory detailsFactory,
-      ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
     ApplicationDraftContent draft =
         ApplicationCommandHandlerSupport.requireDraft(application, command.applicationId());
@@ -36,21 +34,12 @@ public class SubmitApplicationDraftCommandHandler {
             draft.serialisedRequest(),
             application.getState().getSchemaVersion(),
             draft.potentialDuplicates());
-    long applicationDataVersion = 0L;
-    ApplicationDataPayload payload = ApplicationDataPayload.from(details);
-    for (var filename : draft.documentFilenames().entrySet()) {
-      payload = payload.withDocumentFilename(filename.getKey(), filename.getValue());
-    }
-    String fingerprint =
-        applicationDataStore.append(
-            command.applicationId(),
-            applicationDataVersion,
-            payload,
-            details.serialisedRequest(),
-            details.occurredAt());
     eventAppender.append(
         ApplicationDecider.decideSubmitDraft(
-            command.applicationId(), applicationDataVersion, fingerprint, details));
+            command.applicationId(),
+            0L,
+            PayloadFingerprint.compute(details.serialisedRequest()),
+            details));
     return command.applicationId();
   }
 }

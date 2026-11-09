@@ -32,8 +32,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataRepository;
+import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteKind;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteRepository;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
@@ -59,6 +58,7 @@ import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedAppli
 import uk.gov.justice.laa.dstew.access.query.application.summary.ApplicationSummaryReadRepository;
 import uk.gov.justice.laa.dstew.access.testsupport.InMemoryEventContentStoreConfig;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
+import uk.gov.justice.laa.dstew.access.testutils.EventTypeNames;
 
 @SpringBootTest(
     classes = DataAccessServiceAxonApplication.class,
@@ -85,7 +85,6 @@ class CreateApplicationInMemoryTest {
   @Autowired private AxonConfiguration axonConfiguration;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private QueryGateway queryGateway;
-  @Autowired private ApplicationDataRepository applicationDataRepository;
 
   @ParameterizedTest
   @CsvSource({
@@ -441,14 +440,6 @@ class CreateApplicationInMemoryTest {
               assertThat(history.serviceName()).isEqualTo("CIVIL_APPLY");
             });
 
-    assertThat(applicationDataRepository.findById(new ApplicationDataId(createdApplicationId, 0L)))
-        .isPresent()
-        .hasValueSatisfying(
-            data -> {
-              assertThat(data.getPayload().laaReference()).isEqualTo("LAA-123");
-              assertThat(data.getPayloadHash()).hasSize(64);
-            });
-
     var processors = axonConfiguration.getComponents(StreamingEventProcessor.class);
     assertThat(processors.get("application-summary")).isNotNull();
     assertThat(processors.get("genesis-stream")).isNotNull();
@@ -600,10 +591,15 @@ class CreateApplicationInMemoryTest {
             proceeding ->
                 assertThat(proceeding.getMeritsDecision())
                     .isEqualTo(MeritsDecisionStatusResponse.GRANTED));
-    assertThat(applicationDataRepository.findById(new ApplicationDataId(applicationId, 1L)))
-        .get()
-        .extracting(data -> data.getPayload().certificate())
-        .isEqualTo(Map.of("certificateNumber", "AUTO-2126"));
+    assertThat(
+            restTemplate
+                .exchange(
+                    "/api/v0/applications/" + applicationId + "/certificate",
+                    HttpMethod.GET,
+                    new HttpEntity<>(headers()),
+                    String.class)
+                .getBody())
+        .contains("AUTO-2126");
 
     ResponseEntity<Void> repeated =
         restTemplate.exchange(
@@ -612,7 +608,14 @@ class CreateApplicationInMemoryTest {
             new HttpEntity<>(request, headers()),
             Void.class);
     assertThat(repeated.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    assertThat(applicationDataRepository.countByIdApplicationId(applicationId)).isEqualTo(2L);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM domain_event_entry"
+                    + " WHERE aggregate_identifier = ? AND payload_type = ?",
+                Integer.class,
+                applicationId.toString(),
+                EventTypeNames.of(ApplicationDecisionMadeEvent.class)))
+        .isOne();
   }
 
   @Test
@@ -998,7 +1001,6 @@ class CreateApplicationInMemoryTest {
                 Integer.class,
                 applicationId.toString()))
         .isZero();
-    assertThat(applicationDataRepository.countByIdApplicationId(applicationId)).isZero();
     assertThat(summaryRepository.findById(applicationId)).isEmpty();
     assertThat(history(applicationId)).isEmpty();
   }

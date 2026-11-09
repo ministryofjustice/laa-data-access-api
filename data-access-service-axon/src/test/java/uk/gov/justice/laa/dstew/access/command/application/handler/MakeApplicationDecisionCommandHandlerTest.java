@@ -1,7 +1,5 @@
 package uk.gov.justice.laa.dstew.access.command.application.handler;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
@@ -14,8 +12,6 @@ import java.util.UUID;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
@@ -23,7 +19,6 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
@@ -37,13 +32,10 @@ class MakeApplicationDecisionCommandHandlerTest {
   private static final Instant OCCURRED_AT = Instant.parse("2026-09-02T10:00:00Z");
 
   @Mock private ApplicationAggregate application;
-  @Mock private ApplicationDataStore applicationDataStore;
   @Mock private EventAppender eventAppender;
 
-  @Captor private ArgumentCaptor<ApplicationDataPayload> payloadCaptor;
-
   @Test
-  void givenGrantedDecisionWithNullMeritsMap_whenHandled_thenPersistsCertificateAndEvent() {
+  void givenGrantedDecisionWithNullMeritsMap_whenHandled_thenAppendsDecisionWithCertificate() {
     UUID applicationId = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
     UUID proceedingId = UUID.randomUUID();
@@ -66,15 +58,8 @@ class MakeApplicationDecisionCommandHandlerTest {
     when(application.getState()).thenReturn(state);
     withContent(state, current);
 
-    new MakeApplicationDecisionCommandHandler()
-        .handle(command, application, applicationDataStore, eventAppender);
+    new MakeApplicationDecisionCommandHandler().handle(command, application, eventAppender);
 
-    verify(applicationDataStore)
-        .append(eq(applicationId), eq(8L), payloadCaptor.capture(), eq("{}"), eq(OCCURRED_AT));
-    assertThat(payloadCaptor.getValue().overallDecision()).isEqualTo("GRANTED");
-    assertThat(payloadCaptor.getValue().autoGranted()).isEqualTo(AutoGrantedState.MANUAL);
-    assertThat(payloadCaptor.getValue().certificate()).containsEntry("reference", "CERT-1");
-    assertThat(payloadCaptor.getValue().meritsDecisions()).containsKey(proceedingId);
     verify(eventAppender)
         .append(
             new ApplicationDecisionMadeEvent(
@@ -92,8 +77,7 @@ class MakeApplicationDecisionCommandHandlerTest {
   }
 
   @Test
-  void
-      givenRefusedDecisionWithExistingMerits_whenRecorded_thenKeepsExistingMeritsAndClearsCertificate() {
+  void givenRefusedDecision_whenRecorded_thenAppendsDecisionWithoutCertificate() {
     UUID applicationId = UUID.randomUUID();
     UUID existingProceedingId = UUID.randomUUID();
     UUID newProceedingId = UUID.randomUUID();
@@ -122,19 +106,9 @@ class MakeApplicationDecisionCommandHandlerTest {
     MakeApplicationDecisionCommandHandler.recordDecision(
         command,
         AutoGrantedState.MANUAL,
-        current,
         applicationWithState(applicationId, state),
-        applicationDataStore,
         eventAppender);
 
-    verify(applicationDataStore)
-        .append(eq(applicationId), eq(3L), payloadCaptor.capture(), eq("{}"), eq(OCCURRED_AT));
-    assertThat(payloadCaptor.getValue().certificate()).isNull();
-    assertThat(payloadCaptor.getValue().meritsDecisions())
-        .containsKey(existingProceedingId)
-        .containsKey(newProceedingId);
-    assertThat(payloadCaptor.getValue().meritsDecisions().get(newProceedingId).decision())
-        .isEqualTo("REFUSED");
     verify(eventAppender)
         .append(
             new ApplicationDecisionMadeEvent(

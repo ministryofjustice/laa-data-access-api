@@ -3,7 +3,7 @@ package uk.gov.justice.laa.dstew.access;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
@@ -54,8 +54,8 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetailsFactory;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.handler.ApplicationDocumentUploadCommandHandler;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
@@ -107,7 +107,7 @@ class ApplicationDraftIntegrationTest {
 
   @MockitoSpyBean private ApplicationDocumentUploadCommandHandler uploadHandler;
 
-  @MockitoSpyBean private ApplicationDataStore applicationDataStore;
+  @MockitoSpyBean private ApplicationCreationDetailsFactory creationDetailsFactory;
 
   @MockitoSpyBean private ApplicationSummaryProjection summaryProjection;
 
@@ -451,14 +451,6 @@ class ApplicationDraftIntegrationTest {
     assertThat(body.getApplicationId()).isEqualTo(applicationId);
     assertThat(body.getSubmittedAt()).isNotNull();
 
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_data"
-                    + " WHERE application_id = ? AND version = 0",
-                Integer.class,
-                applicationId))
-        .isEqualTo(1);
-
     var application = projectionAwaiter.awaitApplication(applicationId);
     assertThat(application.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
     assertThat(application.getLaaReference()).isEqualTo("LAA-123");
@@ -661,8 +653,8 @@ class ApplicationDraftIntegrationTest {
         };
     if (uploadCommitsFirst) {
       doAnswer(gate)
-          .when(applicationDataStore)
-          .append(eq(applicationId), anyLong(), any(), any(), any());
+          .when(creationDetailsFactory)
+          .prepare(any(), any(), any(), any(), anyInt(), any());
     } else {
       doAnswer(gate).when(uploadHandler).handle(any(), any(), any());
     }
@@ -697,20 +689,11 @@ class ApplicationDraftIntegrationTest {
         assertThat(losingResponse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
       }
       assertThat(eventCount(applicationId)).isEqualTo(eventsBefore + (uploadCommitsFirst ? 2 : 1));
-      assertThat(
-              jdbcTemplate.queryForObject(
-                  "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
-                  Integer.class,
-                  applicationId))
-          .isEqualTo(1);
-      var filenames = applicationDataStore.get(applicationId, 0L).documentFilenames();
       if (uploadCommitsFirst) {
-        assertThat(filenames).containsExactly(Map.entry(documentId.get(), "overlap.PDF"));
         assertThat(projectionAwaiter.awaitApplication(applicationId).getUploadedDocuments())
             .singleElement()
             .satisfies(document -> assertThat(document.documentId()).isEqualTo(documentId.get()));
       } else {
-        assertThat(filenames).isEmpty();
         assertThat(projectionAwaiter.awaitApplication(applicationId).getUploadedDocuments())
             .isNullOrEmpty();
       }
@@ -759,7 +742,6 @@ class ApplicationDraftIntegrationTest {
       assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
       assertThat(response.getBody()).contains("application draft");
       assertThat(eventCount(applicationId)).isEqualTo(eventsAfterSubmission);
-      assertThat(applicationDataStore.get(applicationId, 0L).documentFilenames()).isEmpty();
       assertThat(projectionAwaiter.awaitApplication(applicationId).getUploadedDocuments())
           .isNullOrEmpty();
       assertThat(documentId.get()).isNotNull();
@@ -860,12 +842,6 @@ class ApplicationDraftIntegrationTest {
       assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
       assertThat(registrationAttempts.get()).isEqualTo(2);
       assertThat(eventCount(applicationId)).isEqualTo(eventsBefore);
-      assertThat(
-              jdbcTemplate.queryForObject(
-                  "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
-                  Integer.class,
-                  applicationId))
-          .isZero();
       verify(sdsService).saveEvidenceFile(eq(applicationId), any(), any());
       verify(sdsService, never()).deleteEvidenceFile(any(), any(), any());
     } finally {

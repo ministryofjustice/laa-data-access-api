@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.command.application.handler;
 
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -19,7 +18,6 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdateDetailsFactory;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationCommand;
@@ -36,11 +34,9 @@ class UpdateApplicationCommandHandlerTest {
           .build();
 
   @Mock private ApplicationAggregate application;
-  @Mock private ApplicationDataStore applicationDataStore;
   @Mock private ApplicationUpdateDetailsFactory detailsFactory;
   @Mock private EventAppender eventAppender;
   @Mock private ApplicationDataPayload current;
-  @Mock private ApplicationDataPayload updated;
 
   @Test
   void givenNullStatusCommand_whenHandled_thenPreservesCurrentStatusAndNotEnteringSubmitted() {
@@ -50,15 +46,11 @@ class UpdateApplicationCommandHandlerTest {
         new UpdateApplicationCommand(applicationId, null, Map.of(), "{}", OCCURRED_AT);
 
     when(detailsFactory.parse(command)).thenReturn(PARSED);
-    when(detailsFactory.prepare(PARSED, command, current, false)).thenReturn(updated);
     when(application.getState()).thenReturn(state);
 
     new UpdateApplicationCommandHandler()
-        .handle(command, application, applicationDataStore, detailsFactory, eventAppender);
+        .handle(command, application, detailsFactory, eventAppender);
 
-    verify(detailsFactory).prepare(PARSED, command, current, false);
-    verify(applicationDataStore)
-        .append(eq(applicationId), eq(6L), eq(updated), eq("{}"), eq(OCCURRED_AT));
     verify(eventAppender)
         .append(
             new ApplicationUpdatedEvent(
@@ -82,15 +74,11 @@ class UpdateApplicationCommandHandlerTest {
             applicationId, "APPLICATION_SUBMITTED", Map.of(), "{}", OCCURRED_AT);
 
     when(detailsFactory.parse(command)).thenReturn(PARSED);
-    when(detailsFactory.prepare(PARSED, command, current, true)).thenReturn(updated);
     when(application.getState()).thenReturn(state);
 
     new UpdateApplicationCommandHandler()
-        .handle(command, application, applicationDataStore, detailsFactory, eventAppender);
+        .handle(command, application, detailsFactory, eventAppender);
 
-    verify(detailsFactory).prepare(PARSED, command, current, true);
-    verify(applicationDataStore)
-        .append(eq(applicationId), eq(8L), eq(updated), eq("{}"), eq(OCCURRED_AT));
     verify(eventAppender)
         .append(
             new ApplicationUpdatedEvent(
@@ -114,15 +102,11 @@ class UpdateApplicationCommandHandlerTest {
             applicationId, "APPLICATION_GRANTED", Map.of(), "{}", OCCURRED_AT);
 
     when(detailsFactory.parse(command)).thenReturn(PARSED);
-    when(detailsFactory.prepare(PARSED, command, current, false)).thenReturn(updated);
     when(application.getState()).thenReturn(state);
 
     new UpdateApplicationCommandHandler()
-        .handle(command, application, applicationDataStore, detailsFactory, eventAppender);
+        .handle(command, application, detailsFactory, eventAppender);
 
-    verify(detailsFactory).prepare(PARSED, command, current, false);
-    verify(applicationDataStore)
-        .append(eq(applicationId), eq(3L), eq(updated), eq("{}"), eq(OCCURRED_AT));
     verify(eventAppender)
         .append(
             new ApplicationUpdatedEvent(

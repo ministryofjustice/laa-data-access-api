@@ -1,10 +1,7 @@
 package uk.gov.justice.laa.dstew.access.command.application.draft;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validApplicationContent;
@@ -24,7 +21,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
@@ -34,8 +30,6 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDe
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDecider;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadCommand;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.handler.ApplicationDocumentUploadCommandHandler;
 import uk.gov.justice.laa.dstew.access.command.application.handler.CreateApplicationDraftCommandHandler;
 import uk.gov.justice.laa.dstew.access.command.application.handler.SubmitApplicationDraftCommandHandler;
@@ -54,7 +48,6 @@ import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 class ApplicationAggregateDraftTest {
 
   private AxonTestFixture fixture;
-  @Mock private ApplicationDataStore applicationDataStore;
   @Mock private ApplicationCreationDetailsFactory creationDetailsFactory;
   @Mock private JsonSchemaValidator jsonSchemaValidator;
 
@@ -80,8 +73,6 @@ class ApplicationAggregateDraftTest {
                 .componentRegistry(
                     registry ->
                         registry
-                            .registerComponent(
-                                ApplicationDataStore.class, configuration -> applicationDataStore)
                             .registerComponent(
                                 ApplicationCreationDetailsFactory.class,
                                 configuration -> creationDetailsFactory)
@@ -120,12 +111,10 @@ class ApplicationAggregateDraftTest {
                 null,
                 ".pdf",
                 "client-report.pdf"));
-
-    verifyNoInteractions(applicationDataStore);
   }
 
   @Test
-  void givenDraftWithFilename_whenSubmitted_thenPreparesFromEventContentAndCopiesFilename() {
+  void givenDraftWithDocument_whenSubmitted_thenPreparesFromDraftEventContent() {
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-10-02T10:00:00Z");
@@ -139,13 +128,6 @@ class ApplicationAggregateDraftTest {
             1,
             List.of(new PotentialDuplicate("LAA-456"))))
         .thenReturn(details);
-    when(applicationDataStore.append(
-            eq(applicationId),
-            eq(0L),
-            any(),
-            eq(details.serialisedRequest()),
-            eq(details.occurredAt())))
-        .thenReturn("hash");
 
     fixture
         .given()
@@ -167,19 +149,12 @@ class ApplicationAggregateDraftTest {
         .command(new SubmitApplicationDraftCommand(applicationId, occurredAt.plusSeconds(1)))
         .then()
         .resultMessagePayload(applicationId)
-        .events(ApplicationDecider.decideSubmitDraft(applicationId, 0L, "hash", details));
-
-    ArgumentCaptor<ApplicationDataPayload> payload =
-        ArgumentCaptor.forClass(ApplicationDataPayload.class);
-    verify(applicationDataStore)
-        .append(
-            eq(applicationId),
-            eq(0L),
-            payload.capture(),
-            eq(details.serialisedRequest()),
-            eq(details.occurredAt()));
-    assertThat(payload.getValue().documentFilenames())
-        .containsEntry(documentId, "client-report.pdf");
+        .events(
+            ApplicationDecider.decideSubmitDraft(
+                applicationId,
+                0L,
+                PayloadFingerprint.compute(details.serialisedRequest()),
+                details));
   }
 
   @Test
@@ -209,7 +184,7 @@ class ApplicationAggregateDraftTest {
         .exception(ResourceNotFoundException.class)
         .noEvents();
 
-    verifyNoInteractions(applicationDataStore, creationDetailsFactory);
+    verifyNoInteractions(creationDetailsFactory);
   }
 
   @Test
@@ -415,13 +390,6 @@ class ApplicationAggregateDraftTest {
 
     when(creationDetailsFactory.prepare(any(), any(), any(), any(), anyInt(), any()))
         .thenReturn(details);
-    when(applicationDataStore.append(
-            eq(applicationId),
-            eq(0L),
-            eq(ApplicationDataPayload.from(details)),
-            eq(details.serialisedRequest()),
-            eq(details.occurredAt())))
-        .thenReturn(fingerprint);
 
     fixture
         .given()
@@ -431,14 +399,6 @@ class ApplicationAggregateDraftTest {
         .then()
         .resultMessagePayload(applicationId)
         .events(ApplicationDecider.decideSubmitDraft(applicationId, 0L, fingerprint, details));
-
-    verify(applicationDataStore)
-        .append(
-            applicationId,
-            0L,
-            ApplicationDataPayload.from(details),
-            details.serialisedRequest(),
-            details.occurredAt());
   }
 
   @Test
@@ -475,7 +435,7 @@ class ApplicationAggregateDraftTest {
         .exception(ResourceNotFoundException.class)
         .noEvents();
 
-    verifyNoInteractions(applicationDataStore, creationDetailsFactory);
+    verifyNoInteractions(creationDetailsFactory);
   }
 
   private static ApplicationDraftStartedEvent draftStarted(
