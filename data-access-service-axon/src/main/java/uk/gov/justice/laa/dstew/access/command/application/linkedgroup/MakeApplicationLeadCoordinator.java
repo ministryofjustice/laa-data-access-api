@@ -29,6 +29,10 @@ public class MakeApplicationLeadCoordinator {
         routeResolver.resolveGroupForMutation(command.applicationId(), expectedGroup.groupId());
     dispatcher.dispatch(
         new ChangeLinkedGroupLeadCommand(
-            groupId, command.applicationId(), expectedGroup.version(), command.occurredAt()));
+            groupId,
+            command.applicationId(),
+            expectedGroup.version(),
+            command.occurredAt(),
+            command.justification()));
   }
 }

@@ -4,8 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -29,6 +31,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 
 @ExtendWith(MockitoExtension.class)
@@ -85,6 +88,27 @@ class DeleteEvidenceDocumentUseCaseTest {
     useCase.execute(priorAuthorityId, documentId);
 
     verify(sdsService).deleteEvidenceFile(priorAuthorityId, documentId, "file.PDF");
+  }
+
+  @Test
+  void givenSdsDeletionFails_whenExecute_thenReportsToSentry() {
+    ErrorReporter errorReporter = mock(ErrorReporter.class);
+    DeletePriorAuthorityDocumentUseCase useCase =
+        new DeletePriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService, errorReporter);
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    when(draftStore.find(priorAuthorityId))
+        .thenReturn(
+            Optional.of(draft(priorAuthorityId).withDocumentFilename(documentId, "file.PDF")));
+    when(dispatcher.dispatch(
+            any(PriorAuthorityDocumentDeleteCommand.class), eq(DocumentMetadata.class)))
+        .thenReturn(pdfDocument(documentId));
+    IllegalStateException failure = new IllegalStateException("SDS unavailable");
+    doThrow(failure).when(sdsService).deleteEvidenceFile(priorAuthorityId, documentId, "file.PDF");
+
+    useCase.execute(priorAuthorityId, documentId);
+
+    verify(errorReporter).report(org.mockito.ArgumentMatchers.anyString(), same(failure));
   }
 
   @Test

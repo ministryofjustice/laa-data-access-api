@@ -3,10 +3,17 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority.data;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.same;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,17 +25,19 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
+import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
 @ExtendWith(MockitoExtension.class)
 class PriorAuthorityDataStoreTest {
 
   @Mock private PriorAuthorityDataRepository repository;
+  @Mock private ErrorReporter errorReporter;
   private PriorAuthorityDataStore store;
 
   @BeforeEach
   void setUp() {
-    store = new PriorAuthorityDataStore(repository);
+    store = new PriorAuthorityDataStore(repository, errorReporter);
   }
 
   @Test
@@ -142,5 +151,72 @@ class PriorAuthorityDataStoreTest {
         .thenReturn(Optional.empty());
 
     assertThat(store.findPayload(priorAuthorityId, 7L)).isEmpty();
+  }
+
+  @Test
+  void givenRequestedVersions_whenRetrievedSuccessfully_thenDoesNotReportToSentry() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    PriorAuthorityDataId id = new PriorAuthorityDataId(priorAuthorityId, 2L);
+    when(repository.findById(id)).thenReturn(Optional.empty());
+
+    store.findPayload(priorAuthorityId, 2L);
+
+    verifyNoInteractions(errorReporter);
+  }
+
+  @Test
+  void
+      givenWrappedJacksonFailure_whenPayloadRetrieved_thenReportsIdentifierAndRethrowsOriginalException() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    PriorAuthorityDataId id = new PriorAuthorityDataId(priorAuthorityId, 4L);
+    UnrecognizedPropertyException jacksonException =
+        UnrecognizedPropertyException.from(
+            mock(JsonParser.class), PriorAuthorityDataPayload.class, "expertType", List.of());
+    jacksonException.prependPath(PriorAuthorityDataPayload.class, "content");
+    RuntimeException failure = new RuntimeException("Could not deserialize JSON", jacksonException);
+    when(repository.findById(id)).thenThrow(failure);
+
+    assertThatThrownBy(() -> store.findPayload(priorAuthorityId, 4L)).isSameAs(failure);
+
+    verify(errorReporter)
+        .report(
+            argThat(
+                message ->
+                    message.contains("prior_authority_data JSON deserialization failed")
+                        && message.contains(id.toString())
+                        && message.contains("expertType")
+                        && message.contains("content.expertType")),
+            same(failure));
+  }
+
+  @Test
+  void givenUnwrappedRepositoryFailure_whenPayloadRetrieved_thenReportsIdentifierAndRethrows() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    PriorAuthorityDataId id = new PriorAuthorityDataId(priorAuthorityId, 4L);
+    RuntimeException failure = new RuntimeException("Connection reset");
+    when(repository.findById(id)).thenThrow(failure);
+
+    assertThatThrownBy(() -> store.findPayload(priorAuthorityId, 4L)).isSameAs(failure);
+
+    verify(errorReporter)
+        .report(
+            argThat(
+                message ->
+                    message.contains("prior_authority_data load failed")
+                        && message.contains(id.toString())),
+            same(failure));
+  }
+
+  @Test
+  void givenMissingVersion_whenGet_thenReportsLoadFailureToSentry() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    PriorAuthorityDataId id = new PriorAuthorityDataId(priorAuthorityId, 7L);
+    when(repository.findById(id)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> store.get(priorAuthorityId, 7L))
+        .isInstanceOf(IllegalStateException.class);
+
+    verify(errorReporter)
+        .report(argThat(message -> message.contains("prior_authority_data load failed")), any());
   }
 }

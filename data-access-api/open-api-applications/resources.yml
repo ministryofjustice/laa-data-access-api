@@ -207,6 +207,15 @@ paths:
                   applicationId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
                   linkType: FAMILY
                   linkedGroupVersion: djE6bGlua2VkLWdyb3VwOjdjOWU2Njc5LTc0MjUtNDBkZS05NDRiLWUwN2ZjMWY5MGFlNzoy
+              linkWithEventDescription:
+                summary: Link with a history event description
+                description: Supplied eventDescription is shown on the linked-group history events this request produces.
+                value:
+                  applicationId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  linkType: FAMILY
+                  linkedGroupVersion: djE6bGlua2VkLWdyb3VwOjdjOWU2Njc5LTc0MjUtNDBkZS05NDRiLWUwN2ZjMWY5MGFlNzoy
+                  eventHistory:
+                    eventDescription: Same family as the lead application; costs are shared.
       responses:
         "204": { description: "Application linked, or already linked to the target group" }
         "400": { description: "Invalid request, self-link, unsupported link type, or linkedGroupVersion is not a valid token" }
@@ -237,8 +246,17 @@ paths:
           application/json:
             schema:
               $ref: "./components.yml#/components/schemas/LinkedGroupChangeRequest"
+            examples:
+              unlinkWithEventDescription:
+                summary: Unlink with a history event description
+                description: Supplied eventDescription is shown on each history event this request produces, including every remaining member when the group is dissolved.
+                value:
+                  linkedGroupVersion: djE6bGlua2VkLWdyb3VwOjdjOWU2Njc5LTc0MjUtNDBkZS05NDRiLWUwN2ZjMWY5MGFlNzoy
+                  eventHistory:
+                    eventDescription: Application moved to a separate case file.
       responses:
         "204": { description: Application removed; the group is dissolved if only one member would remain }
+
         "400": { description: Invalid request (e.g. missing or invalid linkedGroupVersion) }
         "401": { description: Unauthorized }
         "403": { description: Forbidden }
@@ -267,6 +285,14 @@ paths:
           application/json:
             schema:
               $ref: "./components.yml#/components/schemas/LinkedGroupChangeRequest"
+            examples:
+              makeLeadWithEventDescription:
+                summary: Make lead with a history event description
+                description: Supplied eventDescription is shown on the lead-changed history events for the new and previous lead.
+                value:
+                  linkedGroupVersion: djE6bGlua2VkLWdyb3VwOjdjOWU2Njc5LTc0MjUtNDBkZS05NDRiLWUwN2ZjMWY5MGFlNzoy
+                  eventHistory:
+                    eventDescription: Lead moved to the application holding the cost limit.
       responses:
         "204": { description: Application is now the lead (or already was) }
         "400": { description: Invalid request (e.g. missing or invalid linkedGroupVersion) }

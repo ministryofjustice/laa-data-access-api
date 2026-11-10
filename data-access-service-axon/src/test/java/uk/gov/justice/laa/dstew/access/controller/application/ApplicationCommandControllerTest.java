@@ -39,6 +39,7 @@ import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicat
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerFactory;
@@ -111,7 +112,8 @@ class ApplicationCommandControllerTest {
   void givenRequest_whenLinkApplication_thenDelegatesToUseCaseAndReturnsNoContent() {
     UUID id = UUID.randomUUID();
     ApplicationLinkRequest request =
-        new ApplicationLinkRequest(UUID.randomUUID(), ApplicationLinkType.FAMILY);
+        new ApplicationLinkRequest(UUID.randomUUID(), ApplicationLinkType.FAMILY)
+            .eventHistory(new EventHistoryRequest().eventDescription("justification"));
     AuthenticatedCaller caller = mock(AuthenticatedCaller.class);
     var command =
         new LinkApplicationCommand(
@@ -130,7 +132,8 @@ class ApplicationCommandControllerTest {
     UUID id = UUID.randomUUID();
     UUID groupId = UUID.randomUUID();
     LinkedGroupChangeRequest request =
-        new LinkedGroupChangeRequest(VersionToken.linkedGroup(groupId, 3L).encode());
+        new LinkedGroupChangeRequest(VersionToken.linkedGroup(groupId, 3L).encode())
+            .eventHistory(new EventHistoryRequest().eventDescription("justification"));
     AuthenticatedCaller caller = mock(AuthenticatedCaller.class);
     MakeApplicationLeadCommand command =
         new MakeApplicationLeadCommand(
@@ -149,7 +152,8 @@ class ApplicationCommandControllerTest {
     UUID id = UUID.randomUUID();
     UUID groupId = UUID.randomUUID();
     LinkedGroupChangeRequest request =
-        new LinkedGroupChangeRequest(VersionToken.linkedGroup(groupId, 3L).encode());
+        new LinkedGroupChangeRequest(VersionToken.linkedGroup(groupId, 3L).encode())
+            .eventHistory(new EventHistoryRequest().eventDescription("justification"));
     AuthenticatedCaller caller = mock(AuthenticatedCaller.class);
     UnlinkApplicationCommand command =
         new UnlinkApplicationCommand(

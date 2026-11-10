@@ -430,6 +430,7 @@ class PostgresAxonIntegrationTest {
             "domain_event_entry",
             "flyway_schema_history",
             "linked_application_group_current_state",
+            "linked_group_justification",
             "prior_authority_current_state",
             "prior_authority_data",
             "prior_authority_draft",

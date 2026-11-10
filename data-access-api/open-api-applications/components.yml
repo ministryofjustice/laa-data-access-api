@@ -434,17 +434,22 @@ components:
           description: >-
             The target Application's linkedGroupVersion token exactly as last read; omit when the
             target is not linked
+        eventHistory:
+          $ref: "../open-api-common/components.yml#/components/schemas/EventHistoryRequest"
 
     LinkedGroupChangeRequest:
       type: object
       additionalProperties: false
-      required: [linkedGroupVersion]
+      required:
+        - linkedGroupVersion
       properties:
         linkedGroupVersion:
           type: string
           description: >-
             The application's linkedGroupVersion token exactly as last read, used for concurrency
             control
+        eventHistory:
+          $ref: "../open-api-common/components.yml#/components/schemas/EventHistoryRequest"
 
     ApplicationSummary:
       type: object
