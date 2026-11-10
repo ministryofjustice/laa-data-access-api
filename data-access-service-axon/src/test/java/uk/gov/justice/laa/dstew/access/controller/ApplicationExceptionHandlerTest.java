@@ -1,12 +1,12 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
-import static org.assertj.core.api.Assertions.catchThrowable;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -23,7 +23,6 @@ import org.springframework.http.HttpInputMessage;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.mock.http.MockHttpInputMessage;
-import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.oauth2.client.ClientAuthorizationException;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import tools.jackson.core.JacksonException;
@@ -46,16 +45,17 @@ import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityVersionConflictEx
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.exception.VirusDetectedException;
 import uk.gov.justice.laa.dstew.access.exception.VirusScanException;
-import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 import uk.gov.justice.laa.dstew.access.model.DecisionTimeRequested;
 import uk.gov.justice.laa.dstew.access.model.MakePriorAuthorityDecisionRequest;
+import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryIntegrityException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 class ApplicationExceptionHandlerTest {
 
   private final ErrorReporter errorReporter = mock(ErrorReporter.class);
-  private final ApplicationExceptionHandler handler = new ApplicationExceptionHandler(errorReporter);
+  private final ApplicationExceptionHandler handler =
+      new ApplicationExceptionHandler(errorReporter);
   private final Logger logger = (Logger) LoggerFactory.getLogger(ApplicationExceptionHandler.class);
   private final ListAppender<ILoggingEvent> logEvents = new ListAppender<>();
 

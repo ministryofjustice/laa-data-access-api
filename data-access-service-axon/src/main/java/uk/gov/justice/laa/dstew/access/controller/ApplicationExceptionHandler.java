@@ -91,7 +91,10 @@ public class ApplicationExceptionHandler {
     return validationError(errors);
   }
 
-  /** Returns a validation problem when the request body is missing, malformed or mistyped. */
+  /**
+   * Returns a validation problem when the request body is missing, malformed or mistyped. These are
+   * expected client errors, not unexpected server failures, so they are not reported to Sentry.
+   */
   @ExceptionHandler(HttpMessageNotReadableException.class)
   ResponseEntity<ProblemDetail> handleHttpMessageNotReadableException(
       HttpMessageNotReadableException exception) {
@@ -319,17 +322,6 @@ public class ApplicationExceptionHandler {
             HttpStatus.INTERNAL_SERVER_ERROR, "Application history data is inconsistent");
     problemDetail.setInstance(URI.create("about:blank"));
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(problemDetail);
-  }
-
-  /**
-   * Returns 400 when JSON deserialization fails (e.g., invalid enum value, malformed payload).
-   * These are expected client errors, not unexpected server failures, so they return a validation
-   * error without reporting to Sentry.
-   */
-  @ExceptionHandler(HttpMessageNotReadableException.class)
-  ResponseEntity<ProblemDetail> handleHttpMessageNotReadableException(
-      HttpMessageNotReadableException exception) {
-    return validationError(List.of("Invalid JSON or request body format"));
   }
 
   /**
