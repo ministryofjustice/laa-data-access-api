@@ -9,9 +9,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -25,7 +22,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
-import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -50,12 +46,14 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
+import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 
 class WorkListProjectionTest {
   private WorkListItemReadRepository items;
   private WorkListGroupMemberReadRepository groupMembers;
   private ApplicationDataStore applicationDataStore;
   private PriorAuthorityDataStore priorAuthorityDataStore;
+  private ErrorReporter errorReporter;
   private WorkListProjection projection;
 
   @BeforeEach
@@ -64,8 +62,10 @@ class WorkListProjectionTest {
     groupMembers = mock(WorkListGroupMemberReadRepository.class);
     applicationDataStore = mock(ApplicationDataStore.class);
     priorAuthorityDataStore = mock(PriorAuthorityDataStore.class);
+    errorReporter = mock(ErrorReporter.class);
     projection =
-        new WorkListProjection(items, groupMembers, applicationDataStore, priorAuthorityDataStore);
+        new WorkListProjection(
+            items, groupMembers, applicationDataStore, priorAuthorityDataStore, errorReporter);
   }
 
   @Test
@@ -434,65 +434,30 @@ class WorkListProjectionTest {
   }
 
   @Test
-  void givenMissingWorkItem_whenAssigned_thenLogsWarningAndDoesNotSave() {
+  void givenMissingWorkItem_whenAssigned_thenReportsAndDoesNotSave() {
     UUID itemId = UUID.randomUUID();
     when(items.findById(itemId)).thenReturn(Optional.empty());
-    Logger logger = (Logger) LoggerFactory.getLogger(WorkListProjection.class);
-    ListAppender<ILoggingEvent> logEvents = new ListAppender<>();
-    logEvents.start();
-    logger.addAppender(logEvents);
 
-    try {
-      projection.on(
-          new WorkItemAssigned(
-              itemId, WorkItemType.APPLICATION, 1L, 1L, UUID.randomUUID(), Instant.now()),
-          message());
+    projection.on(
+        new WorkItemAssigned(
+            itemId, WorkItemType.APPLICATION, 1L, 1L, UUID.randomUUID(), Instant.now()),
+        message());
 
-      assertThat(logEvents.list)
-          .singleElement()
-          .satisfies(
-              event ->
-                  assertThat(event.getFormattedMessage())
-                      .isEqualTo(
-                          "Cannot assign missing work-list item: id="
-                              + itemId
-                              + ", type=APPLICATION"));
-    } finally {
-      logger.detachAppender(logEvents);
-      logEvents.stop();
-    }
-
+    verify(errorReporter)
+        .report(ArgumentMatchers.eq("Cannot assign missing work-list item"), any());
     verify(items, never()).save(any());
   }
 
   @Test
-  void givenMissingWorkItem_whenUnassigned_thenLogsWarningAndDoesNotSave() {
+  void givenMissingWorkItem_whenUnassigned_thenReportsAndDoesNotSave() {
     UUID itemId = UUID.randomUUID();
     when(items.findById(itemId)).thenReturn(Optional.empty());
-    Logger logger = (Logger) LoggerFactory.getLogger(WorkListProjection.class);
-    ListAppender<ILoggingEvent> logEvents = new ListAppender<>();
-    logEvents.start();
-    logger.addAppender(logEvents);
 
-    try {
-      projection.on(
-          new WorkItemUnassigned(itemId, WorkItemType.APPLICATION, 1L, 1L, Instant.now()),
-          message());
+    projection.on(
+        new WorkItemUnassigned(itemId, WorkItemType.APPLICATION, 1L, 1L, Instant.now()), message());
 
-      assertThat(logEvents.list)
-          .singleElement()
-          .satisfies(
-              event ->
-                  assertThat(event.getFormattedMessage())
-                      .isEqualTo(
-                          "Cannot unassign missing work-list item: id="
-                              + itemId
-                              + ", type=APPLICATION"));
-    } finally {
-      logger.detachAppender(logEvents);
-      logEvents.stop();
-    }
-
+    verify(errorReporter)
+        .report(ArgumentMatchers.eq("Cannot unassign missing work-list item"), any());
     verify(items, never()).save(any());
   }
 

@@ -56,7 +56,9 @@ import uk.gov.justice.laa.dstew.access.config.SecondaryAuthorizationFilter;
 import uk.gov.justice.laa.dstew.access.config.SecurityConfig;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
+import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerFactory;
@@ -167,7 +169,10 @@ class ApplicationCommandControllerSecurityTest {
         restTemplate.exchange(
             commandUrl(applicationId, "make-lead"),
             HttpMethod.POST,
-            new HttpEntity<>(new LinkedGroupChangeRequest("invalid-token"), headers),
+            new HttpEntity<>(
+                new LinkedGroupChangeRequest("invalid-token")
+                    .eventHistory(new EventHistoryRequest().eventDescription("justification")),
+                headers),
             String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
@@ -185,7 +190,10 @@ class ApplicationCommandControllerSecurityTest {
         restTemplate.exchange(
             commandUrl(applicationId, "unlink"),
             HttpMethod.POST,
-            new HttpEntity<>(new LinkedGroupChangeRequest("invalid-token"), headers),
+            new HttpEntity<>(
+                new LinkedGroupChangeRequest("invalid-token")
+                    .eventHistory(new EventHistoryRequest().eventDescription("justification")),
+                headers),
             String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
@@ -228,7 +236,9 @@ class ApplicationCommandControllerSecurityTest {
   @Test
   void givenAuthenticatedJwtUser_whenMakeApplicationLead_thenPassesCallerToCommand() {
     UUID applicationId = UUID.randomUUID();
-    LinkedGroupChangeRequest request = new LinkedGroupChangeRequest("valid-token");
+    LinkedGroupChangeRequest request =
+        new LinkedGroupChangeRequest("valid-token")
+            .eventHistory(new EventHistoryRequest().eventDescription("justification"));
     AuthenticatedCaller caller = mock(AuthenticatedCaller.class);
     MakeApplicationLeadCommand command =
         new MakeApplicationLeadCommand(
@@ -252,7 +262,9 @@ class ApplicationCommandControllerSecurityTest {
   @Test
   void givenAuthenticatedJwtUser_whenUnlinkApplication_thenPassesCallerToCommand() {
     UUID applicationId = UUID.randomUUID();
-    LinkedGroupChangeRequest request = new LinkedGroupChangeRequest("valid-token");
+    LinkedGroupChangeRequest request =
+        new LinkedGroupChangeRequest("valid-token")
+            .eventHistory(new EventHistoryRequest().eventDescription("justification"));
     AuthenticatedCaller caller = mock(AuthenticatedCaller.class);
     UnlinkApplicationCommand command =
         new UnlinkApplicationCommand(
@@ -291,7 +303,8 @@ class ApplicationCommandControllerSecurityTest {
   }
 
   private ApplicationLinkRequest validLinkRequest() {
-    return new ApplicationLinkRequest(UUID.randomUUID(), ApplicationLinkType.FAMILY);
+    return new ApplicationLinkRequest(UUID.randomUUID(), ApplicationLinkType.FAMILY)
+        .eventHistory(new EventHistoryRequest().eventDescription("justification"));
   }
 
   private HttpHeaders authenticatedHeaders() {
@@ -327,6 +340,7 @@ class ApplicationCommandControllerSecurityTest {
     SecurityConfig.class,
     SecondaryAuthorizationConfig.class,
     SecondaryAuthorizationFilter.class,
+    ErrorReporter.class,
     UnknownRoleJwtConfig.class
   })
   static class TestApplication {}

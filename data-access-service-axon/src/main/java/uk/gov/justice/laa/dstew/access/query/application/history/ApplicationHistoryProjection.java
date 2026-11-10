@@ -82,7 +82,8 @@ public class ApplicationHistoryProjection {
         "APPLICATION_GROUP_CREATED",
         null,
         event.occurredAt(),
-        groupHistoryId(message, event.leadApplicationId()));
+        groupHistoryId(message, event.leadApplicationId()),
+        event.justificationId());
     event.memberApplicationIds().stream()
         .filter(id -> !id.equals(event.leadApplicationId()))
         .forEach(
@@ -93,7 +94,8 @@ public class ApplicationHistoryProjection {
                     "APPLICATION_GROUP_JOINED",
                     null,
                     event.occurredAt(),
-                    groupHistoryId(message, memberId)));
+                    groupHistoryId(message, memberId),
+                    event.justificationId()));
   }
 
   /** Appends an audit entry when an application joins an existing linked application group. */
@@ -105,26 +107,41 @@ public class ApplicationHistoryProjection {
         "APPLICATION_GROUP_JOINED",
         null,
         event.occurredAt(),
-        groupHistoryId(message, event.memberId()));
+        groupHistoryId(message, event.memberId()),
+        event.justificationId());
+    if (event.memberApplicationIds() != null) {
+      event.memberApplicationIds().stream()
+          .filter(id -> !id.equals(event.memberId()))
+          .forEach(
+              id ->
+                  append(
+                      message,
+                      id,
+                      "APPLICATION_GROUP_MEMBER_ADDED",
+                      null,
+                      event.occurredAt(),
+                      groupHistoryId(message, id),
+                      event.justificationId()));
+    }
   }
 
-  /** Appends a history entry for both applications affected by a linked-group lead change. */
+  /** Appends lead-change history for the recorded membership, with legacy two-lead coverage. */
   @EventHandler
   public void on(LinkedApplicationGroupLeadChangedEvent event, EventMessage message) {
-    append(
-        message,
-        event.newLeadApplicationId(),
-        "APPLICATION_GROUP_LEAD_CHANGED",
-        null,
-        event.occurredAt(),
-        groupHistoryId(message, event.newLeadApplicationId()));
-    append(
-        message,
-        event.previousLeadApplicationId(),
-        "APPLICATION_GROUP_LEAD_CHANGED",
-        null,
-        event.occurredAt(),
-        groupHistoryId(message, event.previousLeadApplicationId()));
+    var members =
+        event.memberApplicationIds() == null
+            ? List.of(event.newLeadApplicationId(), event.previousLeadApplicationId())
+            : event.memberApplicationIds();
+    members.forEach(
+        id ->
+            append(
+                message,
+                id,
+                "APPLICATION_GROUP_LEAD_CHANGED",
+                null,
+                event.occurredAt(),
+                groupHistoryId(message, id),
+                event.justificationId()));
   }
 
   /** Appends a history entry when a non-lead application leaves its linked group. */
@@ -136,7 +153,22 @@ public class ApplicationHistoryProjection {
         "APPLICATION_GROUP_LEFT",
         null,
         event.occurredAt(),
-        groupHistoryId(message, event.memberId()));
+        groupHistoryId(message, event.memberId()),
+        event.justificationId());
+    if (event.memberApplicationIds() != null) {
+      event.memberApplicationIds().stream()
+          .filter(id -> !id.equals(event.memberId()))
+          .forEach(
+              id ->
+                  append(
+                      message,
+                      id,
+                      "APPLICATION_GROUP_MEMBER_REMOVED",
+                      null,
+                      event.occurredAt(),
+                      groupHistoryId(message, id),
+                      event.justificationId()));
+    }
   }
 
   /** Appends history entries for the member leaving and the dissolution of its former group. */
@@ -148,7 +180,8 @@ public class ApplicationHistoryProjection {
         "APPLICATION_GROUP_LEFT",
         null,
         event.occurredAt(),
-        groupHistoryId(message, event.removedApplicationId()));
+        groupHistoryId(message, event.removedApplicationId()),
+        event.justificationId());
     event.memberApplicationIds().stream()
         .filter(id -> !id.equals(event.removedApplicationId()))
         .forEach(
@@ -159,7 +192,8 @@ public class ApplicationHistoryProjection {
                     "APPLICATION_GROUP_DISSOLVED",
                     null,
                     event.occurredAt(),
-                    groupHistoryId(message, applicationId)));
+                    groupHistoryId(message, applicationId),
+                    event.justificationId()));
   }
 
   /** Appends a thin audit entry for an Application decision. */
@@ -251,12 +285,24 @@ public class ApplicationHistoryProjection {
       Long dataVersion,
       Instant occurredAt,
       String historyId) {
+    append(message, applicationId, eventType, dataVersion, occurredAt, historyId, null);
+  }
+
+  private void append(
+      EventMessage message,
+      UUID applicationId,
+      String eventType,
+      Long dataVersion,
+      Instant occurredAt,
+      String historyId,
+      UUID justificationId) {
     applicationHistoryReadRepository.save(
         ApplicationHistoryReadModel.builder()
             .eventId(historyId)
             .applicationId(applicationId)
             .eventType(eventType)
             .dataVersion(dataVersion)
+            .justificationId(justificationId)
             .serviceName(RequestMetadataDispatchInterceptor.serviceName(message))
             .caseworkerId(RequestMetadataDispatchInterceptor.caseworkerId(message))
             .occurredAt(occurredAt)

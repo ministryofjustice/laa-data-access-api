@@ -32,12 +32,14 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.config.interceptor.RequestMetadataDispatchInterceptor;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
+import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 
 @ExtendWith(MockitoExtension.class)
 class PriorAuthorityHistoryProjectionTest {
 
   @Mock private PriorAuthorityDataRepository paDataRepository;
   @Mock private PriorAuthorityHistoryReadRepository paRepository;
+  @Mock private ErrorReporter errorReporter;
 
   private PriorAuthorityHistoryProjection projection;
 
@@ -46,7 +48,7 @@ class PriorAuthorityHistoryProjectionTest {
 
   @BeforeEach
   void setUp() {
-    projection = new PriorAuthorityHistoryProjection(paDataRepository, paRepository);
+    projection = new PriorAuthorityHistoryProjection(paDataRepository, paRepository, errorReporter);
   }
 
   @Test
@@ -307,6 +309,10 @@ class PriorAuthorityHistoryProjectionTest {
     projection.on(event, message(event, "pa-assign-event-id"));
 
     verify(paRepository, never()).save(ArgumentMatchers.any());
+    verify(errorReporter)
+        .report(
+            ArgumentMatchers.eq("Prior authority data not found for PA assignment event"),
+            ArgumentMatchers.any());
   }
 
   @Test
@@ -360,6 +366,10 @@ class PriorAuthorityHistoryProjectionTest {
     projection.on(event, message(event, "pa-unassign-event-id"));
 
     verify(paRepository, never()).save(ArgumentMatchers.any());
+    verify(errorReporter)
+        .report(
+            ArgumentMatchers.eq("Prior authority data not found for PA unassignment event"),
+            ArgumentMatchers.any());
   }
 
   @Test

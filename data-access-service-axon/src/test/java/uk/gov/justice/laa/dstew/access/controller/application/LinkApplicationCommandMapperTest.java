@@ -7,11 +7,15 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ExpectedLinkedGroup;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 class LinkApplicationCommandMapperTest {
@@ -31,6 +35,32 @@ class LinkApplicationCommandMapperTest {
 
     assertThat(command.sourceApplicationId()).isEqualTo(sourceApplicationId);
     assertThat(command.targetApplicationId()).isEqualTo(targetApplicationId);
+  }
+
+  @Test
+  void givenEventDescription_whenMapped_thenMapsToCommandJustification() {
+    var request = new ApplicationLinkRequest(UUID.randomUUID(), ApplicationLinkType.FAMILY);
+    request.setEventHistory(new EventHistoryRequest().eventDescription("description"));
+
+    var command = mapper.toCommand(UUID.randomUUID(), request);
+
+    assertThat(command.justification()).isEqualTo("description");
+  }
+
+  @ParameterizedTest
+  @MethodSource("absentOrEmptyEventHistory")
+  void givenAbsentOrEmptyEventHistory_whenMapped_thenMapsNullJustification(
+      EventHistoryRequest eventHistory) {
+    var request = new ApplicationLinkRequest(UUID.randomUUID(), ApplicationLinkType.FAMILY);
+    request.setEventHistory(eventHistory);
+
+    var command = mapper.toCommand(UUID.randomUUID(), request);
+
+    assertThat(command.justification()).isNull();
+  }
+
+  static Stream<EventHistoryRequest> absentOrEmptyEventHistory() {
+    return Stream.of(null, new EventHistoryRequest());
   }
 
   @Test
