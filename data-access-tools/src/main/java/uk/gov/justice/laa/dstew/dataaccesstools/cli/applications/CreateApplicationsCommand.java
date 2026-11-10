@@ -31,6 +31,8 @@ public final class CreateApplicationsCommand implements Callable<Integer> {
       description = "Provider office code to use for every created application.")
   private String officeCode;
 
+  @CommandLine.Mixin private OpponentOptions opponents;
+
   @Override
   public Integer call() {
     if (count < 1) {
@@ -38,7 +40,7 @@ public final class CreateApplicationsCommand implements Callable<Integer> {
     }
     return applications
         .root()
-        .print(applications.creationWorkflow(officeCode).create(count, outcome));
+        .print(applications.creationWorkflow(officeCode, opponents).create(count, outcome));
   }
 
   static final class OutcomeConverter implements CommandLine.ITypeConverter<Outcome> {

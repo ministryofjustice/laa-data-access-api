@@ -57,6 +57,7 @@ import uk.gov.justice.laa.dstew.access.config.SecurityConfig;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
 import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
+import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerFactory;
@@ -327,6 +328,7 @@ class ApplicationCommandControllerSecurityTest {
     SecurityConfig.class,
     SecondaryAuthorizationConfig.class,
     SecondaryAuthorizationFilter.class,
+    ErrorReporter.class,
     UnknownRoleJwtConfig.class
   })
   static class TestApplication {}
