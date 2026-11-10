@@ -81,7 +81,14 @@ class LinkedApplicationGroupAssignmentTest {
         .when()
         .command(new AddApplicationToLinkedGroupCommand(GROUP_ID, JOINING_ID, 0L, OCCURRED_AT))
         .then()
-        .events(new MemberAddedToGroupEvent(GROUP_ID, LEAD_ID, JOINING_ID, OCCURRED_AT));
+        .events(
+            new MemberAddedToGroupEvent(
+                GROUP_ID,
+                LEAD_ID,
+                JOINING_ID,
+                OCCURRED_AT,
+                List.of(LEAD_ID, MEMBER_ID, JOINING_ID),
+                null));
   }
 
   @Test

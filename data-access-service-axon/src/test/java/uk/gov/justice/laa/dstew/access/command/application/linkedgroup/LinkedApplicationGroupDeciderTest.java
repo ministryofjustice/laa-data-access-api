@@ -158,6 +158,7 @@ class LinkedApplicationGroupDeciderTest {
     assertThat(event.groupId()).isEqualTo(groupId);
     assertThat(event.leadApplicationId()).isEqualTo(leadId);
     assertThat(event.memberId()).isEqualTo(newMemberId);
+    assertThat(event.memberApplicationIds()).containsExactly(leadId, existingMemberId, newMemberId);
     assertThat(event.occurredAt()).isEqualTo(OCCURRED_AT);
   }
 
@@ -262,7 +263,7 @@ class LinkedApplicationGroupDeciderTest {
     assertThat(event)
         .isEqualTo(
             new LinkedApplicationGroupLeadChangedEvent(
-                groupId, leadId, associateId, 1, OCCURRED_AT));
+                groupId, leadId, associateId, 1, OCCURRED_AT, List.of(leadId, associateId), null));
   }
 
   @Test
@@ -363,7 +364,15 @@ class LinkedApplicationGroupDeciderTest {
             .orElseThrow();
 
     assertThat(event)
-        .isEqualTo(new MemberRemovedFromGroupEvent(groupId, leadId, removedId, 1, OCCURRED_AT));
+        .isEqualTo(
+            new MemberRemovedFromGroupEvent(
+                groupId,
+                leadId,
+                removedId,
+                1,
+                OCCURRED_AT,
+                List.of(leadId, removedId, remainingId),
+                null));
   }
 
   @Test

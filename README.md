@@ -567,25 +567,6 @@ The following actuator endpoints have been configured:
 - http://localhost:8080/actuator/health
 - http://localhost:8080/actuator/info
 
-### Run the data generator
-
-UAT, PR, and feature deployments no longer automatically deploy `data-access-mass-generator`.
-This can be added back once an Axon-compatible deployment flow is ready.
-
-To start the pod, run the following command:
-
-```bash
-export KUBE_NAMESPACE=<uat namespace>
-export RELEASE_NAME=<release name for the pod - you can find this in the deployment action>
-
-./scripts/run-mass-generator-pod.sh <-- this will scale up the generator pod. When it is available it will connect to its shell
-
-(in the shell run) java -jar mass-generator.jar <number of applications>
-```
-
-Once the command is complete, exit the shell and the pod will be scaled back to 0.
-You can check the database to see the generated data or use swagger to execute endpoints.
-
 ### Generate and restore Axon mass data
 
 The Axon mass-data generator runs as an opt-in Testcontainers integration test. It creates data through the service command-side use cases, validates the resulting projections, and exports a PostgreSQL custom-format dump with JSON metadata.

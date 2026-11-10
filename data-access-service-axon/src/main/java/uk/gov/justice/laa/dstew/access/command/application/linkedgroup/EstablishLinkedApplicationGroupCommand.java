@@ -13,7 +13,14 @@ public record EstablishLinkedApplicationGroupCommand(
     @TargetEntityId UUID groupId,
     UUID leadApplicationId,
     UUID joiningApplicationId,
-    Instant occurredAt) {
+    Instant occurredAt,
+    String justification) {
+
+  /** Creates a command without justification. */
+  public EstablishLinkedApplicationGroupCommand(
+      UUID groupId, UUID leadApplicationId, UUID joiningApplicationId, Instant occurredAt) {
+    this(groupId, leadApplicationId, joiningApplicationId, occurredAt, null);
+  }
 
   /** Validates the routed group identity and the two initial members. */
   public EstablishLinkedApplicationGroupCommand {
