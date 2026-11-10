@@ -11,7 +11,6 @@ access-datastore-api/generated
 data-access-api/bin/
 data-access-service-axon/bin/
 data-access-shared/bin/
-data-access-mass-generator/bin/
 data-access-tools/bin/
 
 ### IntelliJ IDEA ###
