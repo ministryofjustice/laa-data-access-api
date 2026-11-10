@@ -1,5 +1,7 @@
 package uk.gov.justice.laa.dstew.access.testutils;
 
+import static org.mockito.Mockito.mock;
+
 import java.util.UUID;
 import org.axonframework.eventsourcing.configuration.EventSourcedEntityModule;
 import org.axonframework.eventsourcing.configuration.EventSourcingConfigurer;
@@ -7,6 +9,7 @@ import org.axonframework.messaging.commandhandling.configuration.CommandHandling
 import org.axonframework.test.fixture.AxonTestFixture;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupAggregate;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedGroupJustificationStore;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.handler.AddApplicationToLinkedGroupCommandHandler;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.handler.ChangeLinkedGroupLeadCommandHandler;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.handler.EstablishLinkedApplicationGroupCommandHandler;
@@ -20,6 +23,12 @@ public final class LinkedGroupTestFixture {
 
   /** Creates a fixture with the group entity and all of its dedicated command handlers. */
   public static AxonTestFixture linkedGroupFixture() {
+    return linkedGroupFixture(mock(LinkedGroupJustificationStore.class));
+  }
+
+  /** Creates a fixture with an observable justification store. */
+  public static AxonTestFixture linkedGroupFixture(
+      LinkedGroupJustificationStore justificationStore) {
     return AxonTestFixture.with(
         EventSourcingConfigurer.create()
             .registerEntity(
@@ -34,15 +43,19 @@ public final class LinkedGroupTestFixture {
                             handlers
                                 .autodetectedCommandHandlingComponent(
                                     configuration ->
-                                        new EstablishLinkedApplicationGroupCommandHandler())
+                                        new EstablishLinkedApplicationGroupCommandHandler(
+                                            justificationStore))
                                 .autodetectedCommandHandlingComponent(
                                     configuration ->
-                                        new AddApplicationToLinkedGroupCommandHandler())
-                                .autodetectedCommandHandlingComponent(
-                                    configuration -> new ChangeLinkedGroupLeadCommandHandler())
+                                        new AddApplicationToLinkedGroupCommandHandler(
+                                            justificationStore))
                                 .autodetectedCommandHandlingComponent(
                                     configuration ->
-                                        new RemoveApplicationFromLinkedGroupCommandHandler())
+                                        new ChangeLinkedGroupLeadCommandHandler(justificationStore))
+                                .autodetectedCommandHandlingComponent(
+                                    configuration ->
+                                        new RemoveApplicationFromLinkedGroupCommandHandler(
+                                            justificationStore))
                                 .autodetectedCommandHandlingComponent(
                                     configuration ->
                                         new ValidatePriorAuthorityGroupEligibilityCommandHandler()))));

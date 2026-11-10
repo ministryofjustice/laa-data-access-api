@@ -39,6 +39,7 @@ class LinkedApplicationGroupAssignmentHandlerWiringTest {
   private static final UUID CASEWORKER_ID = UUID.fromString("10000000-0000-0000-0000-000000000001");
 
   @Mock private StateManager stateManager;
+  @Mock private LinkedGroupJustificationStore justificationStore;
   @Mock private ProcessingContext context;
   @Mock private EventAppender eventAppender;
   @Mock private LinkedApplicationGroupAggregate group;
@@ -57,7 +58,7 @@ class LinkedApplicationGroupAssignmentHandlerWiringTest {
     var command =
         new EstablishLinkedApplicationGroupCommand(GROUP_ID, LEAD_ID, MEMBER_ID, OCCURRED_AT);
 
-    new EstablishLinkedApplicationGroupCommandHandler()
+    new EstablishLinkedApplicationGroupCommandHandler(justificationStore)
         .handle(command, null, stateManager, context, eventAppender);
 
     verify(eventAppender).append(eventsCaptor.capture());
@@ -78,7 +79,7 @@ class LinkedApplicationGroupAssignmentHandlerWiringTest {
     var command =
         new EstablishLinkedApplicationGroupCommand(GROUP_ID, LEAD_ID, MEMBER_ID, OCCURRED_AT);
 
-    new EstablishLinkedApplicationGroupCommandHandler()
+    new EstablishLinkedApplicationGroupCommandHandler(justificationStore)
         .handle(command, null, stateManager, context, eventAppender);
 
     verify(eventAppender).append(eventsCaptor.capture());
@@ -98,7 +99,7 @@ class LinkedApplicationGroupAssignmentHandlerWiringTest {
     givenApplication(MEMBER_ID, memberAggregate, stateOf(activeAssigned(MEMBER_ID, CASEWORKER_ID)));
     givenApplication(JOINING_ID, joiningAggregate, stateOf(activeUnassigned(JOINING_ID)));
 
-    new AddApplicationToLinkedGroupCommandHandler()
+    new AddApplicationToLinkedGroupCommandHandler(justificationStore)
         .handle(
             new AddApplicationToLinkedGroupCommand(GROUP_ID, JOINING_ID, 0L, OCCURRED_AT),
             group,
@@ -109,7 +110,13 @@ class LinkedApplicationGroupAssignmentHandlerWiringTest {
     verify(eventAppender).append(eventsCaptor.capture());
     assertThat(eventsCaptor.getValue())
         .containsExactly(
-            new MemberAddedToGroupEvent(GROUP_ID, LEAD_ID, JOINING_ID, OCCURRED_AT),
+            new MemberAddedToGroupEvent(
+                GROUP_ID,
+                LEAD_ID,
+                JOINING_ID,
+                OCCURRED_AT,
+                List.of(LEAD_ID, MEMBER_ID, JOINING_ID),
+                null),
             new WorkItemAssigned(
                 JOINING_ID, WorkItemType.APPLICATION, 1L, 1L, CASEWORKER_ID, OCCURRED_AT));
   }
@@ -123,7 +130,7 @@ class LinkedApplicationGroupAssignmentHandlerWiringTest {
     givenApplication(
         JOINING_ID, joiningAggregate, stateOf(activeAssigned(JOINING_ID, CASEWORKER_ID)));
 
-    new AddApplicationToLinkedGroupCommandHandler()
+    new AddApplicationToLinkedGroupCommandHandler(justificationStore)
         .handle(
             new AddApplicationToLinkedGroupCommand(GROUP_ID, JOINING_ID, 0L, OCCURRED_AT),
             group,
@@ -134,7 +141,13 @@ class LinkedApplicationGroupAssignmentHandlerWiringTest {
     verify(eventAppender).append(eventsCaptor.capture());
     assertThat(eventsCaptor.getValue())
         .containsExactly(
-            new MemberAddedToGroupEvent(GROUP_ID, LEAD_ID, JOINING_ID, OCCURRED_AT),
+            new MemberAddedToGroupEvent(
+                GROUP_ID,
+                LEAD_ID,
+                JOINING_ID,
+                OCCURRED_AT,
+                List.of(LEAD_ID, MEMBER_ID, JOINING_ID),
+                null),
             new WorkItemAssigned(
                 LEAD_ID, WorkItemType.APPLICATION, 1L, 1L, CASEWORKER_ID, OCCURRED_AT),
             new WorkItemAssigned(

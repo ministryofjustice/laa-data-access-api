@@ -14,8 +14,27 @@ public record LinkApplicationCommand(
     LinkType linkType,
     @Nullable ExpectedLinkedGroup expectedTargetGroup,
     Instant occurredAt,
-    @Nullable AuthenticatedCaller caller)
+    @Nullable AuthenticatedCaller caller,
+    @Nullable String justification)
     implements CallerCommand {
+
+  /** Creates a command without justification. */
+  public LinkApplicationCommand(
+      UUID sourceApplicationId,
+      UUID targetApplicationId,
+      LinkType linkType,
+      ExpectedLinkedGroup expectedTargetGroup,
+      Instant occurredAt,
+      AuthenticatedCaller caller) {
+    this(
+        sourceApplicationId,
+        targetApplicationId,
+        linkType,
+        expectedTargetGroup,
+        occurredAt,
+        caller,
+        null);
+  }
 
   /** Enforces the command invariants owned below the controller seam. */
   public LinkApplicationCommand {
