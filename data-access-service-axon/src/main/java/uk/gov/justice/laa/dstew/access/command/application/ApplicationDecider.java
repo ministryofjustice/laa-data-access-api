@@ -88,6 +88,7 @@ public final class ApplicationDecider {
     return new WorkItemAssigned(
         state.applicationId,
         WorkItemType.APPLICATION,
+        state.applicationId,
         state.applicationVersion,
         state.assignmentVersion + 1,
         caseworkerId,
@@ -99,6 +100,7 @@ public final class ApplicationDecider {
     return new WorkItemUnassigned(
         state.applicationId,
         WorkItemType.APPLICATION,
+        state.applicationId,
         state.applicationVersion,
         state.assignmentVersion + 1,
         occurredAt);
@@ -123,6 +125,7 @@ public final class ApplicationDecider {
           new WorkItemUnassigned(
               applicationId,
               WorkItemType.APPLICATION,
+              applicationId,
               itemVersion,
               currentAssignmentVersion + 1,
               occurredAt));
@@ -131,6 +134,7 @@ public final class ApplicationDecider {
         new WorkItemAssigned(
             applicationId,
             WorkItemType.APPLICATION,
+            applicationId,
             itemVersion,
             currentAssignmentVersion + 1,
             targetCaseworkerId,

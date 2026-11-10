@@ -94,14 +94,21 @@ class PriorAuthorityEvolveTest {
     PriorAuthorityEvolve.apply(
         state,
         new WorkItemAssigned(
-            workItemId, WorkItemType.PRIOR_AUTHORITY, 3L, 4L, caseworkerId, occurredAt));
+            workItemId,
+            WorkItemType.PRIOR_AUTHORITY,
+            UUID.randomUUID(),
+            3L,
+            4L,
+            caseworkerId,
+            occurredAt));
 
     assertThat(state.getAssignmentVersion()).isEqualTo(4L);
     assertThat(state.getCaseworkerId()).isEqualTo(caseworkerId);
 
     PriorAuthorityEvolve.apply(
         state,
-        new WorkItemUnassigned(workItemId, WorkItemType.PRIOR_AUTHORITY, 3L, 5L, occurredAt));
+        new WorkItemUnassigned(
+            workItemId, WorkItemType.PRIOR_AUTHORITY, UUID.randomUUID(), 3L, 5L, occurredAt));
 
     assertThat(state.getAssignmentVersion()).isEqualTo(5L);
     assertThat(state.getCaseworkerId()).isNull();
@@ -121,7 +128,11 @@ class PriorAuthorityEvolveTest {
     PriorAuthorityEvolve.apply(
         state,
         new PriorAuthorityDocumentTypeUpdatedEvent(
-            priorAuthorityId, secondId, "EXPERT_REPORT", uploadedAt.plusSeconds(2)));
+            priorAuthorityId,
+            secondId,
+            "EXPERT_REPORT",
+            uploadedAt.plusSeconds(2),
+            UUID.randomUUID()));
     PriorAuthorityEvolve.apply(
         state,
         new PriorAuthorityDocumentDeletedEvent(

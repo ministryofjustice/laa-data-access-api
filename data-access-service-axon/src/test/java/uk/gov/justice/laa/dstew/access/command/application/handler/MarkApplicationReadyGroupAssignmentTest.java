@@ -80,7 +80,13 @@ class MarkApplicationReadyGroupAssignmentTest {
             List.of(
                 new ApplicationReadyForManualAssessmentEvent(APPLICATION_ID, 1L, 1L, OCCURRED_AT),
                 new WorkItemAssigned(
-                    APPLICATION_ID, WorkItemType.APPLICATION, 1L, 1L, CASEWORKER_ID, OCCURRED_AT)));
+                    APPLICATION_ID,
+                    WorkItemType.APPLICATION,
+                    APPLICATION_ID,
+                    1L,
+                    1L,
+                    CASEWORKER_ID,
+                    OCCURRED_AT)));
   }
 
   @Test
@@ -104,7 +110,12 @@ class MarkApplicationReadyGroupAssignmentTest {
             List.of(
                 new ApplicationReadyForManualAssessmentEvent(APPLICATION_ID, 3L, 3L, OCCURRED_AT),
                 new WorkItemUnassigned(
-                    APPLICATION_ID, WorkItemType.APPLICATION, 3L, 2L, OCCURRED_AT)));
+                    APPLICATION_ID,
+                    WorkItemType.APPLICATION,
+                    APPLICATION_ID,
+                    3L,
+                    2L,
+                    OCCURRED_AT)));
   }
 
   @Test

@@ -69,7 +69,8 @@ class PriorAuthorityAggregateTest {
         new PriorAuthorityDocumentUploadedEvent(
             PA_ID, documentId, NOW, 1024L, "application/pdf", "checksum123", APP_ID, "service"));
     aggregate.on(event);
-    aggregate.on(new PriorAuthorityDocumentTypeUpdatedEvent(PA_ID, documentId, "INVOICE", NOW));
+    aggregate.on(
+        new PriorAuthorityDocumentTypeUpdatedEvent(PA_ID, documentId, "INVOICE", NOW, APP_ID));
 
     assertThat(aggregate.getPriorAuthorityId()).isEqualTo(PA_ID);
     assertThat(aggregate.getApplicationId()).isEqualTo(APP_ID);
@@ -168,7 +169,8 @@ class PriorAuthorityAggregateTest {
         new PriorAuthorityDocumentUploadedEvent(
             PA_ID, documentId, NOW, 1024L, "application/pdf", "checksum123", APP_ID, "service"));
 
-    aggregate.on(new PriorAuthorityDocumentTypeUpdatedEvent(PA_ID, documentId, "INVOICE", NOW));
+    aggregate.on(
+        new PriorAuthorityDocumentTypeUpdatedEvent(PA_ID, documentId, "INVOICE", NOW, APP_ID));
 
     assertThat(aggregate.getPriorAuthorityId()).isEqualTo(PA_ID);
     assertThat(aggregate.getState().getUploadedDocuments())
@@ -189,12 +191,13 @@ class PriorAuthorityAggregateTest {
   void assignmentEventsRestoreState() {
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
     aggregate.on(
-        new WorkItemAssigned(PA_ID, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, CASEWORKER_ID, NOW));
+        new WorkItemAssigned(
+            PA_ID, WorkItemType.PRIOR_AUTHORITY, APP_ID, 1L, 1L, CASEWORKER_ID, NOW));
 
     assertThat(aggregate.getCaseworkerId()).isEqualTo(CASEWORKER_ID);
     assertThat(aggregate.getAssignmentVersion()).isEqualTo(1L);
 
-    aggregate.on(new WorkItemUnassigned(PA_ID, WorkItemType.PRIOR_AUTHORITY, 1L, 2L, NOW));
+    aggregate.on(new WorkItemUnassigned(PA_ID, WorkItemType.PRIOR_AUTHORITY, APP_ID, 1L, 2L, NOW));
 
     assertThat(aggregate.getCaseworkerId()).isNull();
     assertThat(aggregate.getAssignmentVersion()).isEqualTo(2L);

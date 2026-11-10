@@ -2,9 +2,11 @@ package uk.gov.justice.laa.dstew.access.command.application;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
+import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 
 /** Thin event establishing the non-sensitive initial state of an Application aggregate. */
@@ -17,4 +19,11 @@ public record ApplicationCreatedEvent(
     int schemaVersion,
     Instant occurredAt,
     List<PotentialDuplicate> potentialDuplicates,
-    String officeCode) {}
+    String officeCode)
+    implements GenesisScoped {
+
+  @Override
+  public Set<UUID> genesisIds() {
+    return GenesisScoped.ids(applicationId);
+  }
+}
