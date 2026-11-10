@@ -25,6 +25,7 @@ components:
         assignmentVersion:
           type: integer
           format: int64
+          description: Version of the item's assignment. It increments whenever the assignment changes. Use this value as `expectedAssignmentVersion` in assign and unassign requests
         assignmentBoundaryType:
           type: string
           enum:
@@ -87,6 +88,7 @@ components:
           type: integer
           format: int64
           minimum: 0
+          description: The item's current `assignmentVersion`, from the work list or the item's details. The request is rejected with 409 when it is stale
         eventHistory:
           $ref: "../open-api-common/components.yml#/components/schemas/EventHistoryRequest"
 
@@ -124,5 +126,6 @@ components:
           type: integer
           format: int64
           minimum: 0
+          description: The item's current `assignmentVersion`, from the work list or the item's details. The request is rejected with 409 when it is stale
         eventHistory:
           $ref: "../open-api-common/components.yml#/components/schemas/EventHistoryRequest"

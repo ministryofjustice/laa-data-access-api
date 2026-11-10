@@ -305,6 +305,60 @@ class WorkListIntegrationTest extends BaseIntegrationTest {
   }
 
   @Test
+  void
+      givenApplicationDetailsAssignmentVersion_whenAssigning_thenCurrentVersionSucceedsAndStaleVersionConflicts() {
+    UUID applicationId = UUID.randomUUID();
+    createManualApplication(applicationId);
+    awaitApplicationDetailsAssignmentVersion(applicationId, 0L);
+
+    assertThat(assignAtVersion(applicationId, applicationDetailsAssignmentVersion(applicationId)))
+        .extracting(ResponseEntity::getStatusCode)
+        .isEqualTo(HttpStatus.OK);
+    awaitApplicationDetailsAssignmentVersion(applicationId, 1L);
+    assertThat(unassignAtVersion(applicationId, applicationDetailsAssignmentVersion(applicationId)))
+        .extracting(ResponseEntity::getStatusCode)
+        .isEqualTo(HttpStatus.OK);
+    awaitApplicationDetailsAssignmentVersion(applicationId, 2L);
+
+    assertThat(assignAtVersion(applicationId, 1L).getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(assignAtVersion(applicationId, applicationDetailsAssignmentVersion(applicationId)))
+        .extracting(ResponseEntity::getStatusCode)
+        .isEqualTo(HttpStatus.OK);
+    awaitApplicationDetailsAssignmentVersion(applicationId, 3L);
+  }
+
+  @Test
+  void
+      givenPriorAuthorityDetailsAssignmentVersion_whenAssigning_thenCurrentVersionSucceedsAndStaleVersionConflicts() {
+    UUID parentApplicationId = UUID.randomUUID();
+    createGrantedApplication(parentApplicationId);
+    UUID priorAuthorityId = createAndSubmitPriorAuthorityDraft(parentApplicationId);
+    awaitPriorAuthorityDetailsAssignmentVersion(priorAuthorityId, 0L);
+
+    assertThat(
+            assignAtVersion(
+                priorAuthorityId, priorAuthorityDetailsAssignmentVersion(priorAuthorityId)))
+        .extracting(ResponseEntity::getStatusCode)
+        .isEqualTo(HttpStatus.OK);
+    awaitPriorAuthorityDetailsAssignmentVersion(priorAuthorityId, 1L);
+    assertThat(
+            unassignAtVersion(
+                priorAuthorityId, priorAuthorityDetailsAssignmentVersion(priorAuthorityId)))
+        .extracting(ResponseEntity::getStatusCode)
+        .isEqualTo(HttpStatus.OK);
+    awaitPriorAuthorityDetailsAssignmentVersion(priorAuthorityId, 2L);
+
+    assertThat(assignAtVersion(priorAuthorityId, 1L).getStatusCode())
+        .isEqualTo(HttpStatus.CONFLICT);
+    assertThat(
+            assignAtVersion(
+                priorAuthorityId, priorAuthorityDetailsAssignmentVersion(priorAuthorityId)))
+        .extracting(ResponseEntity::getStatusCode)
+        .isEqualTo(HttpStatus.OK);
+    awaitPriorAuthorityDetailsAssignmentVersion(priorAuthorityId, 3L);
+  }
+
+  @Test
   void givenSubmittedApplication_whenAutoGrantOutcomeIsGranted_thenItDoesNotReachTheWorkList() {
     UUID applicationId = UUID.randomUUID();
 
@@ -1146,34 +1200,41 @@ class WorkListIntegrationTest extends BaseIntegrationTest {
     await()
         .atMost(15, TimeUnit.SECONDS)
         .untilAsserted(
-            () -> {
-              ResponseEntity<ApplicationResponse> response =
-                  restTemplate.exchange(
-                      "http://localhost:" + port + "/api/v0/applications/" + applicationId,
-                      HttpMethod.GET,
-                      new HttpEntity<>(headers()),
-                      ApplicationResponse.class);
-              assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-              assertThat(response.getBody()).isNotNull();
-              assertThat(response.getBody().getAssignmentVersion()).isEqualTo(expected);
-            });
+            () ->
+                assertThat(applicationDetailsAssignmentVersion(applicationId)).isEqualTo(expected));
+  }
+
+  private long applicationDetailsAssignmentVersion(UUID applicationId) {
+    ResponseEntity<ApplicationResponse> response =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/applications/" + applicationId,
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            ApplicationResponse.class);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody()).isNotNull();
+    return response.getBody().getAssignmentVersion();
   }
 
   private void awaitPriorAuthorityDetailsAssignmentVersion(UUID priorAuthorityId, long expected) {
     await()
         .atMost(15, TimeUnit.SECONDS)
         .untilAsserted(
-            () -> {
-              ResponseEntity<PriorAuthorityResponse> response =
-                  restTemplate.exchange(
-                      "http://localhost:" + port + "/api/v0/prior-authorities/" + priorAuthorityId,
-                      HttpMethod.GET,
-                      new HttpEntity<>(headers()),
-                      PriorAuthorityResponse.class);
-              assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-              assertThat(response.getBody()).isNotNull();
-              assertThat(response.getBody().getAssignmentVersion()).isEqualTo(expected);
-            });
+            () ->
+                assertThat(priorAuthorityDetailsAssignmentVersion(priorAuthorityId))
+                    .isEqualTo(expected));
+  }
+
+  private long priorAuthorityDetailsAssignmentVersion(UUID priorAuthorityId) {
+    ResponseEntity<PriorAuthorityResponse> response =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/prior-authorities/" + priorAuthorityId,
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            PriorAuthorityResponse.class);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody()).isNotNull();
+    return response.getBody().getAssignmentVersion();
   }
 
   private WorkListResponse getWorkList(String query, UUID caseworkerId) {
@@ -1232,6 +1293,22 @@ class WorkListIntegrationTest extends BaseIntegrationTest {
         assignmentUrl(itemId, "assign"),
         HttpMethod.POST,
         new HttpEntity<>(new WorkListAssignRequest(0L), headersFor(caseworkerId)),
+        Void.class);
+  }
+
+  private ResponseEntity<Void> assignAtVersion(UUID itemId, long expectedAssignmentVersion) {
+    return restTemplate.exchange(
+        assignmentUrl(itemId, "assign"),
+        HttpMethod.POST,
+        new HttpEntity<>(new WorkListAssignRequest(expectedAssignmentVersion), headers()),
+        Void.class);
+  }
+
+  private ResponseEntity<Void> unassignAtVersion(UUID itemId, long expectedAssignmentVersion) {
+    return restTemplate.exchange(
+        assignmentUrl(itemId, "unassign"),
+        HttpMethod.POST,
+        new HttpEntity<>(new WorkListUnassignRequest(expectedAssignmentVersion), headers()),
         Void.class);
   }
 }

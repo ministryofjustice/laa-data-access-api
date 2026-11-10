@@ -47,7 +47,7 @@ paths:
       tags:
         - work-list-command
       summary: Assign an open work-list item to the authenticated caseworker
-      description: When the item is an application in a linked group, every active member of the group is assigned to the caller in the same request; the request fails without changes if any member cannot be assigned.
+      description: When the item is an application in a linked group, every active member of the group is assigned to the caller in the same request; the request fails without changes if any member cannot be assigned. The response lists every item assigned, with the addressed item first; members whose assignee did not change are omitted.
       operationId: assignWorkListItem
       parameters:
         - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
