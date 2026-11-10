@@ -114,6 +114,29 @@ class LinkedGroupWorkItemAssignmentIntegrationTest extends AbstractLinkedGroupIn
   }
 
   @Test
+  void givenNotReadyMember_whenGroupAssigned_thenResponseExcludesThatMember() {
+    var lastName = uniqueLastName();
+    var leadId = createApplication(lastName);
+    var readyMemberId = createApplication(lastName);
+    var notReadyMemberId = createSubmittedApplication(lastName);
+    assertThat(link(readyMemberId, leadId, null).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    var groupId =
+        Objects.requireNonNull(awaitRoute(leadId, ApplicationGroupRouteKind.LINKED_GROUP));
+    assertThat(link(notReadyMemberId, leadId, groupToken(groupId, 0)).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+
+    var response = assignForResponse(leadId, TestJwtDecoderConfig.CASEWORKER_ID, 0L);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody().getAssignedItems())
+        .extracting(item -> item.getItemId())
+        .startsWith(leadId)
+        .containsExactlyInAnyOrder(leadId, readyMemberId);
+    assertThat(response.getBody().getAssignedItems())
+        .allSatisfy(item -> assertThat(item.getLaaReference()).isNotBlank());
+  }
+
+  @Test
   void givenLinkedBeforeReady_whenMarkedReady_thenWorkItemUsesGroupBoundary() {
     var lastName = uniqueLastName();
     var leadId = createApplication(lastName);

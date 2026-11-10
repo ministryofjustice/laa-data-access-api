@@ -8,6 +8,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.command.application.ApplicationStateEvents.activeAssigned;
 import static uk.gov.justice.laa.dstew.access.command.application.ApplicationStateEvents.activeUnassigned;
+import static uk.gov.justice.laa.dstew.access.command.application.ApplicationStateEvents.autoGranted;
+import static uk.gov.justice.laa.dstew.access.command.application.ApplicationStateEvents.decidedAssigned;
 import static uk.gov.justice.laa.dstew.access.command.application.ApplicationStateEvents.stateOf;
 
 import java.time.Instant;
@@ -46,6 +48,7 @@ class LinkedGroupWorkItemAssignmentCommandHandlerTest {
   private static final UUID CASEWORKER_ID = UUID.fromString("00000000-0000-0000-0000-000000000004");
   private static final UUID OTHER_CASEWORKER_ID =
       UUID.fromString("00000000-0000-0000-0000-000000000005");
+  private static final UUID THIRD_ID = UUID.fromString("00000000-0000-0000-0000-000000000006");
   private static final Instant OCCURRED_AT = Instant.parse("2026-10-27T12:00:00Z");
 
   @Mock private StateManager stateManager;
@@ -122,6 +125,37 @@ class LinkedGroupWorkItemAssignmentCommandHandlerTest {
     var result =
         handler.handle(command, group, stateManager, context, applicationDataStore, eventAppender);
 
+    assertThat(result.items())
+        .containsExactly(new AssignedWorkItems.AssignedItem(SECOND_ID, "LAA-SECOND"));
+  }
+
+  @Test
+  void givenDecidedAndAutoGrantedMembers_whenAssign_thenOnlyActiveMemberReturned() {
+    when(group.getState()).thenReturn(groupState);
+    when(groupState.getGroupId()).thenReturn(GROUP_ID);
+    when(groupState.memberIdsOrEmpty()).thenReturn(List.of(SECOND_ID, FIRST_ID, THIRD_ID));
+    var addressedState = stateOf(activeUnassigned(SECOND_ID));
+    givenApplication(SECOND_ID, addressedState);
+    givenApplication(FIRST_ID, stateOf(autoGranted(FIRST_ID)));
+    givenApplication(THIRD_ID, stateOf(decidedAssigned(THIRD_ID, OTHER_CASEWORKER_ID)));
+    var addressedDataId =
+        new ApplicationDataId(SECOND_ID, addressedState.getApplicationDataVersion());
+    var addressedPayload = mock(ApplicationDataPayload.class);
+    when(addressedPayload.laaReference()).thenReturn("LAA-SECOND");
+    when(applicationDataStore.getAll(List.of(addressedDataId)))
+        .thenReturn(Map.of(addressedDataId, addressedPayload));
+    var command =
+        new AssignLinkedGroupWorkItemCommand(
+            GROUP_ID, SECOND_ID, CASEWORKER_ID, 0L, "{}", "Assigned", OCCURRED_AT);
+
+    var result =
+        handler.handle(command, group, stateManager, context, applicationDataStore, eventAppender);
+
+    verify(eventAppender)
+        .append(
+            List.of(
+                new WorkItemAssigned(
+                    SECOND_ID, WorkItemType.APPLICATION, 1L, 1L, CASEWORKER_ID, OCCURRED_AT)));
     assertThat(result.items())
         .containsExactly(new AssignedWorkItems.AssignedItem(SECOND_ID, "LAA-SECOND"));
   }
