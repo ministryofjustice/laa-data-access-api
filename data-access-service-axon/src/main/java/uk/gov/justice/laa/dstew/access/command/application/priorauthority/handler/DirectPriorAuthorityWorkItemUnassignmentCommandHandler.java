@@ -34,6 +34,7 @@ public class DirectPriorAuthorityWorkItemUnassignmentCommandHandler {
         new WorkItemUnassigned(
             command.workItemId(),
             WorkItemType.PRIOR_AUTHORITY,
+            priorAuthority.getApplicationId(),
             priorAuthority.getDataVersion(),
             priorAuthority.getAssignmentVersion() + 1,
             command.occurredAt()));

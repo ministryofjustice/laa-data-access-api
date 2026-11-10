@@ -2,9 +2,11 @@ package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
+import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 
 /**
  * Emitted when an application is added to an already-existing {@link
@@ -17,7 +19,8 @@ public record MemberAddedToGroupEvent(
     UUID memberId,
     Instant occurredAt,
     List<UUID> memberApplicationIds,
-    UUID justificationId) {
+    UUID justificationId)
+    implements GenesisScoped {
 
   /** Preserves historical events whose full membership was not recorded. */
   public MemberAddedToGroupEvent(
@@ -29,5 +32,10 @@ public record MemberAddedToGroupEvent(
   public MemberAddedToGroupEvent withJustification(UUID justificationRefId) {
     return new MemberAddedToGroupEvent(
         groupId, leadApplicationId, memberId, occurredAt, memberApplicationIds, justificationRefId);
+  }
+
+  @Override
+  public Set<UUID> genesisIds() {
+    return GenesisScoped.ids(leadApplicationId, memberId);
   }
 }
