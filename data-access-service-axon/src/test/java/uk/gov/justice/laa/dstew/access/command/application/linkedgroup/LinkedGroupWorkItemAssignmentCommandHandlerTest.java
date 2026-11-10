@@ -78,9 +78,21 @@ class LinkedGroupWorkItemAssignmentCommandHandlerTest {
         .append(
             List.of(
                 new WorkItemAssigned(
-                    SECOND_ID, WorkItemType.APPLICATION, 1L, 1L, CASEWORKER_ID, OCCURRED_AT),
+                    SECOND_ID,
+                    WorkItemType.APPLICATION,
+                    SECOND_ID,
+                    1L,
+                    1L,
+                    CASEWORKER_ID,
+                    OCCURRED_AT),
                 new WorkItemAssigned(
-                    FIRST_ID, WorkItemType.APPLICATION, 1L, 1L, CASEWORKER_ID, OCCURRED_AT)));
+                    FIRST_ID,
+                    WorkItemType.APPLICATION,
+                    FIRST_ID,
+                    1L,
+                    1L,
+                    CASEWORKER_ID,
+                    OCCURRED_AT)));
   }
 
   @Test
@@ -128,8 +140,10 @@ class LinkedGroupWorkItemAssignmentCommandHandlerTest {
     verify(eventAppender)
         .append(
             List.of(
-                new WorkItemUnassigned(SECOND_ID, WorkItemType.APPLICATION, 1L, 2L, OCCURRED_AT),
-                new WorkItemUnassigned(FIRST_ID, WorkItemType.APPLICATION, 1L, 2L, OCCURRED_AT)));
+                new WorkItemUnassigned(
+                    SECOND_ID, WorkItemType.APPLICATION, SECOND_ID, 1L, 2L, OCCURRED_AT),
+                new WorkItemUnassigned(
+                    FIRST_ID, WorkItemType.APPLICATION, FIRST_ID, 1L, 2L, OCCURRED_AT)));
   }
 
   @Test

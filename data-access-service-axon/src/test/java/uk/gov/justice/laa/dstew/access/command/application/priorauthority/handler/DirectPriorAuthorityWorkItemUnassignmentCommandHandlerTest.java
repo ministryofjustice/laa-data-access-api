@@ -29,6 +29,7 @@ class DirectPriorAuthorityWorkItemUnassignmentCommandHandlerTest {
 
   @Test
   void givenAssignedPriorAuthority_whenHandle_thenUnassignsWorkItem() {
+    UUID applicationId = UUID.randomUUID();
     UUID workItemId = UUID.randomUUID();
     DirectPriorAuthorityWorkItemUnassignmentCommand command =
         new DirectPriorAuthorityWorkItemUnassignmentCommand(
@@ -38,13 +39,15 @@ class DirectPriorAuthorityWorkItemUnassignmentCommandHandlerTest {
     when(priorAuthority.getAssignmentVersion()).thenReturn(0L);
     when(priorAuthority.getCaseworkerId()).thenReturn(UUID.randomUUID());
     when(priorAuthority.getDataVersion()).thenReturn(2L);
+    when(priorAuthority.getApplicationId()).thenReturn(applicationId);
 
     new DirectPriorAuthorityWorkItemUnassignmentCommandHandler()
         .handle(command, priorAuthority, eventAppender);
 
     verify(eventAppender)
         .append(
-            new WorkItemUnassigned(workItemId, WorkItemType.PRIOR_AUTHORITY, 2L, 1L, OCCURRED_AT));
+            new WorkItemUnassigned(
+                workItemId, WorkItemType.PRIOR_AUTHORITY, applicationId, 2L, 1L, OCCURRED_AT));
   }
 
   @Test

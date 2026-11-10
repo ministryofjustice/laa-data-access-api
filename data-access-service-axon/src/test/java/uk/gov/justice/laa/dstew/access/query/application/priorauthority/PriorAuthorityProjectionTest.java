@@ -89,7 +89,7 @@ class PriorAuthorityProjectionTest {
         uploaded(priorAuthorityId, deletedId, applicationId, uploadedAt.plusSeconds(1));
     var typeUpdate =
         new PriorAuthorityDocumentTypeUpdatedEvent(
-            priorAuthorityId, keptId, "EXPERT_REPORT", uploadedAt.plusSeconds(2));
+            priorAuthorityId, keptId, "EXPERT_REPORT", uploadedAt.plusSeconds(2), applicationId);
     var deletion =
         new PriorAuthorityDocumentDeletedEvent(
             priorAuthorityId, deletedId, uploadedAt.plusSeconds(3), applicationId);

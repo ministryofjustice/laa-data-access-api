@@ -418,17 +418,19 @@ class PriorAuthorityDeciderTest {
   void givenDocumentTypeUpdateCommand_whenDecideDocumentTypeUpdated_thenMapsUpdateFields() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
     PriorAuthorityDocumentTypeUpdateCommand command =
         new PriorAuthorityDocumentTypeUpdateCommand(
             priorAuthorityId, documentId, "GATEWAY_EVIDENCE", "{}", OCCURRED_AT);
 
     PriorAuthorityDocumentTypeUpdatedEvent event =
-        PriorAuthorityDecider.decideDocumentTypeUpdated(command);
+        PriorAuthorityDecider.decideDocumentTypeUpdated(command, applicationId);
 
     assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(event.documentId()).isEqualTo(documentId);
     assertThat(event.documentType()).isEqualTo("GATEWAY_EVIDENCE");
     assertThat(event.occurredAt()).isEqualTo(OCCURRED_AT);
+    assertThat(event.parentApplicationId()).isEqualTo(applicationId);
   }
 
   @Test
