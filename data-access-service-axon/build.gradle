@@ -19,7 +19,9 @@ def versions = [
         archunit                : '1.5.1',
         testcontainers          : '2.0.5',
         micrometerSpringBoot    : '2.3.0',
-        logbackEcsEncoder       : '1.8.0'
+        logbackEcsEncoder       : '1.8.0',
+        cucumber                : '7.30.0',
+        playwright              : '1.57.0'
 ]
 
 sourceSets {
@@ -40,6 +42,11 @@ sourceSets {
     pactTest {
         compileClasspath += sourceSets.main.output + sourceSets.testUtilities.output
         runtimeClasspath += sourceSets.main.output + sourceSets.testUtilities.output
+    }
+    bddTest {
+        java.srcDir 'src/bddTest/java'
+        compileClasspath += sourceSets.testUtilities.output
+        runtimeClasspath += sourceSets.testUtilities.output
     }
 }
 
@@ -119,6 +126,14 @@ dependencies {
     // application on in-memory H2. Only the broker client and HTTP replay support are extra.
     pactTestImplementation 'au.com.dius.pact.provider:spring7:4.7.5'
     pactTestImplementation 'org.springframework.boot:spring-boot-starter-test'
+
+    bddTestImplementation 'org.junit.jupiter:junit-jupiter'
+    bddTestImplementation "io.cucumber:cucumber-java:$versions.cucumber"
+    bddTestImplementation "io.cucumber:cucumber-junit-platform-engine:$versions.cucumber"
+    bddTestImplementation "io.cucumber:cucumber-picocontainer:$versions.cucumber"
+    bddTestImplementation "org.junit.platform:junit-platform-suite"
+    bddTestImplementation "com.microsoft.playwright:playwright:$versions.playwright"
+    bddTestImplementation 'com.fasterxml.jackson.core:jackson-databind'
 }
 
 test {
@@ -132,6 +147,24 @@ tasks.named('integrationTest') {
     exclude 'uk/gov/justice/laa/dstew/access/GenerateAxonMassDataDumpTest.class'
     jacoco {
         destinationFile = layout.buildDirectory.file("jacoco/integrationTest.exec").get().asFile
+    }
+}
+
+tasks.register('bddTest', Test) {
+    description = 'Runs black-box Cucumber API scenarios against a configured live environment.'
+    group = 'verification'
+    dependsOn tasks.named('testUtilitiesClasses')
+    testClassesDirs = sourceSets.bddTest.output.classesDirs
+    classpath = sourceSets.bddTest.runtimeClasspath
+    useJUnitPlatform()
+    systemProperty 'cucumber.plugin', System.getProperty(
+            'cucumber.plugin',
+            "pretty,html:${layout.buildDirectory.get().asFile}/reports/cucumber/index.html,json:${layout.buildDirectory.get().asFile}/reports/cucumber/cucumber.json")
+    if (System.getProperty('cucumber.filter.tags')) {
+        systemProperty 'cucumber.filter.tags', System.getProperty('cucumber.filter.tags')
+    }
+    if (System.getProperty('cucumber.execution.dry-run')) {
+        systemProperty 'cucumber.execution.dry-run', System.getProperty('cucumber.execution.dry-run')
     }
 }
 

@@ -1,0 +1,83 @@
+package uk.gov.justice.laa.dstew.access.bdd.steps;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import io.cucumber.java.en.Given;
+import io.cucumber.java.en.Then;
+import io.cucumber.java.en.When;
+import java.util.UUID;
+import uk.gov.justice.laa.dstew.access.bdd.client.ApplicationApi;
+import uk.gov.justice.laa.dstew.access.bdd.fixtures.ApplicationFixtureFactory;
+import uk.gov.justice.laa.dstew.access.bdd.support.ApiResponse;
+import uk.gov.justice.laa.dstew.access.bdd.support.ScenarioContext;
+
+public final class ApplicationSteps {
+  private final ApplicationApi applications;
+  private final ApplicationFixtureFactory fixtures;
+  private final ScenarioContext context;
+
+  public ApplicationSteps(
+      ApplicationApi applications, ApplicationFixtureFactory fixtures, ScenarioContext context) {
+    this.applications = applications;
+    this.fixtures = fixtures;
+    this.context = context;
+  }
+
+  @Given("I create a valid application draft")
+  public void createDraft() {
+    context.applicationId(UUID.randomUUID());
+    context.proceedingId(UUID.randomUUID());
+    assertStatus(
+        context,
+        applications.createDraft(fixtures.draft(context.applicationId(), context.proceedingId())),
+        201);
+  }
+
+  @When("I submit the application draft")
+  public void submitDraft() {
+    assertStatus(context, applications.submitDraft(context.applicationId()), 200, 202);
+  }
+
+  @Then("the application is eventually submitted")
+  public void submitted() {
+    ApiResponse response = applications.awaitSubmitted(context.applicationId());
+    context.lastResponse(response);
+    context.applicationVersion(response.body().path("applicationVersion").asLong());
+  }
+
+  @When("the application auto-grant outcome is recorded as {string}")
+  public void recordAutoGrantOutcome(String outcome) {
+    assertStatus(
+        context, applications.recordAutoGrantOutcome(context.applicationId(), outcome), 200, 204);
+  }
+
+  @Then("the application is eventually ready for manual assessment")
+  public void readyForManualAssessment() {
+    context.lastResponse(applications.awaitAutoGrantOutcome(context.applicationId(), "MANUAL"));
+  }
+
+  @When("I decide the application as {string}")
+  public void decide(String decision) {
+    if (!"GRANTED".equals(decision))
+      throw new IllegalArgumentException("Only GRANTED is currently supported");
+    ApiResponse latest = applications.get(context.applicationId());
+    context.applicationVersion(latest.body().path("applicationVersion").asLong());
+    assertStatus(
+        context,
+        applications.decide(
+            context.applicationId(),
+            fixtures.grantDecision(context.proceedingId(), context.applicationVersion())),
+        200);
+  }
+
+  @Then("the application is eventually decided as {string}")
+  public void decided(String decision) {
+    context.lastResponse(applications.awaitDecision(context.applicationId(), decision));
+  }
+
+  private static void assertStatus(ScenarioContext context, ApiResponse response, int... statuses) {
+    context.lastResponse(response);
+    if (!response.hasStatus(statuses))
+      assertEquals(statuses[0], response.status(), "Unexpected response: " + response.body());
+  }
+}
