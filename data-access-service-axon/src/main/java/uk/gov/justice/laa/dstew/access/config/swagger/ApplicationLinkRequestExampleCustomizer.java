@@ -53,21 +53,30 @@ public class ApplicationLinkRequestExampleCustomizer implements OpenApiCustomize
     var firstTimeLink = new Example();
     firstTimeLink.setSummary("Target is standalone (first-time link)");
     firstTimeLink.setDescription(
-        "Omit linkedGroupVersion entirely; the target is not yet in a group.");
+        "Omit linkedGroupVersion entirely; the target is not yet in a group."
+            + " eventHistory is optional and supplies the history description.");
     firstTimeLink.setValue(
         Map.of(
             "applicationId", "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-            "linkType", "FAMILY"));
+            "linkType", "FAMILY",
+            "eventHistory",
+                Map.of("eventDescription", "Applications linked for related proceedings.")));
 
     var targetAlreadyLinked = new Example();
     targetAlreadyLinked.setSummary("Target already belongs to a group");
     targetAlreadyLinked.setDescription(
-        "Supply the target's linkedGroupVersion token exactly as last read.");
+        "Supply the target's linkedGroupVersion token exactly as last read."
+            + " eventHistory is optional and supplies the history description.");
     targetAlreadyLinked.setValue(
         Map.of(
-            "applicationId", "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-            "linkType", "FAMILY",
-            "linkedGroupVersion", EXAMPLE_LINKED_GROUP_VERSION));
+            "applicationId",
+            "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            "linkType",
+            "FAMILY",
+            "linkedGroupVersion",
+            EXAMPLE_LINKED_GROUP_VERSION,
+            "eventHistory",
+            Map.of("eventDescription", "Application added to the existing linked group.")));
 
     Map<String, Example> examples = new LinkedHashMap<>();
     examples.put("firstTimeLink", firstTimeLink);
