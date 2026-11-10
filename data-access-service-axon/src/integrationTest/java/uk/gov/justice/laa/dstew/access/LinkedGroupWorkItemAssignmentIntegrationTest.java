@@ -22,8 +22,15 @@ class LinkedGroupWorkItemAssignmentIntegrationTest extends AbstractLinkedGroupIn
   void givenAnUnassignedLinkedGroup_whenOneMemberIsAssigned_thenEveryMemberIsAssigned() {
     var memberIds = createGroup(3);
 
-    assertThat(assign(memberIds.get(1), TestJwtDecoderConfig.CASEWORKER_ID, 0L).getStatusCode())
-        .isEqualTo(HttpStatus.OK);
+    var response = assignForResponse(memberIds.get(1), TestJwtDecoderConfig.CASEWORKER_ID, 0L);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody().getAssignedItems())
+        .extracting(item -> item.getItemId())
+        .startsWith(memberIds.get(1))
+        .containsExactlyInAnyOrderElementsOf(memberIds);
+    assertThat(response.getBody().getAssignedItems())
+        .allSatisfy(item -> assertThat(item.getLaaReference()).isNotBlank());
 
     var groupId = routeRepository.findById(memberIds.getFirst()).orElseThrow().getGroupId();
     for (var memberId : memberIds) {

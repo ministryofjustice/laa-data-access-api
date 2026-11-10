@@ -89,6 +89,32 @@ components:
           minimum: 0
         eventHistory:
           $ref: "../open-api-common/components.yml#/components/schemas/EventHistoryRequest"
+
+    WorkListAssignedItem:
+      type: object
+      required:
+        - itemId
+        - laaReference
+      properties:
+        itemId:
+          type: string
+          format: uuid
+          description: Application ID for an application item, or prior-authority submission ID for a PA item
+        laaReference:
+          type: string
+          description: LAA reference for the application item or the parent application of a PA item
+
+    WorkListAssignResponse:
+      type: object
+      required:
+        - assignedItems
+      properties:
+        assignedItems:
+          type: array
+          description: Every item assigned by the request, with the addressed item first
+          items:
+            $ref: "#/components/schemas/WorkListAssignedItem"
+
     WorkListUnassignRequest:
       type: object
       required:

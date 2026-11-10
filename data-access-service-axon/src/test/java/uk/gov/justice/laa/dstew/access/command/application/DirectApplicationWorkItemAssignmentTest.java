@@ -2,9 +2,10 @@ package uk.gov.justice.laa.dstew.access.command.application;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.axonframework.eventsourcing.configuration.EventSourcedEntityModule;
 import org.axonframework.eventsourcing.configuration.EventSourcingConfigurer;
@@ -14,6 +15,7 @@ import org.axonframework.test.fixture.AxonTestFixture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.handler.DirectApplicationWorkItemAssignmentCommandHandler;
 import uk.gov.justice.laa.dstew.access.command.application.handler.DirectApplicationWorkItemUnassignmentCommandHandler;
@@ -21,6 +23,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationRead
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
+import uk.gov.justice.laa.dstew.access.command.worklist.assign.AssignedWorkItems;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectWorkItemAssignmentCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectWorkItemUnassignmentCommand;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -58,14 +61,18 @@ class DirectApplicationWorkItemAssignmentTest {
     UUID id = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
     Instant when = Instant.parse("2026-08-28T10:00:00Z");
+    ApplicationDataPayload payload = mock(ApplicationDataPayload.class);
+    when(payload.laaReference()).thenReturn("LAA-123");
+    when(dataStore.get(id, 1L)).thenReturn(payload);
     fixture
         .given()
         .events(created(id, when), new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when))
         .when()
         .command(new DirectWorkItemAssignmentCommand(id, caseworkerId, 0L, "{}", "Assigned", when))
         .then()
+        .resultMessagePayload(
+            new AssignedWorkItems(List.of(new AssignedWorkItems.AssignedItem(id, "LAA-123"))))
         .events(new WorkItemAssigned(id, WorkItemType.APPLICATION, 1L, 1L, caseworkerId, when));
-    verifyNoInteractions(dataStore);
   }
 
   @Test
@@ -108,6 +115,7 @@ class DirectApplicationWorkItemAssignmentTest {
                     .handle(
                         new DirectWorkItemAssignmentCommand(id, caseworkerId, 1L, "{}", "", when),
                         active,
+                        dataStore,
                         mock(EventAppender.class)))
         .isInstanceOf(WorkItemAssignmentConflictException.class);
     assertThatThrownBy(
@@ -117,6 +125,7 @@ class DirectApplicationWorkItemAssignmentTest {
                         new DirectWorkItemAssignmentCommand(
                             UUID.randomUUID(), caseworkerId, 1L, "{}", "", when),
                         active,
+                        dataStore,
                         mock(EventAppender.class)))
         .isInstanceOf(ResourceNotFoundException.class);
 
@@ -130,6 +139,7 @@ class DirectApplicationWorkItemAssignmentTest {
                         new DirectWorkItemAssignmentCommand(
                             inactiveId, caseworkerId, 0L, "{}", "", when),
                         inactive,
+                        dataStore,
                         mock(EventAppender.class)))
         .isInstanceOf(ResourceNotFoundException.class);
   }

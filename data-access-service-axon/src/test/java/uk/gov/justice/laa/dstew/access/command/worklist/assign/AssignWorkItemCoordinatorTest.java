@@ -1,7 +1,9 @@
 package uk.gov.justice.laa.dstew.access.command.worklist.assign;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -10,6 +12,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
@@ -44,12 +47,12 @@ class AssignWorkItemCoordinatorTest {
     when(routes.resolveDirectRoute(id)).thenReturn(route(WorkItemType.APPLICATION, id, occurredAt));
     when(groupRoutes.lockForAssignment(id)).thenReturn(Optional.empty());
 
-    handler.handle(command);
+    DirectWorkItemAssignmentCommand direct =
+        new DirectWorkItemAssignmentCommand(id, caseworkerId, 0L, "{}", "Assigned", occurredAt);
+    AssignedWorkItems assigned = assigned(id);
+    when(gateway.sendAndWait(direct, AssignedWorkItems.class)).thenReturn(assigned);
 
-    verify(gateway)
-        .sendAndWait(
-            new DirectWorkItemAssignmentCommand(
-                id, caseworkerId, 0L, "{}", "Assigned", occurredAt));
+    assertThat(handler.handle(command)).isEqualTo(assigned);
   }
 
   @Test
@@ -65,12 +68,17 @@ class AssignWorkItemCoordinatorTest {
     when(routes.resolveDirectRoute(id))
         .thenReturn(route(WorkItemType.PRIOR_AUTHORITY, id, occurredAt));
 
-    handler.handle(new AssignWorkItemCommand(id, caseworkerId, 0L, "{}", "Assigned", occurredAt));
+    DirectPriorAuthorityWorkItemAssignmentCommand direct =
+        new DirectPriorAuthorityWorkItemAssignmentCommand(
+            id, caseworkerId, 0L, "{}", "Assigned", occurredAt);
+    AssignedWorkItems assigned = assigned(id);
+    when(gateway.sendAndWait(direct, AssignedWorkItems.class)).thenReturn(assigned);
 
-    verify(gateway)
-        .sendAndWait(
-            new DirectPriorAuthorityWorkItemAssignmentCommand(
-                id, caseworkerId, 0L, "{}", "Assigned", occurredAt));
+    assertThat(
+            handler.handle(
+                new AssignWorkItemCommand(id, caseworkerId, 0L, "{}", "Assigned", occurredAt)))
+        .isEqualTo(assigned);
+
     verify(groupRoutes, never()).lockForAssignment(any());
   }
 
@@ -94,7 +102,7 @@ class AssignWorkItemCoordinatorTest {
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage("No work item found with id: " + id);
 
-    verify(gateway, never()).sendAndWait(any());
+    verify(gateway, never()).sendAndWait(any(), eq(AssignedWorkItems.class));
   }
 
   @Test
@@ -113,13 +121,16 @@ class AssignWorkItemCoordinatorTest {
     when(routes.resolveDirectRoute(id)).thenReturn(route(WorkItemType.APPLICATION, id, occurredAt));
     when(groupRoutes.lockForAssignment(id)).thenReturn(Optional.of(groupId));
 
-    handler.handle(command);
+    AssignLinkedGroupWorkItemCommand groupCommand =
+        new AssignLinkedGroupWorkItemCommand(
+            groupId, id, caseworkerId, 0L, "{}", "Assigned", occurredAt);
+    AssignedWorkItems assigned = assigned(id);
+    when(gateway.sendAndWait(groupCommand, AssignedWorkItems.class)).thenReturn(assigned);
 
-    verify(gateway)
-        .sendAndWait(
-            new AssignLinkedGroupWorkItemCommand(
-                groupId, id, caseworkerId, 0L, "{}", "Assigned", occurredAt));
-    verify(gateway, never()).sendAndWait(isA(DirectWorkItemAssignmentCommand.class));
+    assertThat(handler.handle(command)).isEqualTo(assigned);
+
+    verify(gateway, never())
+        .sendAndWait(isA(DirectWorkItemAssignmentCommand.class), eq(AssignedWorkItems.class));
   }
 
   @Test
@@ -139,17 +150,21 @@ class AssignWorkItemCoordinatorTest {
     AssignLinkedGroupWorkItemCommand groupCommand =
         new AssignLinkedGroupWorkItemCommand(
             groupId, id, caseworkerId, 0L, "{}", "Assigned", occurredAt);
-    when(gateway.sendAndWait(groupCommand))
+    AssignedWorkItems assigned = assigned(id);
+    when(gateway.sendAndWait(groupCommand, AssignedWorkItems.class))
         .thenThrow(new RuntimeException("append conflict", new ConcurrencyException("conflict")))
-        .thenReturn(null);
+        .thenReturn(assigned);
 
-    handler.handle(new AssignWorkItemCommand(id, caseworkerId, 0L, "{}", "Assigned", occurredAt));
+    assertThat(
+            handler.handle(
+                new AssignWorkItemCommand(id, caseworkerId, 0L, "{}", "Assigned", occurredAt)))
+        .isEqualTo(assigned);
 
     verify(transactionManager, times(2)).getTransaction(any(TransactionDefinition.class));
     verify(transactionManager).rollback(any(TransactionStatus.class));
     verify(transactionManager).commit(any(TransactionStatus.class));
     verify(groupRoutes, times(2)).lockForAssignment(id);
-    verify(gateway, times(2)).sendAndWait(groupCommand);
+    verify(gateway, times(2)).sendAndWait(groupCommand, AssignedWorkItems.class);
   }
 
   @Test
@@ -169,7 +184,8 @@ class AssignWorkItemCoordinatorTest {
         new RuntimeException("append conflict", new ConcurrencyException("second"));
     when(gateway.sendAndWait(
             new AssignLinkedGroupWorkItemCommand(
-                groupId, id, caseworkerId, 0L, "{}", "Assigned", occurredAt)))
+                groupId, id, caseworkerId, 0L, "{}", "Assigned", occurredAt),
+            AssignedWorkItems.class))
         .thenThrow(new RuntimeException("append conflict", new ConcurrencyException("first")))
         .thenThrow(retryFailure);
 
@@ -194,6 +210,10 @@ class AssignWorkItemCoordinatorTest {
         .thenAnswer(invocation -> new SimpleTransactionStatus());
     return new AssignWorkItemCoordinator(
         routes, groupRoutes, new RetryingCommandDispatcher(gateway), gateway, transactionManager);
+  }
+
+  private AssignedWorkItems assigned(UUID id) {
+    return new AssignedWorkItems(List.of(new AssignedWorkItems.AssignedItem(id, "LAA-123")));
   }
 
   private WorkItemRoute route(WorkItemType type, UUID id, Instant occurredAt) {

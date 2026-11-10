@@ -12,8 +12,8 @@ public class AssignWorkItemUseCase {
     this.coordinator = coordinator;
   }
 
-  /** Assigns a work item using its authoritative aggregate route. */
-  public void execute(AssignWorkItemCommand command) {
-    coordinator.handle(command);
+  /** Assigns a work item using its authoritative aggregate route and returns the assigned items. */
+  public AssignedWorkItems execute(AssignWorkItemCommand command) {
+    return coordinator.handle(command);
   }
 }

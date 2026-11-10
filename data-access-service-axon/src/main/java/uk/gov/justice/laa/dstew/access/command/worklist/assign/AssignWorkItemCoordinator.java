@@ -26,7 +26,8 @@ public class AssignWorkItemCoordinator {
   private final PlatformTransactionManager transactionManager;
 
   /**
-   * Dispatches the authenticated caseworker assignment to its authoritative aggregate.
+   * Dispatches the authenticated caseworker assignment to its authoritative aggregate and returns
+   * the items it assigned.
    *
    * <p>For an application in a linked group, every active member is assigned in one command; see
    * {@link LinkedGroupWorkItemAssignmentCommandHandler}. Each attempt locks routes and dispatches
@@ -34,15 +35,12 @@ public class AssignWorkItemCoordinator {
    * 409 conflict; a stale assignment version is never retried.
    */
   @AllowApiCaseworker
-  public void handle(AssignWorkItemCommand command) {
+  public AssignedWorkItems handle(AssignWorkItemCommand command) {
     var transactionTemplate = new TransactionTemplate(transactionManager);
     transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     try {
-      dispatcher.dispatch(
-          () -> {
-            transactionTemplate.executeWithoutResult(status -> dispatchToAuthority(command));
-            return null;
-          });
+      return dispatcher.dispatch(
+          () -> transactionTemplate.execute(status -> dispatchToAuthority(command)));
     } catch (RuntimeException failure) {
       if (RetryingCommandDispatcher.isRetryableConcurrentWrite(failure)) {
         throw WorkItemAssignmentConflictException.concurrentChange(command.workItemId(), failure);
@@ -51,23 +49,23 @@ public class AssignWorkItemCoordinator {
     }
   }
 
-  private void dispatchToAuthority(AssignWorkItemCommand command) {
+  private AssignedWorkItems dispatchToAuthority(AssignWorkItemCommand command) {
     WorkItemRoute route = routeResolver.resolveDirectRoute(command.workItemId());
     if (route.getWorkItemType() == WorkItemType.PRIOR_AUTHORITY) {
-      commandGateway.sendAndWait(
+      return commandGateway.sendAndWait(
           new DirectPriorAuthorityWorkItemAssignmentCommand(
               command.workItemId(),
               command.caseworkerId(),
               command.expectedAssignmentVersion(),
               command.serialisedRequest(),
               command.eventDescription(),
-              command.occurredAt()));
-      return;
+              command.occurredAt()),
+          AssignedWorkItems.class);
     }
 
     var groupId = groupRouteResolver.lockForAssignment(command.workItemId());
     if (groupId.isPresent()) {
-      commandGateway.sendAndWait(
+      return commandGateway.sendAndWait(
           new AssignLinkedGroupWorkItemCommand(
               groupId.get(),
               command.workItemId(),
@@ -75,17 +73,18 @@ public class AssignWorkItemCoordinator {
               command.expectedAssignmentVersion(),
               command.serialisedRequest(),
               command.eventDescription(),
-              command.occurredAt()));
-      return;
+              command.occurredAt()),
+          AssignedWorkItems.class);
     }
 
-    commandGateway.sendAndWait(
+    return commandGateway.sendAndWait(
         new DirectWorkItemAssignmentCommand(
             command.workItemId(),
             command.caseworkerId(),
             command.expectedAssignmentVersion(),
             command.serialisedRequest(),
             command.eventDescription(),
-            command.occurredAt()));
+            command.occurredAt()),
+        AssignedWorkItems.class);
   }
 }
