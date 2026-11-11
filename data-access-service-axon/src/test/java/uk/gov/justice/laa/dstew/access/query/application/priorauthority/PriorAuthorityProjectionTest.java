@@ -323,7 +323,7 @@ class PriorAuthorityProjectionTest {
 
     projection.on(
         new PriorAuthoritySubmittedEvent(
-            priorAuthorityId, applicationId, "EXPERT", 1, 1L, 0L, submittedAt, null);
+            priorAuthorityId, applicationId, "EXPERT", 1, 1L, 0L, submittedAt, null));
 
     assertThat(draft.getStatus()).isEqualTo("SUBMITTED");
     assertThat(draft.getPriorAuthorityType()).isEqualTo("EXPERT");
