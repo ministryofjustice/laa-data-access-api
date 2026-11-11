@@ -6,11 +6,39 @@
       "tokenExpiry": 3600,
       "requestMappings": [
         {
+          "requestParam": "client_id",
+          "match": "smoke-provider-1",
+          "claims": {
+            "sub": "smoke-provider-1",
+            "aud": ["laa-data-access-api"],
+            "scp": "access_as_provider",
+            "oid": "00000000-0000-0000-0000-000000000002",
+            "roles": ["LAA_CASEWORKER"],
+            "LAA_APP_ROLES": "LAA_CASEWORKER",
+            "LAA_ACCOUNTS": ["1A001B"]
+          }
+        },
+        {
+          "requestParam": "client_id",
+          "match": "smoke-provider-2",
+          "claims": {
+            "sub": "smoke-provider-2",
+            "aud": ["laa-data-access-api"],
+            "scp": "access_as_provider",
+            "oid": "00000000-0000-0000-0000-000000000003",
+            "roles": ["LAA_CASEWORKER"],
+            "LAA_APP_ROLES": "LAA_CASEWORKER",
+            "LAA_ACCOUNTS": ["2B002C"]
+          }
+        },
+        {
           "requestParam": "grant_type",
           "match": "client_credentials",
           "claims": {
             "sub": "smoke-test-user",
             "aud": ["laa-data-access-api"],
+            "scp": "access_as_user",
+            "oid": "00000000-0000-0000-0000-000000000001",
             "roles": ["LAA_CASEWORKER"],
             "LAA_APP_ROLES": "LAA_CASEWORKER"
           }

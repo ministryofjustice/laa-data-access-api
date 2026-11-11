@@ -27,7 +27,9 @@ public final class PriorAuthorityApi {
   }
 
   public ApiResponse awaitSubmitted(UUID priorAuthorityId) {
-    return polling.awaitGet("/api/v0/prior-authorities/" + priorAuthorityId, response -> true);
+    return polling.awaitGet(
+        "/api/v0/prior-authorities/" + priorAuthorityId,
+        response -> "SUBMITTED".equals(response.body().path("status").asText()));
   }
 
   public ApiResponse decide(UUID priorAuthorityId, Object decision) {

@@ -219,4 +219,4 @@ app:
       client-id: ${AUTH_CLIENT_ID}
       client-secret: ${AUTH_CLIENT_SECRET}
       scope: ${AUTH_SCOPE}
-      token-uri: https://login.microsoftonline.com/${AUTH_TENANT_ID}/oauth2/v2.0/token
+      token-uri: ${SDS_API_TOKEN_URI:https://login.microsoftonline.com/${AUTH_TENANT_ID}/oauth2/v2.0/token}

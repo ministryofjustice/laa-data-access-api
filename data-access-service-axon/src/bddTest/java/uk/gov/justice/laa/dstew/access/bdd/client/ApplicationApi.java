@@ -27,7 +27,9 @@ public final class ApplicationApi {
   }
 
   public ApiResponse awaitSubmitted(UUID applicationId) {
-    return polling.awaitGet("/api/v0/applications/" + applicationId, response -> true);
+    return polling.awaitGet(
+        "/api/v0/applications/" + applicationId,
+        response -> "APPLICATION_SUBMITTED".equals(response.body().path("status").asText()));
   }
 
   public ApiResponse recordAutoGrantOutcome(UUID applicationId, String outcome) {

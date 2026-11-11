@@ -28,14 +28,18 @@ public final class PriorAuthoritySteps {
   @Given("I create a valid prior authority draft for the application")
   public void createDraft() {
     ApiResponse response = priorAuthorities.createDraft(fixtures.draft(context.applicationId()));
-    assertStatus(response, 201, 202);
+    assertStatus("I create a valid prior authority draft for the application", response, 201, 202);
     context.lastResponse(response);
     context.priorAuthorityId(UUID.fromString(response.body().path("priorAuthorityId").asText()));
   }
 
   @When("I submit the prior authority draft")
   public void submitDraft() {
-    assertAndRecord(priorAuthorities.submitDraft(context.priorAuthorityId()), 200, 202);
+    assertAndRecord(
+        "I submit the prior authority draft",
+        priorAuthorities.submitDraft(context.priorAuthorityId()),
+        200,
+        202);
   }
 
   @Then("the prior authority is eventually submitted")
@@ -52,6 +56,7 @@ public final class PriorAuthoritySteps {
     ApiResponse latest = priorAuthorities.get(context.priorAuthorityId());
     context.priorAuthorityVersion(latest.body().path("priorAuthorityVersion").asLong());
     assertAndRecord(
+        "I decide the prior authority as \"" + decision + "\"",
         priorAuthorities.decide(
             context.priorAuthorityId(), fixtures.grantDecision(context.priorAuthorityVersion())),
         204);
@@ -62,13 +67,16 @@ public final class PriorAuthoritySteps {
     context.lastResponse(priorAuthorities.awaitDecision(context.priorAuthorityId(), decision));
   }
 
-  private void assertAndRecord(ApiResponse response, int... statuses) {
+  private void assertAndRecord(String step, ApiResponse response, int... statuses) {
     context.lastResponse(response);
-    assertStatus(response, statuses);
+    assertStatus(step, response, statuses);
   }
 
-  private static void assertStatus(ApiResponse response, int... statuses) {
+  private static void assertStatus(String step, ApiResponse response, int... statuses) {
     if (!response.hasStatus(statuses))
-      assertEquals(statuses[0], response.status(), "Unexpected response: " + response.body());
+      assertEquals(
+          statuses[0],
+          response.status(),
+          "Step failed: " + step + ". Unexpected response: " + response.body());
   }
 }

@@ -29,26 +29,36 @@ public final class ApplicationSteps {
     context.proceedingId(UUID.randomUUID());
     assertStatus(
         context,
+        "I create a valid application draft",
         applications.createDraft(fixtures.draft(context.applicationId(), context.proceedingId())),
         201);
   }
 
   @When("I submit the application draft")
   public void submitDraft() {
-    assertStatus(context, applications.submitDraft(context.applicationId()), 200, 202);
+    assertStatus(
+        context,
+        "I submit the application draft",
+        applications.submitDraft(context.applicationId()),
+        200,
+        202);
   }
 
   @Then("the application is eventually submitted")
   public void submitted() {
     ApiResponse response = applications.awaitSubmitted(context.applicationId());
     context.lastResponse(response);
-    context.applicationVersion(response.body().path("applicationVersion").asLong());
+    context.applicationVersion(response.body().path("version").asLong());
   }
 
   @When("the application auto-grant outcome is recorded as {string}")
   public void recordAutoGrantOutcome(String outcome) {
     assertStatus(
-        context, applications.recordAutoGrantOutcome(context.applicationId(), outcome), 200, 204);
+        context,
+        "the application auto-grant outcome is recorded as \"" + outcome + "\"",
+        applications.recordAutoGrantOutcome(context.applicationId(), outcome),
+        200,
+        204);
   }
 
   @Then("the application is eventually ready for manual assessment")
@@ -61,13 +71,14 @@ public final class ApplicationSteps {
     if (!"GRANTED".equals(decision))
       throw new IllegalArgumentException("Only GRANTED is currently supported");
     ApiResponse latest = applications.get(context.applicationId());
-    context.applicationVersion(latest.body().path("applicationVersion").asLong());
+    context.applicationVersion(latest.body().path("version").asLong());
     assertStatus(
         context,
+        "I decide the application as \"" + decision + "\"",
         applications.decide(
             context.applicationId(),
             fixtures.grantDecision(context.proceedingId(), context.applicationVersion())),
-        200);
+        204);
   }
 
   @Then("the application is eventually decided as {string}")
@@ -75,9 +86,13 @@ public final class ApplicationSteps {
     context.lastResponse(applications.awaitDecision(context.applicationId(), decision));
   }
 
-  private static void assertStatus(ScenarioContext context, ApiResponse response, int... statuses) {
+  private static void assertStatus(
+      ScenarioContext context, String step, ApiResponse response, int... statuses) {
     context.lastResponse(response);
     if (!response.hasStatus(statuses))
-      assertEquals(statuses[0], response.status(), "Unexpected response: " + response.body());
+      assertEquals(
+          statuses[0],
+          response.status(),
+          "Step failed: " + step + ". Unexpected response: " + response.body());
   }
 }

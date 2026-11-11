@@ -10,12 +10,13 @@ public final class ApplicationFixtureFactory {
         "id",
         applicationId.toString(),
         "status",
-        "APPLICATION_IN_PROGRESS",
+        "APPLICATION_SUBMITTED",
         "laaReference",
         "BDD-" + applicationId.toString().substring(0, 8),
         "applicationContent",
         Map.of(
             "createdAt", "2026-01-01T00:00:00Z",
+            "submittedAt", "2026-01-01T00:00:00Z",
             "provider", Map.of("officeCode", "1A001B", "contactEmail", "bdd@example.com"),
             "client", client(),
             "proceedings", List.of(proceeding(proceedingId))));
@@ -39,6 +40,8 @@ public final class ApplicationFixtureFactory {
                         "BDD smoke"))),
         "certificate",
         Map.of("source", "bdd"),
+        "eventHistory",
+        Map.of("eventType", "DECISION", "eventDescription", "BDD smoke"),
         "applicationVersion",
         applicationVersion);
   }

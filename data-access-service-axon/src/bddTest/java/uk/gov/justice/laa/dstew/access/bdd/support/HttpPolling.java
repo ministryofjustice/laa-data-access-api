@@ -2,16 +2,17 @@ package uk.gov.justice.laa.dstew.access.bdd.support;
 
 import java.time.Duration;
 import java.util.function.Predicate;
+import uk.gov.justice.laa.dstew.access.bdd.config.BddConfiguration;
 
 public final class HttpPolling {
   private final ApiClient apiClient;
   private final Duration timeout;
   private final Duration interval;
 
-  public HttpPolling(ApiClient apiClient, Duration timeout, Duration interval) {
+  public HttpPolling(ApiClient apiClient, BddConfiguration configuration) {
     this.apiClient = apiClient;
-    this.timeout = timeout;
-    this.interval = interval;
+    timeout = configuration.timeout();
+    interval = configuration.pollInterval();
   }
 
   public ApiResponse awaitGet(String path, Predicate<ApiResponse> condition) {

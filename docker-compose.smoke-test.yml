@@ -35,16 +35,24 @@ services:
       # The simplest reliable approach is to disable the healthcheck and let the app retry.
       disable: true
 
+  sds-wiremock-smoketest:
+    image: wiremock/wiremock:3.13.1
+    container_name: laa-sds-wiremock-smoketest
+    restart: unless-stopped
+    command: ["--global-response-templating"]
+    volumes:
+      - ./infra/wiremock/sds/mappings:/home/wiremock/mappings:ro
+
   app-smoketest:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.axon
     container_name: laa-data-access-api-smoketest
     restart: unless-stopped
     ports:
-      - "9000:8080"
+      - "9000:8082"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8082/actuator/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 15
@@ -59,6 +67,16 @@ services:
       ENTRA_ISSUER_URI: http://mock-oauth2-server-smoketest:9999/entra
       ENTRA_JWK_SET_URI: http://mock-oauth2-server-smoketest:9999/entra/jwks
       ENTRA_AUD: laa-data-access-api
+      # Outbound SDS OAuth2 and API — points to WireMock for document BDD scenarios
+      AUTH_CLIENT_ID: smoke-client
+      AUTH_CLIENT_SECRET: smoke-secret
+      AUTH_SCOPE: sds.mock
+      AUTH_TENANT_ID: smoke
+      SDS_API_URL: http://sds-wiremock-smoketest:8080
+      SDS_API_TOKEN_URI: http://sds-wiremock-smoketest:8080/oauth/token
+      SDS_API_BUCKET: smoke-test-bucket
+      SDS_API_CLIENT_REGISTRATION_ID: smoke-sds
+      SDS_API_PRINCIPAL_NAME: smoke-sds
       # Sentry (disabled locally by default)
       SENTRY_ENABLED: ${SENTRY_ENABLED:-false}
       SENTRY_DSN: ${SENTRY_DSN:-}
@@ -67,6 +85,8 @@ services:
       postgres-smoketest:
         condition: service_healthy
       mock-oauth2-server-smoketest:
+        condition: service_started
+      sds-wiremock-smoketest:
         condition: service_started
 
 volumes:

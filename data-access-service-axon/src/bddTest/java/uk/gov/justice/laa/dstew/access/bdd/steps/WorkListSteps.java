@@ -33,14 +33,22 @@ public final class WorkListSteps {
   public void assignCurrentItem() {
     ApiResponse response = workList.assign(context.workItemId(), context.assignmentVersion());
     context.lastResponse(response);
-    assertEquals(200, response.status(), "Unexpected response: " + response.body());
+    assertEquals(
+        200,
+        response.status(),
+        "Step failed: I assign the current work-list item to myself. Unexpected response: "
+            + response.body());
   }
 
   @Then("the current work-list item is eventually assigned to me")
   public void itemAssigned() {
     // The assign command is synchronous; preserving the explicit step leaves a stable seam for a
     // read-model assertion.
-    assertEquals(200, context.lastResponse().status());
+    assertEquals(
+        200,
+        context.lastResponse().status(),
+        "Step failed: the current work-list item is eventually assigned to me. Unexpected response: "
+            + context.lastResponse().body());
   }
 
   private void selectItem(String type, UUID itemId) {
