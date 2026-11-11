@@ -24,7 +24,8 @@ public record PriorAuthoritySubmittedEvent(
     int schemaVersion,
     long dataVersion,
     Long applicationDataVersion,
-    Instant occurredAt) {
+    Instant occurredAt,
+    String billingType) {
 
   /** Normalises a missing (pre-field) {@code applicationDataVersion} to {@code 0L}. */
   public PriorAuthoritySubmittedEvent {

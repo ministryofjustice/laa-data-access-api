@@ -7,11 +7,13 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.DisbursementInformation;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ExpertFeeInformation;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.ApportionmentInformation;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
 
 class PriorAuthorityDataPayloadTest {
 
@@ -114,6 +116,52 @@ class PriorAuthorityDataPayloadTest {
     assertThat(payload.documentFilenames()).isEmpty();
   }
 
+  @Test
+  void givenDecisionWithTimeOverride_whenJsonRoundTripped_thenPreservesOverride() {
+    ObjectMapper objectMapper = new ObjectMapper();
+    PriorAuthorityDataPayload payload =
+        undecidedPayload()
+            .withDecision(
+                new PriorAuthorityDataPayload.DecisionDetails(
+                    "GRANTED",
+                    "Reasoned decision",
+                    BigDecimal.valueOf(123.45),
+                    GRANTED_AT,
+                    ExpertFeeInformation.builder()
+                        .newTimeRequested(new TimeRequested(3, 15))
+                        .build(),
+                    null,
+                    null,
+                    "{\"decision\":\"GRANTED\"}"));
+
+    PriorAuthorityDataPayload roundTripped =
+        objectMapper.readValue(
+            objectMapper.writeValueAsString(payload), PriorAuthorityDataPayload.class);
+
+    assertThat(roundTripped.expert().getNewTimeRequested()).isEqualTo(new TimeRequested(3, 15));
+  }
+
+  @Test
+  void givenLegacyDecisionJson_whenDeserialised_thenNewTimeRequestedIsNull() {
+    ObjectMapper objectMapper = new ObjectMapper();
+    String legacyJson =
+        """
+        {
+          "decisionDetails": {
+            "decision": "GRANTED",
+            "expert": {
+              "newHourlyRateAmount": 100.0
+            }
+          }
+        }
+        """;
+
+    PriorAuthorityDataPayload payload =
+        objectMapper.readValue(legacyJson, PriorAuthorityDataPayload.class);
+
+    assertThat(payload.expert().getNewTimeRequested()).isNull();
+  }
+
   private static PriorAuthorityDataPayload undecidedPayload() {
     return new PriorAuthorityDataPayload(
         UUID.randomUUID(),
@@ -132,6 +180,7 @@ class PriorAuthorityDataPayloadTest {
         ExpertFeeInformation.builder()
             .newFixedRateAmount(BigDecimal.valueOf(250.0))
             .newHourlyRateAmount(BigDecimal.valueOf(100.0))
+            .newTimeRequested(new TimeRequested(3, 15))
             .build(),
         DisbursementInformation.builder().newAmount(BigDecimal.valueOf(45.0)).build(),
         ApportionmentInformation.builder().newClientShareAmount(BigDecimal.valueOf(15.0)).build(),

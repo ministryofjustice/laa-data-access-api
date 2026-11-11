@@ -199,6 +199,7 @@ public class GetPriorAuthorityResponseMapper {
           new uk.gov.justice.laa.dstew.access.model.ExpertFeeInformation();
       expertInfo.setNewFixedRateAmount(details.expert().getNewFixedRateAmount());
       expertInfo.setNewHourlyRateAmount(details.expert().getNewHourlyRateAmount());
+      expertInfo.setNewTimeRequested(toTimeRequested(details.expert().getNewTimeRequested()));
       result.setExpert(expertInfo);
     }
     if (details.disbursement() != null) {

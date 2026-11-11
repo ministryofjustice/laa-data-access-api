@@ -18,6 +18,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ExpertFeeInformation;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityState;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
@@ -26,6 +27,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decisi
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
@@ -92,6 +94,74 @@ class MakePriorAuthorityDecisionCommandHandlerTest {
     assertThat(payloadCaptor.getValue().decisionJustification()).isEqualTo("Decision recorded");
     assertThat(payloadCaptor.getValue().amountGranted())
         .isEqualByComparingTo(BigDecimal.valueOf(100.00));
+    verify(eventAppender)
+        .append(
+            new PriorAuthorityDecisionMadeEvent(
+                priorAuthorityId,
+                applicationId,
+                PriorAuthorityType.EXPERT.name(),
+                dataVersion + 1,
+                "GRANTED",
+                "Decision recorded",
+                BigDecimal.valueOf(100.00),
+                OCCURRED_AT,
+                OCCURRED_AT));
+  }
+
+  @Test
+  void givenTimeOverride_whenHandle_thenPersistsOverrideInDecisionData() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    long dataVersion = 3L;
+    PriorAuthorityState state = new PriorAuthorityState();
+    setField(state, "applicationId", applicationId);
+    setField(state, "caseworkerId", caseworkerId);
+    setField(state, "dataVersion", dataVersion);
+    setField(state, "submitted", true);
+    setField(state, "priorAuthorityType", PriorAuthorityType.EXPERT.name());
+    setField(state, "billingType", "HOURLY");
+    setField(state, "schemaVersion", 1);
+    PriorAuthorityDataPayload current =
+        new PriorAuthorityDataPayload(
+            priorAuthorityId,
+            applicationId,
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Need review", null, null, null),
+            "{}",
+            OCCURRED_AT);
+    TimeRequested timeRequested = new TimeRequested(3, 15);
+    MakePriorAuthorityDecisionCommand command =
+        new MakePriorAuthorityDecisionCommand(
+            priorAuthorityId,
+            caseworkerId,
+            dataVersion,
+            "GRANTED",
+            "Decision recorded",
+            BigDecimal.valueOf(100.00),
+            ExpertFeeInformation.builder().newTimeRequested(timeRequested).build(),
+            null,
+            null,
+            OCCURRED_AT,
+            "{}",
+            OCCURRED_AT);
+
+    when(priorAuthority.getState()).thenReturn(state);
+    when(priorAuthority.getPriorAuthorityId()).thenReturn(priorAuthorityId);
+    when(priorAuthority.getDataVersion()).thenReturn(dataVersion);
+    when(dataStore.get(priorAuthorityId, dataVersion)).thenReturn(current);
+
+    new MakePriorAuthorityDecisionCommandHandler()
+        .handle(command, dataStore, priorAuthority, eventAppender);
+
+    verify(dataStore)
+        .append(
+            eq(priorAuthorityId),
+            eq(dataVersion + 1),
+            eq(applicationId),
+            payloadCaptor.capture(),
+            eq("{}"),
+            eq(OCCURRED_AT));
+    assertThat(payloadCaptor.getValue().expert().getNewTimeRequested()).isEqualTo(timeRequested);
     verify(eventAppender)
         .append(
             new PriorAuthorityDecisionMadeEvent(
