@@ -659,8 +659,7 @@ class ApplicationProjectionTest {
 
     projection.on(
         new ApplicationDecisionMadeEvent(
-            applicationId, 3L, 4L, "GRANTED", AutoGrantedState.MANUAL, occurredAt),
-        queryUpdateEmitter);
+            applicationId, 3L, 4L, "GRANTED", AutoGrantedState.MANUAL, occurredAt));
 
     assertThat(existing.getAssignmentVersion()).isEqualTo(5L);
     assertThat(existing.getApplicationVersion()).isEqualTo(3L);
