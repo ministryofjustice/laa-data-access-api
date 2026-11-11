@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
+import io.cucumber.java.en_scouse.Youseknowlikewhen;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.bdd.client.ApplicationApi;
 import uk.gov.justice.laa.dstew.access.bdd.config.BddConfiguration;
@@ -31,7 +32,7 @@ public final class ApplicationSteps {
     this.context = context;
   }
 
-  @Given("I create a valid application draft")
+  @Youseknowlikewhen("I create a valid application draft")
   public void createDraft() {
     context.applicationId(UUID.randomUUID());
     context.proceedingId(UUID.randomUUID());

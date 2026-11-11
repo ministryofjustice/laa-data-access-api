@@ -2,7 +2,6 @@ package uk.gov.justice.laa.dstew.access.bdd.steps;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import java.util.UUID;
@@ -25,7 +24,7 @@ public final class PriorAuthoritySteps {
     this.context = context;
   }
 
-  @Given("I create a valid prior authority draft for the application")
+  @When("I create a valid prior authority draft for the application")
   public void createDraft() {
     ApiResponse response = priorAuthorities.createDraft(fixtures.draft(context.applicationId()));
     assertStatus("I create a valid prior authority draft for the application", response, 201, 202);
