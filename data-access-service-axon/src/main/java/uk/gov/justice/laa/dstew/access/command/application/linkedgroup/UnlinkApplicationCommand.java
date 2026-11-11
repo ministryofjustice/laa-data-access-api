@@ -12,8 +12,18 @@ public record UnlinkApplicationCommand(
     UUID applicationId,
     ExpectedLinkedGroup expectedGroup,
     Instant occurredAt,
-    @Nullable AuthenticatedCaller caller)
+    @Nullable AuthenticatedCaller caller,
+    @Nullable String justification)
     implements CallerCommand {
+
+  /** Creates a command without justification. */
+  public UnlinkApplicationCommand(
+      UUID applicationId,
+      ExpectedLinkedGroup expectedGroup,
+      Instant occurredAt,
+      AuthenticatedCaller caller) {
+    this(applicationId, expectedGroup, occurredAt, caller, null);
+  }
 
   /** Validates the application and expected linked group. */
   public UnlinkApplicationCommand {

@@ -18,16 +18,23 @@ import org.axonframework.messaging.eventhandling.GenericEventMessage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ChangeLinkedGroupLeadCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDecider;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDissolvedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupEvolve;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupLeadChangedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupState;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberRemovedFromGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
@@ -41,7 +48,19 @@ import uk.gov.justice.laa.dstew.access.config.interceptor.RequestMetadataDispatc
 @ExtendWith(MockitoExtension.class)
 class ApplicationHistoryProjectionTest {
 
+  private static final Instant OCCURRED_AT = Instant.parse("2026-07-15T08:00:00Z");
+  private static final UUID GROUP = UUID.fromString("00000000-0000-0000-0000-000000000001");
+  private static final UUID LEAD = UUID.fromString("00000000-0000-0000-0000-000000000002");
+  private static final UUID MEMBER = UUID.fromString("00000000-0000-0000-0000-000000000003");
+  private static final UUID THIRD = UUID.fromString("00000000-0000-0000-0000-000000000004");
+  private static final ObjectMapper MAPPER = new ObjectMapper();
+
   @Mock private ApplicationDataStore applicationDataStore;
+
+  @Mock
+  private uk.gov.justice.laa.dstew.access.command.application.linkedgroup
+          .LinkedGroupJustificationStore
+      justificationStore;
 
   @Mock private ApplicationHistoryReadRepository repository;
 
@@ -56,7 +75,7 @@ class ApplicationHistoryProjectionTest {
     projection =
         new ApplicationHistoryProjection(
             repository,
-            new ApplicationHistoryAssembler(applicationDataStore),
+            new ApplicationHistoryAssembler(applicationDataStore, justificationStore),
             paRepository,
             new PriorAuthorityHistoryAssembler(
                 new PriorAuthorityDataStore(priorAuthorityDataRepository)));
@@ -211,6 +230,144 @@ class ApplicationHistoryProjectionTest {
                 "group-dissolved-event-id:" + formerLeadId,
                 formerLeadId,
                 "APPLICATION_GROUP_DISSOLVED"));
+  }
+
+  /** Each group event kind with the membership snapshot and justification it carries. */
+  @ParameterizedTest
+  @EnumSource(GroupHistoryCase.class)
+  void givenGroupEventWithJustification_whenHandled_thenEveryRecipientReferencesIt(
+      GroupHistoryCase historyCase) {
+    UUID justificationId = UUID.randomUUID();
+    var expected = historyCase.expected(justificationId);
+
+    historyCase.project(projection, justificationId);
+
+    assertThat(savedHistory(expected.size()))
+        .extracting(
+            ApplicationHistoryReadModel::getEventId,
+            ApplicationHistoryReadModel::getApplicationId,
+            ApplicationHistoryReadModel::getEventType,
+            ApplicationHistoryReadModel::getJustificationId)
+        .containsExactlyInAnyOrder(expected.toArray(Tuple[]::new));
+  }
+
+  private enum GroupHistoryCase {
+    CREATED {
+      @Override
+      void project(ApplicationHistoryProjection projection, UUID justificationId) {
+        var event =
+            new LinkedApplicationGroupCreatedEvent(
+                GROUP, LEAD, List.of(LEAD, MEMBER), OCCURRED_AT, justificationId);
+        projection.on(event, groupMessage(event));
+      }
+
+      @Override
+      List<Tuple> expected(UUID justificationId) {
+        return List.of(
+            historyTuple(LEAD, "APPLICATION_GROUP_CREATED", justificationId),
+            historyTuple(MEMBER, "APPLICATION_GROUP_JOINED", justificationId));
+      }
+    },
+    MEMBER_ADDED {
+      @Override
+      void project(ApplicationHistoryProjection projection, UUID justificationId) {
+        var event =
+            new MemberAddedToGroupEvent(
+                GROUP, LEAD, THIRD, OCCURRED_AT, List.of(LEAD, MEMBER, THIRD), justificationId);
+        projection.on(event, groupMessage(event));
+      }
+
+      @Override
+      List<Tuple> expected(UUID justificationId) {
+        return List.of(
+            historyTuple(THIRD, "APPLICATION_GROUP_JOINED", justificationId),
+            historyTuple(LEAD, "APPLICATION_GROUP_MEMBER_ADDED", justificationId),
+            historyTuple(MEMBER, "APPLICATION_GROUP_MEMBER_ADDED", justificationId));
+      }
+    },
+    LEAD_CHANGED {
+      @Override
+      void project(ApplicationHistoryProjection projection, UUID justificationId) {
+        var event =
+            new LinkedApplicationGroupLeadChangedEvent(
+                GROUP,
+                LEAD,
+                MEMBER,
+                2L,
+                OCCURRED_AT,
+                List.of(LEAD, MEMBER, THIRD),
+                justificationId);
+        projection.on(event, groupMessage(event));
+      }
+
+      @Override
+      List<Tuple> expected(UUID justificationId) {
+        return List.of(
+            historyTuple(LEAD, "APPLICATION_GROUP_LEAD_CHANGED", justificationId),
+            historyTuple(MEMBER, "APPLICATION_GROUP_LEAD_CHANGED", justificationId),
+            historyTuple(THIRD, "APPLICATION_GROUP_LEAD_CHANGED", justificationId));
+      }
+    },
+    MEMBER_REMOVED {
+      @Override
+      void project(ApplicationHistoryProjection projection, UUID justificationId) {
+        var event =
+            new MemberRemovedFromGroupEvent(
+                GROUP, LEAD, THIRD, 3L, OCCURRED_AT, List.of(LEAD, MEMBER, THIRD), justificationId);
+        projection.on(event, groupMessage(event));
+      }
+
+      @Override
+      List<Tuple> expected(UUID justificationId) {
+        return List.of(
+            historyTuple(THIRD, "APPLICATION_GROUP_LEFT", justificationId),
+            historyTuple(LEAD, "APPLICATION_GROUP_MEMBER_REMOVED", justificationId),
+            historyTuple(MEMBER, "APPLICATION_GROUP_MEMBER_REMOVED", justificationId));
+      }
+    },
+    DISSOLVED {
+      @Override
+      void project(ApplicationHistoryProjection projection, UUID justificationId) {
+        var event =
+            new LinkedApplicationGroupDissolvedEvent(
+                GROUP, LEAD, THIRD, List.of(THIRD, LEAD), 4L, OCCURRED_AT, justificationId);
+        projection.on(event, groupMessage(event));
+      }
+
+      @Override
+      List<Tuple> expected(UUID justificationId) {
+        return List.of(
+            historyTuple(THIRD, "APPLICATION_GROUP_LEFT", justificationId),
+            historyTuple(LEAD, "APPLICATION_GROUP_DISSOLVED", justificationId));
+      }
+    };
+
+    abstract void project(ApplicationHistoryProjection projection, UUID justificationId);
+
+    abstract List<Tuple> expected(UUID justificationId);
+
+    /** Event IDs are derived from the message identifier, so every row is tied to its event. */
+    static EventMessage groupMessage(Object payload) {
+      return new GenericEventMessage(
+          "group-event-id",
+          new MessageType(payload.getClass()),
+          payload,
+          Map.of(RequestMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY, "CIVIL_APPLY"),
+          OCCURRED_AT);
+    }
+
+    protected static Tuple historyTuple(
+        UUID applicationId, String eventType, UUID justificationId) {
+      return Tuple.tuple(
+          "group-event-id:" + applicationId, applicationId, eventType, justificationId);
+    }
+  }
+
+  private List<ApplicationHistoryReadModel> savedHistory(int expectedRows) {
+    ArgumentCaptor<ApplicationHistoryReadModel> captor =
+        ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
+    verify(repository, times(expectedRows)).save(captor.capture());
+    return captor.getAllValues();
   }
 
   @Test
@@ -467,6 +624,95 @@ class ApplicationHistoryProjectionTest {
         .serviceName("CIVIL_APPLY")
         .occurredAt(Instant.parse("2026-08-05T10:00:00Z"))
         .build();
+  }
+
+  /**
+   * Historical payloads without membership snapshots or justification references must still
+   * deserialise, project with their original recipients and restore state for later commands.
+   */
+  @Test
+  void givenHistoricalJsonWithoutNewFields_whenReplayed_thenOriginalCoverageAndStateArePreserved() {
+    var created =
+        MAPPER.readValue(
+            """
+        {"groupId":"%s","leadApplicationId":"%s","memberApplicationIds":["%s","%s"],
+         "occurredAt":"2026-07-15T08:00:00Z"}
+        """
+                .formatted(GROUP, LEAD, LEAD, MEMBER),
+            LinkedApplicationGroupCreatedEvent.class);
+    var added =
+        MAPPER.readValue(
+            """
+        {"groupId":"%s","leadApplicationId":"%s","memberId":"%s",
+         "occurredAt":"2026-07-15T08:00:00Z"}
+        """
+                .formatted(GROUP, LEAD, THIRD),
+            MemberAddedToGroupEvent.class);
+    var lead =
+        MAPPER.readValue(
+            """
+        {"groupId":"%s","previousLeadApplicationId":"%s","newLeadApplicationId":"%s",
+         "groupVersion":2,"occurredAt":"2026-07-15T08:00:00Z"}
+        """
+                .formatted(GROUP, LEAD, MEMBER),
+            LinkedApplicationGroupLeadChangedEvent.class);
+    var removed =
+        MAPPER.readValue(
+            """
+        {"groupId":"%s","leadApplicationId":"%s","memberId":"%s",
+         "groupVersion":3,"occurredAt":"2026-07-15T08:00:00Z"}
+        """
+                .formatted(GROUP, MEMBER, THIRD),
+            MemberRemovedFromGroupEvent.class);
+    var dissolved =
+        MAPPER.readValue(
+            """
+        {"groupId":"%s","formerLeadApplicationId":"%s","removedApplicationId":"%s",
+         "memberApplicationIds":["%s","%s"],"groupVersion":4,
+         "occurredAt":"2026-07-15T08:00:00Z"}
+        """
+                .formatted(GROUP, MEMBER, LEAD, LEAD, MEMBER),
+            LinkedApplicationGroupDissolvedEvent.class);
+
+    projection.on(created, message(created, "created"));
+    projection.on(added, message(added, "added"));
+    projection.on(lead, message(lead, "lead"));
+    projection.on(removed, message(removed, "removed"));
+    projection.on(dissolved, message(dissolved, "dissolved"));
+
+    var rows = savedHistory(8);
+    assertThat(rows)
+        .extracting(ApplicationHistoryReadModel::getJustificationId)
+        .containsOnlyNulls();
+    assertThat(rows)
+        .extracting(ApplicationHistoryReadModel::getEventId)
+        .containsExactly(
+            "created:" + LEAD,
+            "created:" + MEMBER,
+            "added:" + THIRD,
+            "lead:" + MEMBER,
+            "lead:" + LEAD,
+            "removed:" + THIRD,
+            "dissolved:" + LEAD,
+            "dissolved:" + MEMBER);
+    assertThat(added.memberApplicationIds()).isNull();
+    assertThat(lead.memberApplicationIds()).isNull();
+    assertThat(removed.memberApplicationIds()).isNull();
+
+    var state = new LinkedApplicationGroupState();
+    LinkedApplicationGroupEvolve.apply(state, created);
+    LinkedApplicationGroupEvolve.apply(state, added);
+    LinkedApplicationGroupEvolve.apply(state, lead);
+    LinkedApplicationGroupEvolve.apply(state, removed);
+    var next =
+        LinkedApplicationGroupDecider.decideChangeLead(
+                state, new ChangeLinkedGroupLeadCommand(GROUP, LEAD, 3, OCCURRED_AT))
+            .orElseThrow();
+    assertThat(next.groupVersion()).isEqualTo(4);
+    assertThat(next.memberApplicationIds()).containsExactly(LEAD, MEMBER);
+    LinkedApplicationGroupEvolve.apply(state, dissolved);
+    assertThat(state.isDissolved()).isTrue();
+    assertThat(state.memberIdsOrEmpty()).isEmpty();
   }
 
   private EventMessage message(Object payload, String identifier) {

@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationLinkConflictException;
@@ -66,7 +67,13 @@ public final class LinkedApplicationGroupDecider {
 
     return Optional.of(
         new MemberAddedToGroupEvent(
-            state.groupId, state.leadApplicationId, command.applicationId(), command.occurredAt()));
+            state.groupId,
+            state.leadApplicationId,
+            command.applicationId(),
+            command.occurredAt(),
+            Stream.concat(state.memberApplicationIds.stream(), Stream.of(command.applicationId()))
+                .toList(),
+            null));
   }
 
   /** Changes the group's lead using its current aggregate version. */
@@ -99,7 +106,9 @@ public final class LinkedApplicationGroupDecider {
             state.leadApplicationId,
             command.newLeadApplicationId(),
             state.groupVersion + 1,
-            command.occurredAt()));
+            command.occurredAt(),
+            List.copyOf(state.memberApplicationIds),
+            null));
   }
 
   /** Removes a non-lead member, dissolving a two-member group. */
@@ -147,7 +156,9 @@ public final class LinkedApplicationGroupDecider {
             state.leadApplicationId,
             command.applicationId(),
             nextVersion,
-            command.occurredAt()));
+            command.occurredAt(),
+            List.copyOf(state.memberApplicationIds),
+            null));
   }
 
   /** Validates that an application may create a Prior Authority against the current group state. */

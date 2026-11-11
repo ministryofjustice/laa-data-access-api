@@ -22,6 +22,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.WorkListAssignRequest;
@@ -105,7 +106,11 @@ public abstract class AbstractLinkedGroupIntegrationTest extends BaseIntegration
     return restTemplate.exchange(
         url("/api/v0/applications/" + applicationId + "/unlink"),
         HttpMethod.POST,
-        new HttpEntity<>(new LinkedGroupChangeRequest(token), headers()),
+        new HttpEntity<>(
+            new LinkedGroupChangeRequest(token)
+                .eventHistory(
+                    new EventHistoryRequest().eventDescription("Justification for unlink")),
+            headers()),
         String.class);
   }
 

@@ -43,6 +43,7 @@ public class MakeApplicationLeadCommandMapper {
         applicationId,
         LinkedGroupVersionTokens.decode(request.getLinkedGroupVersion()),
         Instant.now(clock),
-        caller);
+        caller,
+        request.getEventHistory() == null ? null : request.getEventHistory().getEventDescription());
   }
 }
