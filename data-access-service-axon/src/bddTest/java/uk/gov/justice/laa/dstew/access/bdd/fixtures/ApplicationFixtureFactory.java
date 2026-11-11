@@ -5,7 +5,7 @@ import java.util.Map;
 import java.util.UUID;
 
 public final class ApplicationFixtureFactory {
-  public Map<String, Object> draft(UUID applicationId, UUID proceedingId) {
+  public Map<String, Object> draft(UUID applicationId, UUID proceedingId, String officeCode) {
     return Map.of(
         "id",
         applicationId.toString(),
@@ -17,7 +17,7 @@ public final class ApplicationFixtureFactory {
         Map.of(
             "createdAt", "2026-01-01T00:00:00Z",
             "submittedAt", "2026-01-01T00:00:00Z",
-            "provider", Map.of("officeCode", "1A001B", "contactEmail", "bdd@example.com"),
+            "provider", Map.of("officeCode", officeCode, "contactEmail", "bdd@example.com"),
             "client", client(),
             "proceedings", List.of(proceeding(proceedingId))));
   }

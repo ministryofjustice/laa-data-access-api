@@ -10,6 +10,7 @@ public final class ScenarioContext {
   private long applicationVersion;
   private long priorAuthorityVersion;
   private long assignmentVersion;
+  private String officeCode;
   private ApiResponse lastResponse;
 
   public UUID applicationId() {
@@ -66,6 +67,16 @@ public final class ScenarioContext {
 
   public void assignmentVersion(long value) {
     assignmentVersion = value;
+  }
+
+  public String officeCode() {
+    if (officeCode == null || officeCode.isBlank())
+      throw new IllegalStateException("The current token has no provider office code");
+    return officeCode;
+  }
+
+  public void officeCode(String value) {
+    officeCode = value;
   }
 
   public ApiResponse lastResponse() {

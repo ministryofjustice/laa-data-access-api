@@ -26,6 +26,10 @@ public final class ApplicationApi {
     return apiClient.get("/api/v0/applications/" + applicationId);
   }
 
+  public ApiResponse searchByReference(String laaReference) {
+    return apiClient.get("/api/v0/applications?laaReference=" + laaReference + "&pageSize=100");
+  }
+
   public ApiResponse awaitSubmitted(UUID applicationId) {
     return polling.awaitGet(
         "/api/v0/applications/" + applicationId,

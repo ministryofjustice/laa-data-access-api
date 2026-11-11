@@ -4,7 +4,11 @@ import java.time.Duration;
 
 public final class BddConfiguration {
   private final String baseUrl;
-  private final String token;
+  private final String tokenUrl;
+  private final String tokenIssuerHost;
+  private final String tokenClientSecret;
+  private final String tokenScope;
+  private final String providerOfficeCode;
   private final String serviceName;
   private final String schemaVersion;
   private final Duration timeout;
@@ -12,7 +16,11 @@ public final class BddConfiguration {
 
   public BddConfiguration() {
     baseUrl = value("LAA_BDD_BASE_URL", "http://localhost:9000");
-    token = required("LAA_BDD_TOKEN");
+    tokenUrl = value("LAA_BDD_TOKEN_URL", "http://localhost:9998/entra/token");
+    tokenIssuerHost = value("LAA_BDD_TOKEN_ISSUER_HOST", "mock-oauth2-server-smoketest:9999");
+    tokenClientSecret = value("LAA_BDD_TOKEN_CLIENT_SECRET", "test");
+    tokenScope = value("LAA_BDD_TOKEN_SCOPE", "api://laa-data-access-api/.default");
+    providerOfficeCode = value("LAA_BDD_PROVIDER_OFFICE_CODE", "1A001B");
     serviceName = value("LAA_BDD_SERVICE_NAME", "CIVIL_APPLY");
     schemaVersion = value("LAA_BDD_SCHEMA_VERSION", "1");
     timeout = Duration.ofSeconds(Long.parseLong(value("LAA_BDD_TIMEOUT", "30")));
@@ -23,8 +31,24 @@ public final class BddConfiguration {
     return baseUrl;
   }
 
-  public String token() {
-    return token;
+  public String tokenUrl() {
+    return tokenUrl;
+  }
+
+  public String tokenIssuerHost() {
+    return tokenIssuerHost;
+  }
+
+  public String tokenClientSecret() {
+    return tokenClientSecret;
+  }
+
+  public String tokenScope() {
+    return tokenScope;
+  }
+
+  public String providerOfficeCode() {
+    return providerOfficeCode;
   }
 
   public String serviceName() {

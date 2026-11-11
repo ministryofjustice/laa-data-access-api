@@ -1,12 +1,15 @@
 package uk.gov.justice.laa.dstew.access.bdd.steps;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.bdd.client.ApplicationApi;
+import uk.gov.justice.laa.dstew.access.bdd.config.BddConfiguration;
 import uk.gov.justice.laa.dstew.access.bdd.fixtures.ApplicationFixtureFactory;
 import uk.gov.justice.laa.dstew.access.bdd.support.ApiResponse;
 import uk.gov.justice.laa.dstew.access.bdd.support.ScenarioContext;
@@ -14,12 +17,17 @@ import uk.gov.justice.laa.dstew.access.bdd.support.ScenarioContext;
 public final class ApplicationSteps {
   private final ApplicationApi applications;
   private final ApplicationFixtureFactory fixtures;
+  private final BddConfiguration configuration;
   private final ScenarioContext context;
 
   public ApplicationSteps(
-      ApplicationApi applications, ApplicationFixtureFactory fixtures, ScenarioContext context) {
+      ApplicationApi applications,
+      ApplicationFixtureFactory fixtures,
+      BddConfiguration configuration,
+      ScenarioContext context) {
     this.applications = applications;
     this.fixtures = fixtures;
+    this.configuration = configuration;
     this.context = context;
   }
 
@@ -30,7 +38,11 @@ public final class ApplicationSteps {
     assertStatus(
         context,
         "I create a valid application draft",
-        applications.createDraft(fixtures.draft(context.applicationId(), context.proceedingId())),
+        applications.createDraft(
+            fixtures.draft(
+                context.applicationId(),
+                context.proceedingId(),
+                configuration.providerOfficeCode())),
         201);
   }
 
@@ -49,6 +61,18 @@ public final class ApplicationSteps {
     ApiResponse response = applications.awaitSubmitted(context.applicationId());
     context.lastResponse(response);
     context.applicationVersion(response.body().path("version").asLong());
+  }
+
+  @Then("the application appears in the search list with the current provider office code")
+  public void appearsInSearchListWithCurrentProviderOfficeCode() {
+    ApiResponse response = applications.searchByReference(reference());
+    assertStatus(context, "the application appears in the search list", response, 200);
+    JsonNode application = findApplication(response.body());
+    assertNotNull(
+        application,
+        "The application is not present in the provider-filtered search response: "
+            + response.body());
+    assertEquals(context.officeCode(), application.path("officeCode").asText());
   }
 
   @When("the application auto-grant outcome is recorded as {string}")
@@ -94,5 +118,17 @@ public final class ApplicationSteps {
           statuses[0],
           response.status(),
           "Step failed: " + step + ". Unexpected response: " + response.body());
+  }
+
+  private String reference() {
+    return "BDD-" + context.applicationId().toString().substring(0, 8);
+  }
+
+  private JsonNode findApplication(JsonNode response) {
+    for (JsonNode application : response.path("applications")) {
+      if (context.applicationId().toString().equals(application.path("applicationId").asText()))
+        return application;
+    }
+    return null;
   }
 }

@@ -12,11 +12,17 @@ import uk.gov.justice.laa.dstew.access.bdd.config.BddConfiguration;
 
 public final class ApiClient implements AutoCloseable {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  private final BddConfiguration configuration;
   private final Playwright playwright;
-  private final APIRequestContext request;
+  private APIRequestContext request;
 
-  public ApiClient(BddConfiguration configuration, AuthTokenProvider tokenProvider) {
+  public ApiClient(BddConfiguration configuration) {
+    this.configuration = configuration;
     playwright = Playwright.create();
+  }
+
+  public void useBearerToken(String token) {
+    if (request != null) request.dispose();
     request =
         playwright
             .request()
@@ -26,7 +32,7 @@ public final class ApiClient implements AutoCloseable {
                     .setExtraHTTPHeaders(
                         Map.of(
                             "Authorization",
-                            "Bearer " + tokenProvider.bearerToken(),
+                            "Bearer " + token,
                             "X-Service-Name",
                             configuration.serviceName(),
                             "X-Schema-Version",
@@ -51,7 +57,7 @@ public final class ApiClient implements AutoCloseable {
 
   @Override
   public void close() {
-    request.dispose();
+    if (request != null) request.dispose();
     playwright.close();
   }
 
