@@ -184,7 +184,8 @@ class WorkListProjectionTest {
             1,
             0,
             7L,
-            Instant.parse("2026-08-28T10:00:00Z")),
+            Instant.parse("2026-08-28T10:00:00Z"),
+            null),
         message());
 
     ArgumentCaptor<WorkListItemReadModel> captor =
@@ -228,7 +229,8 @@ class WorkListProjectionTest {
             1,
             0,
             7L,
-            Instant.parse("2026-08-28T10:00:00Z")),
+            Instant.parse("2026-08-28T10:00:00Z"),
+            null),
         message());
 
     ArgumentCaptor<WorkListItemReadModel> captor =
@@ -293,7 +295,7 @@ class WorkListProjectionTest {
 
     projection.on(
         new PriorAuthoritySubmittedEvent(
-            priorAuthorityId, applicationId, "EXPERT", 0, 1, 4L, Instant.now()),
+            priorAuthorityId, applicationId, "EXPERT", 0, 1, 4L, Instant.now(), null),
         message());
 
     ArgumentCaptor<WorkListItemReadModel> captor =

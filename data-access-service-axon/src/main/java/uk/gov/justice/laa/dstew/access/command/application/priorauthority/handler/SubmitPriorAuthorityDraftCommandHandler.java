@@ -11,6 +11,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.Submit
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerResource;
 import uk.gov.justice.laa.dstew.access.security.OfficeCodeResourceWriteAccessResolver;
@@ -60,8 +61,21 @@ public class SubmitPriorAuthorityDraftCommandHandler {
 
     eventAppender.append(
         PriorAuthorityDecider.decideSubmit(
-            command, priorAuthority.getState(), applicationDataVersion));
+            command,
+            priorAuthority.getState(),
+            applicationDataVersion,
+            billingTypeOf(payload.content())));
 
     draftStore.delete(command.priorAuthorityId());
+  }
+
+  private static String billingTypeOf(PriorAuthorityContent content) {
+    if (content == null
+        || content.expertDetails() == null
+        || content.expertDetails().expertCosts() == null
+        || content.expertDetails().expertCosts().billingType() == null) {
+      return null;
+    }
+    return content.expertDetails().expertCosts().billingType().name();
   }
 }
