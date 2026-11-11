@@ -10,7 +10,6 @@ import java.util.function.UnaryOperator;
 import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
-import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
 import org.axonframework.messaging.queryhandling.annotation.QueryHandler;
 import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Component;
@@ -35,6 +34,9 @@ import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 @Component
 @Namespace("prior-authority-projection")
 public class PriorAuthorityProjection {
+
+  private static final List<String> SUBMITTED_OR_LATER =
+      List.of(PriorAuthorityStatus.SUBMITTED.name(), PriorAuthorityStatus.DECIDED.name());
 
   private final PriorAuthorityReadRepository repository;
   private final PriorAuthorityReadQueryGateway readQueryGateway;
@@ -103,10 +105,14 @@ public class PriorAuthorityProjection {
         .orElse(null);
   }
 
-  /** Confirms whether a current-state projection has reached SUBMITTED. */
+  /**
+   * Confirms whether the projection has processed the submission. DECIDED counts too: status only
+   * moves forward, so a decision projected before the poll must not hide the submission.
+   */
   @QueryHandler
   public boolean handle(PriorAuthoritySubmittedByPriorAuthorityIdQuery query) {
-    return repository.findById(query.priorAuthorityId()).map(this::isPending).orElse(false);
+    return repository.existsByPriorAuthorityIdAndStatusIn(
+        query.priorAuthorityId(), SUBMITTED_OR_LATER);
   }
 
   private String documentFilename(PriorAuthorityReadModel priorAuthority, UUID documentId) {
@@ -155,7 +161,7 @@ public class PriorAuthorityProjection {
    * original creation time when a draft row already exists.
    */
   @EventHandler
-  public void on(PriorAuthoritySubmittedEvent event, QueryUpdateEmitter queryUpdateEmitter) {
+  public void on(PriorAuthoritySubmittedEvent event) {
     repository
         .findById(event.priorAuthorityId())
         .ifPresent(
@@ -166,11 +172,6 @@ public class PriorAuthorityProjection {
               current.setModifiedAt(event.occurredAt());
               repository.save(current);
             });
-
-    queryUpdateEmitter.emit(
-        PriorAuthoritySubmittedByPriorAuthorityIdQuery.class,
-        query -> query.priorAuthorityId().equals(event.priorAuthorityId()),
-        Boolean.TRUE);
   }
 
   /** Updates a current-state data version after a terminal prior-authority decision. */

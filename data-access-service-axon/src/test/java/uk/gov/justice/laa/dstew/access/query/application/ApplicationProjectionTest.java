@@ -4,10 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreatedEvent;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
@@ -19,17 +18,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
-import org.mockito.ArgumentMatchers;
-import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
@@ -72,7 +67,6 @@ class ApplicationProjectionTest {
 
   @Mock private ApplicationReadRepository applicationReadRepository;
   @Mock private LinkedApplicationGroupReadRepository groupReadRepository;
-  @Mock private QueryUpdateEmitter queryUpdateEmitter;
   @Mock private ApplicationDataStore applicationDataStore;
   @Mock private ApplicationListIndexReadRepository listIndexRepository;
   @Mock private PriorAuthorityReadRepository priorAuthorityReadRepository;
@@ -138,6 +132,18 @@ class ApplicationProjectionTest {
               assertThat(document.deleted()).isFalse();
             });
     assertThat(application.getDocumentFilenames()).isNull();
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void givenSubmissionProjected_whenQueried_thenReturnsExistenceWithoutHydration(boolean exists) {
+    UUID applicationId = UUID.randomUUID();
+    when(applicationReadRepository.existsByApplicationIdAndSubmittedAtIsNotNull(applicationId))
+        .thenReturn(exists);
+
+    assertThat(projection.handle(new ApplicationSubmissionProjectedQuery(applicationId)))
+        .isEqualTo(exists);
+    verifyNoInteractions(applicationDataStore);
   }
 
   @ParameterizedTest
@@ -256,7 +262,7 @@ class ApplicationProjectionTest {
   }
 
   @Test
-  void givenDraftStarted_whenProjected_thenCreatesReadableDraftAndEmitsUpdate() {
+  void givenDraftStarted_whenProjected_thenCreatesReadableDraft() {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-10-05T10:00:00Z");
     String officeCode = "1A001B";
@@ -264,8 +270,7 @@ class ApplicationProjectionTest {
     when(applicationReadRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     projection.on(
-        new ApplicationDraftStartedEvent(applicationId, 3, "fingerprint", occurredAt, officeCode),
-        queryUpdateEmitter);
+        new ApplicationDraftStartedEvent(applicationId, 3, "fingerprint", occurredAt, officeCode));
 
     ArgumentCaptor<ApplicationReadModel> saved =
         ArgumentCaptor.forClass(ApplicationReadModel.class);
@@ -277,11 +282,6 @@ class ApplicationProjectionTest {
     assertThat(saved.getValue().getCreatedAt()).isEqualTo(occurredAt);
     assertThat(saved.getValue().getModifiedAt()).isEqualTo(occurredAt);
     assertThat(saved.getValue().getOfficeCode()).isEqualTo(officeCode);
-    verify(queryUpdateEmitter)
-        .emit(
-            ArgumentMatchers.eq(ApplicationProjectionExistsQuery.class),
-            ArgumentMatchers.<Predicate<ApplicationProjectionExistsQuery>>any(),
-            ArgumentMatchers.eq(true));
   }
 
   @Test
@@ -292,8 +292,7 @@ class ApplicationProjectionTest {
     when(applicationReadRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     projection.on(
-        new ApplicationDraftStartedEvent(applicationId, 1, "fingerprint", Instant.now(), "1A001B"),
-        queryUpdateEmitter);
+        new ApplicationDraftStartedEvent(applicationId, 1, "fingerprint", Instant.now(), "1A001B"));
     ArgumentCaptor<ApplicationReadModel> draft =
         ArgumentCaptor.forClass(ApplicationReadModel.class);
     verify(applicationReadRepository).save(draft.capture());
@@ -311,7 +310,7 @@ class ApplicationProjectionTest {
             "checksum",
             "CIVIL_APPLY"));
 
-    projection.on(applicationCreatedEvent(applicationId), queryUpdateEmitter);
+    projection.on(applicationCreatedEvent(applicationId));
 
     ArgumentCaptor<ApplicationReadModel> created =
         ArgumentCaptor.forClass(ApplicationReadModel.class);
@@ -341,12 +340,11 @@ class ApplicationProjectionTest {
     when(applicationDataStore.get(applicationId, event.applicationDataVersion())).thenReturn(data);
 
     projection.on(
-        new ApplicationDraftStartedEvent(applicationId, 1, "fingerprint", draftStartedAt, null),
-        queryUpdateEmitter);
+        new ApplicationDraftStartedEvent(applicationId, 1, "fingerprint", draftStartedAt, null));
     ApplicationReadModel savedDraft = draft[0];
     when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(savedDraft));
 
-    projection.on(event, queryUpdateEmitter);
+    projection.on(event);
 
     assertThat(draft[0].getCreatedAt()).isEqualTo(draftStartedAt);
     assertThat(draft[0].getSubmittedAt()).isEqualTo(event.occurredAt());
@@ -405,51 +403,6 @@ class ApplicationProjectionTest {
   }
 
   @Test
-  void givenCreatedEvent_whenHandled_thenSavesBeforeEmitting() {
-    UUID applicationId = UUID.randomUUID();
-    ApplicationCreatedEvent event = applicationCreatedEvent(applicationId);
-    ApplicationReadModel saved =
-        ApplicationReadModel.builder().applicationId(applicationId).build();
-    when(applicationReadRepository.save(any())).thenReturn(saved);
-
-    projection.on(event, queryUpdateEmitter);
-
-    InOrder order = inOrder(applicationReadRepository, queryUpdateEmitter);
-    order.verify(applicationReadRepository).save(any());
-    order
-        .verify(queryUpdateEmitter)
-        .emit(any(Class.class), any(Predicate.class), any(ApplicationReadModel.class));
-  }
-
-  @Test
-  @SuppressWarnings("unchecked")
-  void givenCreatedEvent_whenHandled_thenEmittedPredicateMatchesApplicationId() {
-    UUID applicationId = UUID.randomUUID();
-    final UUID otherId = UUID.randomUUID();
-    ApplicationCreatedEvent event = applicationCreatedEvent(applicationId);
-
-    final Predicate<?>[] capturedPredicate = new Predicate[1];
-    doAnswer(
-            inv -> {
-              capturedPredicate[0] = (Predicate<?>) inv.getArgument(1);
-              return null;
-            })
-        .when(queryUpdateEmitter)
-        .emit(any(Class.class), any(Predicate.class), any(ApplicationReadModel.class));
-
-    when(applicationReadRepository.save(any()))
-        .thenReturn(ApplicationReadModel.builder().applicationId(applicationId).build());
-
-    projection.on(event, queryUpdateEmitter);
-
-    assertThat(capturedPredicate[0]).isNotNull();
-    Predicate<FindApplicationByIdQuery> predicate =
-        (Predicate<FindApplicationByIdQuery>) capturedPredicate[0];
-    assertThat(predicate.test(new FindApplicationByIdQuery(applicationId))).isTrue();
-    assertThat(predicate.test(new FindApplicationByIdQuery(otherId))).isFalse();
-  }
-
-  @Test
   void givenCreatedEvent_whenHandled_thenInitializesApplicationWithoutLinkedGroup() {
     UUID applicationId = UUID.randomUUID();
     ApplicationReadModel[] saved = new ApplicationReadModel[1];
@@ -460,7 +413,7 @@ class ApplicationProjectionTest {
               return saved[0];
             });
 
-    projection.on(applicationCreatedEvent(applicationId), queryUpdateEmitter);
+    projection.on(applicationCreatedEvent(applicationId));
 
     assertThat(saved[0].getLinkedGroupId()).isNull();
     assertThat(saved[0].getLeadApplicationId()).isNull();
@@ -499,7 +452,7 @@ class ApplicationProjectionTest {
               return savedCapture[0];
             });
 
-    projection.on(eventWithDuplicates, queryUpdateEmitter);
+    projection.on(eventWithDuplicates);
 
     assertThat(savedCapture[0].getPotentialDuplicates()).isEqualTo(duplicates);
   }
@@ -517,7 +470,7 @@ class ApplicationProjectionTest {
               return savedCapture[0];
             });
 
-    projection.on(event, queryUpdateEmitter);
+    projection.on(event);
 
     // ApplicationCreationDetails normalizes null to empty list, so projection saves empty list
     assertThat(savedCapture[0].getPotentialDuplicates()).isEmpty();
@@ -688,14 +641,11 @@ class ApplicationProjectionTest {
 
     projection.on(
         new ApplicationDecisionMadeEvent(
-            applicationId, 3L, 4L, "GRANTED", AutoGrantedState.MANUAL, occurredAt),
-        queryUpdateEmitter);
+            applicationId, 3L, 4L, "GRANTED", AutoGrantedState.MANUAL, occurredAt));
 
     assertThat(existing.getApplicationVersion()).isEqualTo(3L);
     assertThat(existing.getApplicationDataVersion()).isEqualTo(4L);
     assertThat(existing.getModifiedAt()).isEqualTo(occurredAt);
-    verify(queryUpdateEmitter)
-        .emit(any(Class.class), any(Predicate.class), any(ApplicationReadModel.class));
   }
 
   @Test
@@ -726,9 +676,7 @@ class ApplicationProjectionTest {
     when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
     when(applicationReadRepository.save(existing)).thenReturn(existing);
 
-    projection.on(
-        new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, occurredAt),
-        queryUpdateEmitter);
+    projection.on(new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, occurredAt));
 
     assertThat(existing.getStatus()).isNull();
     assertThat(existing.getApplicationVersion()).isEqualTo(1L);
@@ -1034,8 +982,7 @@ class ApplicationProjectionTest {
 
     projection.on(
         new ApplicationDecisionMadeEvent(
-            applicationId, 3L, 4L, "REFUSED", AutoGrantedState.MANUAL, occurredAt),
-        queryUpdateEmitter);
+            applicationId, 3L, 4L, "REFUSED", AutoGrantedState.MANUAL, occurredAt));
 
     assertThat(existing.getStatus()).isEqualTo("APPLICATION_REFUSED");
   }

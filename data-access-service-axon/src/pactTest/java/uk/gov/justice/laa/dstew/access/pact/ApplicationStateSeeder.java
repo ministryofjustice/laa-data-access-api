@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.pact;
 
 import static org.awaitility.Awaitility.await;
+import static uk.gov.justice.laa.dstew.access.pact.PactApplicationFixtures.applicationDraft;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -12,7 +13,9 @@ import java.util.UUID;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.draft.CreateApplicationDraftUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkType;
@@ -25,9 +28,11 @@ import uk.gov.justice.laa.dstew.access.controller.application.AutoGrantOutcomeCo
 import uk.gov.justice.laa.dstew.access.controller.application.CreateApplicationCommandMapper;
 import uk.gov.justice.laa.dstew.access.controller.application.CreateNoteCommandMapper;
 import uk.gov.justice.laa.dstew.access.controller.application.MakeDecisionCommandMapper;
+import uk.gov.justice.laa.dstew.access.controller.application.SaveApplicationDraftCommandMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
+import uk.gov.justice.laa.dstew.access.model.CreateApplicationDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
@@ -73,6 +78,9 @@ class ApplicationStateSeeder {
   private final AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper;
   private final MakeDecisionCommandMapper makeDecisionCommandMapper;
   private final CreateNoteCommandMapper createNoteCommandMapper;
+  private final CreateApplicationDraftUseCase createApplicationDraftUseCase;
+  private final SaveApplicationDraftCommandMapper saveApplicationDraftCommandMapper;
+  private final ApplicationDraftStore applicationDraftStore;
   private final GeneratedRequestFactory requestFactory = new GeneratedRequestFactory("pact");
 
   ApplicationStateSeeder(
@@ -87,7 +95,10 @@ class ApplicationStateSeeder {
       CreateApplicationCommandMapper createApplicationCommandMapper,
       AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper,
       MakeDecisionCommandMapper makeDecisionCommandMapper,
-      CreateNoteCommandMapper createNoteCommandMapper) {
+      CreateNoteCommandMapper createNoteCommandMapper,
+      CreateApplicationDraftUseCase createApplicationDraftUseCase,
+      SaveApplicationDraftCommandMapper saveApplicationDraftCommandMapper,
+      ApplicationDraftStore applicationDraftStore) {
     this.queryGateway = queryGateway;
     this.workListItemReadRepository = workListItemReadRepository;
     this.createApplicationUseCase = createApplicationUseCase;
@@ -100,6 +111,34 @@ class ApplicationStateSeeder {
     this.autoGrantOutcomeCommandMapper = autoGrantOutcomeCommandMapper;
     this.makeDecisionCommandMapper = makeDecisionCommandMapper;
     this.createNoteCommandMapper = createNoteCommandMapper;
+    this.createApplicationDraftUseCase = createApplicationDraftUseCase;
+    this.saveApplicationDraftCommandMapper = saveApplicationDraftCommandMapper;
+    this.applicationDraftStore = applicationDraftStore;
+  }
+
+  /**
+   * A brand-new draft under a generated identifier: in the draft store, which is what submit and
+   * document upload look up, and in the application projection. Every call creates another one, so
+   * nothing an earlier interaction did can be observed. A draft is not returned by GET application
+   * by id until it is submitted.
+   */
+  UUID newDraft() {
+    UUID applicationId = UUID.randomUUID();
+    String referenceSuffix = applicationId.toString().substring(0, 4).toUpperCase();
+    CreateApplicationDraftRequest request =
+        applicationDraft(applicationId, "LAA-REF-D" + referenceSuffix, "Dee", "Draft");
+    boolean projected =
+        createApplicationDraftUseCase.execute(
+            saveApplicationDraftCommandMapper.toCreateCommand(request, 1));
+    if (!projected) {
+      throw new IllegalStateException(
+          "Projection for application draft " + applicationId + " did not become readable in time");
+    }
+    await()
+        .atMost(PROJECTION_WAIT)
+        .pollInterval(POLL_INTERVAL)
+        .until(() -> applicationDraftStore.find(applicationId).isPresent());
+    return applicationId;
   }
 
   /** Submitted, auto-grant outcome still pending. Application version 0. */

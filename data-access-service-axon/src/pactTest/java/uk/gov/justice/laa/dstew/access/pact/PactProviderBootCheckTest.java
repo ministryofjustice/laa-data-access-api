@@ -16,6 +16,7 @@ import org.awaitility.Awaitility;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.DeletePriorAuthorityDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.FindPriorAuthorityByPriorAuthorityIdQuery;
@@ -35,6 +36,7 @@ class PactProviderBootCheckTest extends AbstractProviderPactTests {
   @Autowired private QueryGateway queryGateway;
   @Autowired private DeletePriorAuthorityDocumentUseCase deleteDocumentUseCase;
   @Autowired private AuthenticatedCallerFactory authenticatedCallerFactory;
+  @Autowired private ApplicationDraftStore applicationDraftStore;
 
   @Test
   void everyApplicationStateCanBeSeeded() {
@@ -48,6 +50,7 @@ class PactProviderBootCheckTest extends AbstractProviderPactTests {
     states.applicationsLinked();
     states.noApplicationWithId();
     states.workListItemsExist();
+    assertThat(states.newApplicationDraftExists()).containsKey("applicationId");
   }
 
   @Test
@@ -64,6 +67,17 @@ class PactProviderBootCheckTest extends AbstractProviderPactTests {
         .containsKeys("priorAuthorityId", "applicationId");
     assertThat(states.newPriorAuthorityDraftWithDocumentExists())
         .containsKeys("priorAuthorityId", "applicationId", "documentId");
+  }
+
+  @Test
+  void freshApplicationDraftStateCreatesAnotherDraftEveryTime() {
+    // Consumers submit and upload against it, so no two interactions may share one.
+    UUID first = applicationDraft(states.newApplicationDraftExists());
+    UUID second = applicationDraft(states.newApplicationDraftExists());
+
+    assertThat(first).isNotEqualTo(second);
+    assertThat(applicationDraftStore.find(first)).isPresent();
+    assertThat(applicationDraftStore.find(second)).isPresent();
   }
 
   @Test
@@ -129,6 +143,10 @@ class PactProviderBootCheckTest extends AbstractProviderPactTests {
 
   private PriorAuthorityResult priorAuthority(Map<String, Object> injected) {
     return find(UUID.fromString((String) injected.get("priorAuthorityId")));
+  }
+
+  private static UUID applicationDraft(Map<String, Object> injected) {
+    return UUID.fromString((String) injected.get("applicationId"));
   }
 
   private PriorAuthorityResult find(UUID priorAuthorityId) {

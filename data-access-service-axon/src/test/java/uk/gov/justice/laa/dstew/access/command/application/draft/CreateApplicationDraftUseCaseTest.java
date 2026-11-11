@@ -15,19 +15,19 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
-import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
+import uk.gov.justice.laa.dstew.access.query.ProjectionReadinessGateway;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationProjectionExistsQuery;
 
 class CreateApplicationDraftUseCaseTest {
 
   private RetryingCommandDispatcher dispatcher;
-  private SubscriptionProjectionGateway projectionGateway;
+  private ProjectionReadinessGateway projectionGateway;
   private CreateApplicationDraftUseCase useCase;
 
   @BeforeEach
   void setUp() {
     dispatcher = mock(RetryingCommandDispatcher.class);
-    projectionGateway = mock(SubscriptionProjectionGateway.class);
+    projectionGateway = mock(ProjectionReadinessGateway.class);
     useCase = new CreateApplicationDraftUseCase(dispatcher, projectionGateway);
   }
 

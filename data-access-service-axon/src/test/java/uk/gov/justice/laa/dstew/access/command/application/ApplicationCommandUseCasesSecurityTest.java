@@ -18,7 +18,7 @@ import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocume
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.MakePriorAuthorityDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationUseCase;
-import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
+import uk.gov.justice.laa.dstew.access.query.ProjectionReadinessGateway;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 import uk.gov.justice.laa.dstew.access.utils.BaseSecuredUseCaseTest;
 import uk.gov.justice.laa.dstew.access.utils.TestSecurityConfig;
@@ -45,7 +45,7 @@ class ApplicationCommandUseCasesSecurityTest extends BaseSecuredUseCaseTest {
   @Autowired private UploadDocumentUseCase uploadDocumentUseCase;
 
   @MockitoBean private RetryingCommandDispatcher dispatcher;
-  @MockitoBean private SubscriptionProjectionGateway projectionGateway;
+  @MockitoBean private ProjectionReadinessGateway projectionGateway;
   @MockitoBean private SdsService sdsService;
   @MockitoBean private ApplicationDraftStore draftStore;
 

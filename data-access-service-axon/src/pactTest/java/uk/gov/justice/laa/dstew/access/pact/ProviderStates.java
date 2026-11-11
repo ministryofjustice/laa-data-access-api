@@ -100,6 +100,17 @@ class ProviderStates {
   }
 
   /**
+   * A draft created fresh for this one interaction, so submitting it or uploading to it cannot
+   * affect any other interaction in the run. Returns the generated {@code applicationId} for
+   * injection.
+   */
+  Map<String, Object> newApplicationDraftExists() {
+    log.info("State: {}", PactStates.NEW_APPLICATION_DRAFT_EXISTS);
+    UUID applicationId = applications.newDraft();
+    return Map.of("applicationId", applicationId.toString());
+  }
+
+  /**
    * Pauses the application projection so a create cannot observe its read model within the
    * configured wait and returns 202 instead of 201. {@link #applicationReadModelCaughtUp()} must
    * run afterwards.
