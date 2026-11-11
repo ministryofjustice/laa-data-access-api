@@ -11,6 +11,8 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
@@ -36,15 +38,18 @@ import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.BillingType;
 import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.DecisionTimeRequested;
 import uk.gov.justice.laa.dstew.access.model.DisbursementDetails;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.model.ExpertDetails;
+import uk.gov.justice.laa.dstew.access.model.ExpertMakePriorAuthorityDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MakePriorAuthorityDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.SubmitPriorAuthorityDraftResponse;
+import uk.gov.justice.laa.dstew.access.model.TimeRequested;
 import uk.gov.justice.laa.dstew.access.model.WorkListAssignRequest;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
@@ -254,6 +259,195 @@ public class PriorAuthorityDecisionAcceptIntegrationTest {
     assertThat(secondDecision.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
   }
 
+  @Test
+  void givenHourlyExpert_whenDecisionWithTimeOverride_thenResponseShowsOverrideAndOriginal()
+      throws Exception {
+    UUID applicationId = grantedApplication();
+    UUID priorAuthorityId =
+        saveDraftAndSubmit(
+            applicationId,
+            PriorAuthorityType.EXPERT,
+            "Expert witness for case",
+            hourlyExpertDetails());
+    assignPriorAuthority(priorAuthorityId);
+
+    MakePriorAuthorityDecisionRequest decisionRequest =
+        new MakePriorAuthorityDecisionRequest()
+            .decision(DecisionStatus.GRANTED)
+            .decisionJustification("Granted")
+            .amountGranted(BigDecimal.valueOf(200))
+            .dateGranted(OffsetDateTime.parse("2026-11-01T10:00:00Z"))
+            .eventHistory(new EventHistoryRequest())
+            .priorAuthorityVersion(0L)
+            .expert(
+                new ExpertMakePriorAuthorityDecisionRequest()
+                    .newTimeRequested(
+                        DecisionTimeRequested.builder().hours(3).minutes(15).build()));
+
+    ResponseEntity<Void> decisionResponse =
+        restTemplate.exchange(
+            decisionUrl(priorAuthorityId),
+            HttpMethod.PATCH,
+            new HttpEntity<>(decisionRequest, headers()),
+            Void.class);
+
+    assertThat(decisionResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    awaitDecidedPriorAuthorityProjection(priorAuthorityId);
+    PriorAuthorityResponse response = getPriorAuthority(priorAuthorityId);
+    assertThat(response.getDecisionDetails().getExpert().getNewTimeRequested().getHours())
+        .isEqualTo(3);
+    assertThat(response.getDecisionDetails().getExpert().getNewTimeRequested().getMinutes())
+        .isEqualTo(15);
+    assertThat(response.getExpertDetails().getExpertCosts().getTimeRequested().getHours())
+        .isEqualTo(2);
+    assertThat(response.getExpertDetails().getExpertCosts().getTimeRequested().getMinutes())
+        .isEqualTo(30);
+  }
+
+  @Test
+  void givenHourlyExpert_whenDecisionWithoutTimeOverride_thenOriginalTimeUnchanged()
+      throws Exception {
+    UUID applicationId = grantedApplication();
+    UUID priorAuthorityId =
+        saveDraftAndSubmit(
+            applicationId,
+            PriorAuthorityType.EXPERT,
+            "Expert witness for case",
+            hourlyExpertDetails());
+    assignPriorAuthority(priorAuthorityId);
+
+    MakePriorAuthorityDecisionRequest decisionRequest =
+        new MakePriorAuthorityDecisionRequest()
+            .decision(DecisionStatus.GRANTED)
+            .decisionJustification("Granted")
+            .amountGranted(BigDecimal.valueOf(200))
+            .dateGranted(OffsetDateTime.parse("2026-11-01T10:00:00Z"))
+            .eventHistory(new EventHistoryRequest())
+            .priorAuthorityVersion(0L);
+
+    ResponseEntity<Void> decisionResponse =
+        restTemplate.exchange(
+            decisionUrl(priorAuthorityId),
+            HttpMethod.PATCH,
+            new HttpEntity<>(decisionRequest, headers()),
+            Void.class);
+
+    assertThat(decisionResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    awaitDecidedPriorAuthorityProjection(priorAuthorityId);
+    PriorAuthorityResponse response = getPriorAuthority(priorAuthorityId);
+    assertThat(response.getDecisionDetails().getExpert()).isNull();
+    assertThat(response.getExpertDetails().getExpertCosts().getTimeRequested().getHours())
+        .isEqualTo(2);
+    assertThat(response.getExpertDetails().getExpertCosts().getTimeRequested().getMinutes())
+        .isEqualTo(30);
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "{\"hours\":-1,\"minutes\":0}",
+        "{\"hours\":1,\"minutes\":60}",
+        "{\"hours\":1,\"minutes\":-1}",
+        "{\"hours\":2.5,\"minutes\":0}",
+        "{\"hours\":\"2\",\"minutes\":0}",
+        "{\"hours\":1}"
+      })
+  void givenInvalidTimeOverride_whenDecision_thenReturnsBadRequestProblemDetail(String json)
+      throws Exception {
+    UUID applicationId = grantedApplication();
+    UUID priorAuthorityId =
+        saveDraftAndSubmit(
+            applicationId,
+            PriorAuthorityType.EXPERT,
+            "Expert witness for case",
+            hourlyExpertDetails());
+    assignPriorAuthority(priorAuthorityId);
+
+    ResponseEntity<String> response = patchRawDecision(priorAuthorityId, decisionJson(json));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getBody()).contains("Generic Validation Error");
+    assertThat(response.getBody()).contains("newTimeRequested");
+    assertNoDecisionData(priorAuthorityId);
+  }
+
+  @Test
+  void givenFixedRateExpert_whenDecisionWithTimeOverride_thenReturnsBadRequest() throws Exception {
+    UUID applicationId = grantedApplication();
+    UUID priorAuthorityId =
+        saveDraftAndSubmit(
+            applicationId,
+            PriorAuthorityType.EXPERT,
+            "Expert witness for case",
+            validExpertDetails());
+    assignPriorAuthority(priorAuthorityId);
+
+    ResponseEntity<String> response =
+        patchRawDecision(priorAuthorityId, decisionJson("{\"hours\":3,\"minutes\":15}"));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getBody())
+        .contains(
+            "expert.newTimeRequested is only permitted for EXPERT prior authorities with HOURLY billing");
+    assertNoDecisionData(priorAuthorityId);
+  }
+
+  @Test
+  void givenDisbursement_whenDecisionWithTimeOverride_thenReturnsBadRequest() throws Exception {
+    UUID applicationId = grantedApplication();
+    UUID priorAuthorityId =
+        saveDraftAndSubmit(
+            applicationId,
+            PriorAuthorityType.DISBURSEMENT,
+            "Interpreter costs for proceedings",
+            validDisbursementRequest());
+    assignPriorAuthority(priorAuthorityId);
+
+    ResponseEntity<String> response =
+        patchRawDecision(priorAuthorityId, decisionJson("{\"hours\":3,\"minutes\":15}"));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertNoDecisionData(priorAuthorityId);
+  }
+
+  private PriorAuthorityResponse getPriorAuthority(UUID priorAuthorityId) throws Exception {
+    ResponseEntity<String> response =
+        restTemplate.exchange(
+            priorAuthorityUrl(priorAuthorityId),
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            String.class);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    return objectMapper.readValue(response.getBody(), PriorAuthorityResponse.class);
+  }
+
+  private void assertNoDecisionData(UUID priorAuthorityId) {
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.prior_authority_data"
+                    + " WHERE prior_authority_id = ? AND data_version > 0",
+                Integer.class,
+                priorAuthorityId))
+        .isZero();
+  }
+
+  private ResponseEntity<String> patchRawDecision(UUID priorAuthorityId, String json) {
+    return restTemplate.exchange(
+        decisionUrl(priorAuthorityId),
+        HttpMethod.PATCH,
+        new HttpEntity<>(json, headers()),
+        String.class);
+  }
+
+  private String decisionJson(String newTimeRequestedJson) {
+    return """
+        {"decision":"GRANTED","decisionJustification":"Granted","amountGranted":200,
+         "dateGranted":"2026-11-01T10:00:00Z","eventHistory":{},"priorAuthorityVersion":0,
+         "expert":{"newTimeRequested":%s}}
+        """
+        .formatted(newTimeRequestedJson);
+  }
+
   private UUID saveDraftAndSubmit(
       UUID applicationId,
       PriorAuthorityType priorAuthorityType,
@@ -323,6 +517,22 @@ public class PriorAuthorityDecisionAcceptIntegrationTest {
             ExpertCosts.builder()
                 .billingType(BillingType.FIXED_RATE)
                 .totalAmount(BigDecimal.valueOf(1500.0))
+                .costsSharedWithOtherParties(false)
+                .build())
+        .build();
+  }
+
+  private ExpertDetails hourlyExpertDetails() {
+    return ExpertDetails.builder()
+        .expertType("Forensic Accountant")
+        .expertFullName("Jane Smith")
+        .expertPostcode("SW1A 1AA")
+        .expertCosts(
+            ExpertCosts.builder()
+                .billingType(BillingType.HOURLY)
+                .hourlyRate(BigDecimal.valueOf(100))
+                .timeRequested(TimeRequested.builder().hours(2).minutes(30).build())
+                .totalAmount(BigDecimal.valueOf(250))
                 .costsSharedWithOtherParties(false)
                 .build())
         .build();
@@ -403,6 +613,24 @@ public class PriorAuthorityDecisionAcceptIntegrationTest {
                         PriorAuthorityResult.class)
                     .join(),
             java.util.Objects::nonNull);
+  }
+
+  private PriorAuthorityResult awaitDecidedPriorAuthorityProjection(UUID priorAuthorityId) {
+    return await()
+        .alias("prior authority decision projection to be populated for " + priorAuthorityId)
+        .atMost(15, TimeUnit.SECONDS)
+        .pollInterval(100, TimeUnit.MILLISECONDS)
+        .until(
+            () ->
+                queryGateway
+                    .query(
+                        new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId),
+                        PriorAuthorityResult.class)
+                    .join(),
+            projected ->
+                projected != null
+                    && "DECIDED".equals(projected.status())
+                    && projected.decisionDetails() != null);
   }
 
   private String saveDraftUrl() {

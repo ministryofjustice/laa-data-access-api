@@ -131,6 +131,8 @@ components:
       $ref: "./open-api-prior-authority/components.yml#/components/schemas/SubmitDisbursementDetails"
     SubmitTimeRequested:
       $ref: "./open-api-prior-authority/components.yml#/components/schemas/SubmitTimeRequested"
+    DecisionTimeRequested:
+      $ref: "./open-api-prior-authority/components.yml#/components/schemas/DecisionTimeRequested"
     SubmitApportionment:
       $ref: "./open-api-prior-authority/components.yml#/components/schemas/SubmitApportionment"
     SubmitExpertCosts:

@@ -215,6 +215,7 @@ class GetPriorAuthorityResponseMapperTest {
                     ExpertFeeInformation.builder()
                         .newFixedRateAmount(BigDecimal.valueOf(250))
                         .newHourlyRateAmount(BigDecimal.valueOf(175))
+                        .newTimeRequested(new TimeRequested(3, 15))
                         .build(),
                     DisbursementInformation.builder().newAmount(BigDecimal.valueOf(50)).build(),
                     ApportionmentInformation.builder()
@@ -233,6 +234,18 @@ class GetPriorAuthorityResponseMapperTest {
                         "CIVIL_APPLY",
                         false)))
             .documentFilenames(Map.of(documentId, "evidence.pdf"))
+            .expertDetails(
+                new ExpertDetails(
+                    "PSYCHIATRIST",
+                    "Jane Doe",
+                    "AB1 2CD",
+                    new ExpertCosts(
+                        BillingType.HOURLY,
+                        BigDecimal.valueOf(150),
+                        new TimeRequested(2, 30),
+                        BigDecimal.valueOf(300),
+                        true,
+                        new Apportionment(2, BigDecimal.valueOf(150)))))
             .build();
 
     var response = mapper.toResponse(result);
@@ -249,6 +262,14 @@ class GetPriorAuthorityResponseMapperTest {
         .isEqualByComparingTo("250");
     assertThat(response.getDecisionDetails().getExpert().getNewHourlyRateAmount())
         .isEqualByComparingTo("175");
+    assertThat(response.getDecisionDetails().getExpert().getNewTimeRequested().getHours())
+        .isEqualTo(3);
+    assertThat(response.getDecisionDetails().getExpert().getNewTimeRequested().getMinutes())
+        .isEqualTo(15);
+    assertThat(response.getExpertDetails().getExpertCosts().getTimeRequested().getHours())
+        .isEqualTo(2);
+    assertThat(response.getExpertDetails().getExpertCosts().getTimeRequested().getMinutes())
+        .isEqualTo(30);
     assertThat(response.getDecisionDetails().getDisbursement().getNewAmount())
         .isEqualByComparingTo("50");
     assertThat(response.getDecisionDetails().getApportionment().getClientShareAmount())
@@ -256,6 +277,27 @@ class GetPriorAuthorityResponseMapperTest {
     assertThat(response.getUploadedDocuments()).hasSize(1);
     assertThat(response.getUploadedDocuments().get(0).getDocumentType()).isNull();
     assertThat(response.getUploadedDocuments().get(0).getUploadedAt()).isNull();
+  }
+
+  @Test
+  void givenDecisionWithoutTimeOverride_whenMapped_thenNewTimeRequestedIsNull() {
+    PriorAuthorityResult result =
+        PriorAuthorityResult.builder()
+            .decisionDetails(
+                new PriorAuthorityDataPayload.DecisionDetails(
+                    "GRANTED",
+                    "Decision recorded",
+                    null,
+                    null,
+                    ExpertFeeInformation.builder().newHourlyRateAmount(BigDecimal.TEN).build(),
+                    null,
+                    null,
+                    "{}"))
+            .build();
+
+    var response = mapper.toResponse(result);
+
+    assertThat(response.getDecisionDetails().getExpert().getNewTimeRequested()).isNull();
   }
 
   @Test
