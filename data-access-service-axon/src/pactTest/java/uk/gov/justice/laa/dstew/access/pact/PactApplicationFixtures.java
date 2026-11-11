@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.CreateApplicationDraftRequest;
 
 /**
  * Deterministic application content for Pact provider states.
@@ -32,6 +33,21 @@ final class PactApplicationFixtures {
   static ApplicationCreateRequest submittedApplication(
       UUID applicationId, String laaReference, String clientFirstName, String clientLastName) {
     return ApplicationCreateRequest.builder()
+        .id(applicationId)
+        .status(ApplicationStatus.APPLICATION_SUBMITTED)
+        .laaReference(laaReference)
+        .applicationContent(content(applicationId, clientFirstName, clientLastName))
+        .build();
+  }
+
+  /**
+   * A draft of a special children act application with the given identity, complete enough to
+   * submit. The status is the one the application takes on submission, which is what the draft
+   * endpoint expects.
+   */
+  static CreateApplicationDraftRequest applicationDraft(
+      UUID applicationId, String laaReference, String clientFirstName, String clientLastName) {
+    return CreateApplicationDraftRequest.builder()
         .id(applicationId)
         .status(ApplicationStatus.APPLICATION_SUBMITTED)
         .laaReference(laaReference)
