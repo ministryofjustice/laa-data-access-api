@@ -9,7 +9,7 @@ image:
   tag: null
 
 service_account:
-  name: laa-data-access-uat-service-account
+  name: laa-data-access-uat-irsa
 
 service:
   type: ClusterIP
