@@ -5,7 +5,7 @@ import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
+import uk.gov.justice.laa.dstew.access.query.ProjectionReadinessGateway;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthoritySubmittedByPriorAuthorityIdQuery;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 
@@ -17,7 +17,7 @@ import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 public class SubmitPriorAuthorityDraftUseCase {
 
   private final RetryingCommandDispatcher dispatcher;
-  private final SubscriptionProjectionGateway projectionGateway;
+  private final ProjectionReadinessGateway projectionGateway;
   private final PriorAuthorityDraftStore draftStore;
 
   /**
@@ -29,7 +29,7 @@ public class SubmitPriorAuthorityDraftUseCase {
    */
   public SubmitPriorAuthorityDraftUseCase(
       RetryingCommandDispatcher dispatcher,
-      SubscriptionProjectionGateway projectionGateway,
+      ProjectionReadinessGateway projectionGateway,
       PriorAuthorityDraftStore draftStore) {
     this.dispatcher = dispatcher;
     this.projectionGateway = projectionGateway;

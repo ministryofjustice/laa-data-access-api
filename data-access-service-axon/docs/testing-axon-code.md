@@ -10,7 +10,7 @@ prove the risk being changed.
 |---|---|---|
 | Aggregate fixture | Rebuilt state, command decisions, emitted events, rejected commands | Spring wiring, real serialization, database transactions |
 | Isolated unit test | Mappers, services, exception handler, individual projection handlers | Processor mode, tokens, full message flow |
-| In-memory Spring test | HTTP-to-Axon flow, subscription queries, processor reset/replay and recovery | PostgreSQL types, Flyway controls, JPA transaction behaviour |
+| In-memory Spring test | HTTP-to-Axon flow, projection readiness waits, processor reset/replay and recovery | PostgreSQL types, Flyway controls, JPA transaction behaviour |
 | PostgreSQL integration test | Event serialization, constraints, transaction atomicity, concurrency and migrations | Production deployment or external integrations |
 | Architecture test | Dependency and message-shape guardrails | Runtime behaviour |
 
@@ -72,8 +72,8 @@ Use ordinary JUnit and Mockito when Axon's runtime is not the behaviour under te
 - group-router command mapping and failure propagation;
 - application-data hashing and persistence mapping.
 
-Projection unit tests should cover missing rows, idempotency, reset handlers, emitted subscription
-updates, and hydration fallbacks where relevant.
+Projection unit tests should cover missing rows, idempotency, reset handlers, and hydration
+fallbacks where relevant.
 
 ### Multi-aggregate linked-group handlers
 
@@ -96,7 +96,7 @@ the production Spring/Axon wiring while keeping the tests local. Use these tests
 a fixture cannot demonstrate:
 
 - the complete HTTP command and query flow;
-- subscription query timing;
+- projection readiness timing and `202 Accepted` fallbacks;
 - tracking processor token progress;
 - transient and permanent handler failures;
 - projection reset and replay.

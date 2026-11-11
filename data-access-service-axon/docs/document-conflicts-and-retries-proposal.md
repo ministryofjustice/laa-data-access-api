@@ -27,7 +27,7 @@ See [Document lifecycle](document-lifecycle.md) and
 DELETE currently returns `204` without waiting for its projection, and repeated deletion
 of an already-deleted document is rejected. The proposed behaviour is:
 
-Reuse the subscription-await pattern, registering the subscription before dispatch.
+Reuse `ProjectionReadinessGateway` to poll for readiness after dispatch.
 The readiness query must confirm that the specific document is marked deleted, rather
 than merely absent: absence can mean its upload has not yet been projected.
 
