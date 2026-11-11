@@ -1,9 +1,11 @@
 package uk.gov.justice.laa.dstew.access.bdd.steps;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.bdd.client.PriorAuthorityApi;
 import uk.gov.justice.laa.dstew.access.bdd.fixtures.PriorAuthorityFixtureFactory;
@@ -11,6 +13,10 @@ import uk.gov.justice.laa.dstew.access.bdd.support.ApiResponse;
 import uk.gov.justice.laa.dstew.access.bdd.support.ScenarioContext;
 
 public final class PriorAuthoritySteps {
+  private static final String DOCUMENT_FILE_NAME = "smoke-prior-authority-evidence.pdf";
+  private static final byte[] DOCUMENT_CONTENTS =
+      "%PDF-1.4\nBDD prior authority evidence\n%%EOF".getBytes(StandardCharsets.UTF_8);
+
   private final PriorAuthorityApi priorAuthorities;
   private final PriorAuthorityFixtureFactory fixtures;
   private final ScenarioContext context;
@@ -30,6 +36,16 @@ public final class PriorAuthoritySteps {
     assertStatus("I create a valid prior authority draft for the application", response, 201, 202);
     context.lastResponse(response);
     context.priorAuthorityId(UUID.fromString(response.body().path("priorAuthorityId").asText()));
+  }
+
+  @When("I upload a document to the prior authority")
+  public void uploadDocument() {
+    ApiResponse response =
+        priorAuthorities.uploadDocument(
+            context.priorAuthorityId(), DOCUMENT_FILE_NAME, DOCUMENT_CONTENTS);
+    assertAndRecord("I upload a document to the prior authority", response, 201);
+    assertEquals(DOCUMENT_FILE_NAME, response.body().path("fileName").asText());
+    assertNotNull(response.body().path("documentId").asText(null));
   }
 
   @When("I submit the prior authority draft")

@@ -4,6 +4,7 @@ Feature: Manual application and prior authority lifecycle
   Scenario: A caseworker grants a manual application then decides its prior authority
     Given I am logged in as "smoke-test"
     When I create a valid application draft
+    And I upload a document to the application
     And I submit the application draft
     Then the application is eventually submitted
     When the application auto-grant outcome is recorded as "MANUAL"
@@ -16,6 +17,7 @@ Feature: Manual application and prior authority lifecycle
     Given I am logged in as "smoke-provider-1"
     Then the application appears in the search list with the current provider office code
     When I create a valid prior authority draft for the application
+    And I upload a document to the prior authority
     And I submit the prior authority draft
     Then the prior authority is eventually submitted
     Given I am logged in as "smoke-test"

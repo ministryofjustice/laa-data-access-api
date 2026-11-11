@@ -6,6 +6,7 @@ import com.microsoft.playwright.APIRequest;
 import com.microsoft.playwright.APIRequestContext;
 import com.microsoft.playwright.APIResponse;
 import com.microsoft.playwright.Playwright;
+import com.microsoft.playwright.options.FormData;
 import com.microsoft.playwright.options.RequestOptions;
 import java.util.Map;
 import uk.gov.justice.laa.dstew.access.bdd.config.BddConfiguration;
@@ -49,6 +50,10 @@ public final class ApiClient implements AutoCloseable {
 
   public ApiResponse post(String path, Object body) {
     return response(request.post(path, RequestOptions.create().setData(body)));
+  }
+
+  public ApiResponse postMultipart(String path, FormData multipart) {
+    return response(request.post(path, RequestOptions.create().setMultipart(multipart)));
   }
 
   public ApiResponse patch(String path, Object body) {

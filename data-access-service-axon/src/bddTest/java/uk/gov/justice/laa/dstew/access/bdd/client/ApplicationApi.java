@@ -1,5 +1,7 @@
 package uk.gov.justice.laa.dstew.access.bdd.client;
 
+import com.microsoft.playwright.options.FilePayload;
+import com.microsoft.playwright.options.FormData;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.bdd.support.ApiClient;
 import uk.gov.justice.laa.dstew.access.bdd.support.ApiResponse;
@@ -20,6 +22,15 @@ public final class ApplicationApi {
 
   public ApiResponse submitDraft(UUID applicationId) {
     return apiClient.post("/api/v0/application-drafts/" + applicationId + "/submit");
+  }
+
+  public ApiResponse uploadDocument(UUID applicationId, String fileName, byte[] contents) {
+    FormData multipart =
+        FormData.create()
+            .append("file", new FilePayload(fileName, "application/pdf", contents))
+            .append("documentType", "GATEWAY_EVIDENCE");
+    return apiClient.postMultipart(
+        "/api/v0/applications/" + applicationId + "/documents", multipart);
   }
 
   public ApiResponse get(UUID applicationId) {

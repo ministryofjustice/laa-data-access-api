@@ -4,10 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import io.cucumber.java.en_scouse.Youseknowlikewhen;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.bdd.client.ApplicationApi;
 import uk.gov.justice.laa.dstew.access.bdd.config.BddConfiguration;
@@ -16,6 +16,10 @@ import uk.gov.justice.laa.dstew.access.bdd.support.ApiResponse;
 import uk.gov.justice.laa.dstew.access.bdd.support.ScenarioContext;
 
 public final class ApplicationSteps {
+  private static final String DOCUMENT_FILE_NAME = "smoke-application-evidence.pdf";
+  private static final byte[] DOCUMENT_CONTENTS =
+      "%PDF-1.4\nBDD application evidence\n%%EOF".getBytes(StandardCharsets.UTF_8);
+
   private final ApplicationApi applications;
   private final ApplicationFixtureFactory fixtures;
   private final BddConfiguration configuration;
@@ -45,6 +49,15 @@ public final class ApplicationSteps {
                 context.proceedingId(),
                 configuration.providerOfficeCode())),
         201);
+  }
+
+  @When("I upload a document to the application")
+  public void uploadDocument() {
+    ApiResponse response =
+        applications.uploadDocument(context.applicationId(), DOCUMENT_FILE_NAME, DOCUMENT_CONTENTS);
+    assertStatus(context, "I upload a document to the application", response, 201);
+    assertEquals(DOCUMENT_FILE_NAME, response.body().path("fileName").asText());
+    assertNotNull(response.body().path("documentId").asText(null));
   }
 
   @When("I submit the application draft")
