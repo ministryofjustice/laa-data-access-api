@@ -111,7 +111,8 @@ sendAndWait completed
   does not mean: every query projection is already current
 ```
 
-Application creation uses a subscription query to wait briefly for its projection. It returns
+Application creation polls its projection through `ProjectionReadinessGateway` to wait briefly
+for it to become readable. It returns
 `202 Accepted` if the durable write succeeds but the projection is not visible within the timeout.
 
 Application creation does not dispatch linked-group commands. Explicit link requests use durable

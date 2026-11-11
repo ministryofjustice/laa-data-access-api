@@ -69,7 +69,7 @@ class ProjectionTimeoutInMemoryTest {
 
   @Test
   void givenStoppedProjectionProcessor_whenPostApplication_thenReturnsAcceptedWithLocation() {
-    // Stop the projection processor so no QueryUpdateEmitter.emit can be called for this command.
+    // Stop the projection processor so the command is never reflected in the read model.
     StreamingEventProcessor processor =
         axonConfiguration
             .getComponents(StreamingEventProcessor.class)

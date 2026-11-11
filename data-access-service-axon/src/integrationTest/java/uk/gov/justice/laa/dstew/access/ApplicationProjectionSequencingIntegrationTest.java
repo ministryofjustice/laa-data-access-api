@@ -15,7 +15,6 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
-import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
@@ -30,7 +29,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -74,7 +72,6 @@ class ApplicationProjectionSequencingIntegrationTest {
   @Autowired private ApplicationListIndexReadRepository listIndex;
   @Autowired private ApplicationProjection applicationProjection;
   @Autowired private ApplicationDataStore applicationDataStore;
-  @MockitoBean private QueryUpdateEmitter queryUpdateEmitter;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private ObjectMapper objectMapper;
   @Autowired private CommandGateway commands;
@@ -100,9 +97,8 @@ class ApplicationProjectionSequencingIntegrationTest {
 
     applicationProjection.reset();
     applicationProjection.on(
-        new ApplicationDraftStartedEvent(applicationId, 1, "fingerprint", draftStartedAt, null),
-        queryUpdateEmitter);
-    applicationProjection.on(event, queryUpdateEmitter);
+        new ApplicationDraftStartedEvent(applicationId, 1, "fingerprint", draftStartedAt, null));
+    applicationProjection.on(event);
 
     await()
         .atMost(15, TimeUnit.SECONDS)
@@ -141,7 +137,7 @@ class ApplicationProjectionSequencingIntegrationTest {
             details.provider().getOfficeCode());
 
     applicationProjection.reset();
-    applicationProjection.on(event, queryUpdateEmitter);
+    applicationProjection.on(event);
 
     await()
         .atMost(15, TimeUnit.SECONDS)
