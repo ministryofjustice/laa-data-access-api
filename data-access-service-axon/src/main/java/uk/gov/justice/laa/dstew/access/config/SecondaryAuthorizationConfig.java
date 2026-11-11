@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.web.filter.OncePerRequestFilter;
+import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 
 /**
  * Spring configuration for the X-Authorization header JWT validation.
@@ -48,12 +49,14 @@ public class SecondaryAuthorizationConfig {
    * org.springframework.security.core.context.SecurityContext}.
    *
    * @param secondaryAuthorizationJwtDecoder the decoder for the X-Authorization JWT
+   * @param errorReporter the shared Sentry error reporter
    * @return a configured {@link SecondaryAuthorizationFilter}
    */
   @Bean("xAuthorizationFilter")
   public OncePerRequestFilter secondaryAuthorizationFilter(
-      @Qualifier("xAuthorizationJwtDecoder") JwtDecoder secondaryAuthorizationJwtDecoder) {
-    return new SecondaryAuthorizationFilter(secondaryAuthorizationJwtDecoder);
+      @Qualifier("xAuthorizationJwtDecoder") JwtDecoder secondaryAuthorizationJwtDecoder,
+      ErrorReporter errorReporter) {
+    return new SecondaryAuthorizationFilter(secondaryAuthorizationJwtDecoder, errorReporter);
   }
 
   @Bean("xAuthorizationFilterRegistration")

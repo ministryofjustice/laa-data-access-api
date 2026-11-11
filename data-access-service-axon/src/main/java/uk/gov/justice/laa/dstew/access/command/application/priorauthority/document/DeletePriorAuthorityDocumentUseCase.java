@@ -2,14 +2,14 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority.docum
 
 import java.time.Instant;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentDeleteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
@@ -17,21 +17,33 @@ import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 /** Marks a prior-authority draft document deleted and then attempts SDS file deletion. */
 @Component
 public class DeletePriorAuthorityDocumentUseCase {
-  private static final Logger LOG =
-      LoggerFactory.getLogger(DeletePriorAuthorityDocumentUseCase.class);
-
   private final PriorAuthorityDraftStore draftStore;
   private final RetryingCommandDispatcher dispatcher;
   private final SdsService sdsService;
+  private final ErrorReporter errorReporter;
 
-  /** Creates the use case with draft lookup, command dispatch, and SDS dependencies. */
+  /**
+   * Convenience constructor retained for existing call sites/tests that do not need to verify
+   * Sentry reporting explicitly.
+   */
   public DeletePriorAuthorityDocumentUseCase(
       PriorAuthorityDraftStore draftStore,
       RetryingCommandDispatcher dispatcher,
       SdsService sdsService) {
+    this(draftStore, dispatcher, sdsService, new ErrorReporter());
+  }
+
+  /** Creates the use case with draft lookup, command dispatch, and SDS dependencies. */
+  @Autowired
+  public DeletePriorAuthorityDocumentUseCase(
+      PriorAuthorityDraftStore draftStore,
+      RetryingCommandDispatcher dispatcher,
+      SdsService sdsService,
+      ErrorReporter errorReporter) {
     this.draftStore = draftStore;
     this.dispatcher = dispatcher;
     this.sdsService = sdsService;
+    this.errorReporter = errorReporter;
   }
 
   /** Records the deletion durably before attempting best-effort SDS deletion. */
@@ -56,10 +68,9 @@ public class DeletePriorAuthorityDocumentUseCase {
     try {
       sdsService.deleteEvidenceFile(priorAuthorityId, documentId, storageFilename);
     } catch (RuntimeException exception) {
-      LOG.error(
-          "Prior Authority document was deleted but SDS file deletion failed for priorAuthorityId={} documentId={}",
-          priorAuthorityId,
-          documentId,
+      errorReporter.report(
+          "Prior Authority document was deleted but SDS file deletion failed for"
+              + " priorAuthorityId=%s documentId=%s".formatted(priorAuthorityId, documentId),
           exception);
     }
   }

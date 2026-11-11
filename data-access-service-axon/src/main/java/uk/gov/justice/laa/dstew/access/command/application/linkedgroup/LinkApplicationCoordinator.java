@@ -63,7 +63,8 @@ public class LinkApplicationCoordinator {
                     UUID.randomUUID(),
                     command.targetApplicationId(),
                     command.sourceApplicationId(),
-                    command.occurredAt()));
+                    command.occurredAt(),
+                    command.justification()));
       }
       case ADD_TO_EXISTING_GROUP -> {
         var expectedTargetGroup = command.expectedTargetGroup();
@@ -81,7 +82,8 @@ public class LinkApplicationCoordinator {
                     plan.groupId(),
                     command.sourceApplicationId(),
                     expectedTargetGroup.version(),
-                    command.occurredAt()));
+                    command.occurredAt(),
+                    command.justification()));
       }
       case ALREADY_LINKED ->
           () -> {

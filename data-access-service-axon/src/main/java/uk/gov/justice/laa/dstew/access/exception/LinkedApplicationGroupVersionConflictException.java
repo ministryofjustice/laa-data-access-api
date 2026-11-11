@@ -2,10 +2,12 @@ package uk.gov.justice.laa.dstew.access.exception;
 
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
+import uk.gov.justice.laa.dstew.access.shared.logging.ClientFacingException;
 
 /** Raised when a command was based on a stale linked-group version. */
 @ExcludeFromGeneratedCodeCoverage
-public class LinkedApplicationGroupVersionConflictException extends RuntimeException {
+public class LinkedApplicationGroupVersionConflictException extends RuntimeException
+    implements ClientFacingException {
 
   /** Creates a conflict when the supplied token's version does not match the group. */
   public LinkedApplicationGroupVersionConflictException(UUID applicationId) {

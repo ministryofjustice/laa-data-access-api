@@ -26,6 +26,8 @@ import java.util.stream.Stream;
 import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
@@ -59,6 +61,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
@@ -252,6 +255,89 @@ public class ApplicationLinkingIntegrationTest {
                 groupId, targetApplicationId, targetApplicationId, sourceApplicationId))
         .isNotNull();
     assertThat(countDomainEvents(groupId)).isEqualTo(eventCount);
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "true, true, true",
+    "true, true, false",
+    "true, false, true",
+    "true, false, false",
+    "false, true, true",
+    "false, true, false",
+    "false, false, true",
+    "false, false, false"
+  })
+  void givenApplicationAlreadyInTargetGroup_whenLinkedAgain_thenNoContentAndNoNewStateOrPayload(
+      boolean suppliedHistory, boolean targetLead, boolean storedHistory) {
+    UUID leadId = UUID.randomUUID();
+    UUID memberId = UUID.randomUUID();
+    UUID joiningId = UUID.randomUUID();
+    String clientLastName = uniqueClientLastName();
+    createApplication(leadId, clientLastName);
+    createApplication(memberId, clientLastName);
+    createApplication(joiningId, clientLastName);
+    var creation = new ApplicationLinkRequest(leadId, ApplicationLinkType.FAMILY);
+    if (storedHistory) {
+      creation.setEventHistory(
+          new EventHistoryRequest().eventDescription("Original creation description"));
+    }
+    assertThat(
+            restTemplate
+                .exchange(
+                    "/api/v0/applications/" + memberId + "/link",
+                    HttpMethod.POST,
+                    new HttpEntity<>(creation, headers()),
+                    Void.class)
+                .getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+    UUID groupId = awaitRoute(leadId, ApplicationGroupRouteKind.LINKED_GROUP).getGroupId();
+    assertThat(linkApplication(joiningId, leadId, token(groupId, 0)).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+    List<UUID> applications = List.of(leadId, memberId, joiningId);
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .pollInterval(100, TimeUnit.MILLISECONDS)
+        .until(
+            () ->
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM axon.application_history"
+                            + " WHERE application_id IN (?, ?, ?)"
+                            + " AND event_type LIKE 'APPLICATION_GROUP_%'",
+                        Long.class, leadId, memberId, joiningId)
+                    == 5);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.application_history"
+                    + " WHERE application_id IN (?, ?) AND justification_id IS NOT NULL",
+                Long.class,
+                leadId,
+                memberId))
+        .isEqualTo(storedHistory ? 2 : 0);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.linked_group_justification WHERE group_id = ?",
+                Long.class,
+                groupId))
+        .isEqualTo(storedHistory ? 1 : 0);
+    var before = LinkedGroupStateSnapshot.capture(jdbcTemplate, groupId, applications);
+
+    var request =
+        new ApplicationLinkRequest(targetLead ? leadId : memberId, ApplicationLinkType.FAMILY);
+    request.setLinkedGroupVersion(token(groupId, 1));
+    if (suppliedHistory) {
+      request.setEventHistory(
+          new EventHistoryRequest().eventDescription("Discarded no-op description"));
+    }
+    var response =
+        restTemplate.exchange(
+            "/api/v0/applications/" + joiningId + "/link",
+            HttpMethod.POST,
+            new HttpEntity<>(request, headers()),
+            Void.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    before.assertUnchangedAfterProjectionsSettle(jdbcTemplate, groupId, applications);
   }
 
   @Test
@@ -932,7 +1018,11 @@ public class ApplicationLinkingIntegrationTest {
     return restTemplate.exchange(
         "/api/v0/applications/" + applicationId + "/" + action,
         HttpMethod.POST,
-        new HttpEntity<>(new LinkedGroupChangeRequest(versionToken), headers(bearerToken)),
+        new HttpEntity<>(
+            new LinkedGroupChangeRequest(versionToken)
+                .eventHistory(
+                    new EventHistoryRequest().eventDescription("Justification for linking")),
+            headers(bearerToken)),
         Void.class);
   }
 

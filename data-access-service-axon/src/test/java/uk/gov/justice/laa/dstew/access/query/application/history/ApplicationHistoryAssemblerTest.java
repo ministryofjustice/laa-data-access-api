@@ -25,6 +25,11 @@ class ApplicationHistoryAssemblerTest {
 
   @Mock private ApplicationDataStore applicationDataStore;
 
+  @Mock
+  private uk.gov.justice.laa.dstew.access.command.application.linkedgroup
+          .LinkedGroupJustificationStore
+      justificationStore;
+
   @InjectMocks private ApplicationHistoryAssembler assembler;
 
   @Test
@@ -159,5 +164,37 @@ class ApplicationHistoryAssemblerTest {
         .serviceName("CIVIL_APPLY")
         .occurredAt(Instant.parse("2026-07-19T10:00:00Z"))
         .build();
+  }
+
+  @Test
+  void givenSharedAndDistinctReferences_whenAssembled_thenBatchHydratesEveryRow() {
+    var shared = UUID.randomUUID();
+    var other = UUID.randomUUID();
+    var first = row(UUID.randomUUID(), "APPLICATION_GROUP_JOINED", null);
+    var second = row(UUID.randomUUID(), "APPLICATION_GROUP_MEMBER_ADDED", null);
+    var third = row(UUID.randomUUID(), "APPLICATION_GROUP_LEAD_CHANGED", null);
+    first.setJustificationId(shared);
+    second.setJustificationId(shared);
+    third.setJustificationId(other);
+    when(justificationStore.findAll(java.util.Set.of(shared, other)))
+        .thenReturn(Map.of(shared, "Link reason", other, "Lead reason"));
+
+    assertThat(assembler.assemble(List.of(first, second, third)))
+        .extracting(ApplicationHistoryEventResult::eventDescription)
+        .containsExactly("Link reason", "Link reason", "Lead reason");
+    org.mockito.Mockito.verify(justificationStore).findAll(java.util.Set.of(shared, other));
+    verifyNoInteractions(applicationDataStore);
+  }
+
+  @Test
+  void givenMissingReferencedPayload_whenAssembled_thenFailsExplicitly() {
+    var row = row(UUID.randomUUID(), "APPLICATION_GROUP_DISSOLVED", null);
+    var id = UUID.randomUUID();
+    row.setJustificationId(id);
+    when(justificationStore.findAll(java.util.Set.of(id))).thenReturn(Map.of());
+
+    org.assertj.core.api.Assertions.assertThatThrownBy(() -> assembler.assemble(List.of(row)))
+        .isInstanceOf(ApplicationHistoryIntegrityException.class)
+        .hasMessageContaining("Missing linked-group justification " + id);
   }
 }

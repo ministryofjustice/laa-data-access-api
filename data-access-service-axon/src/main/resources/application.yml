@@ -67,6 +67,11 @@ application:
     reconciliation:
       threshold: ${ASSESSMENT_RECONCILIATION_THRESHOLD:15m}
       interval: ${ASSESSMENT_RECONCILIATION_INTERVAL:5m}
+  error-reporting:
+    # Suppresses repeat Sentry alerts for the same pooled-streaming processor/exception-type pair
+    # within this window, so a persistently failing projection that Axon keeps retrying doesn't
+    # spam Sentry with one alert per retry. See ReportingErrorHandler.
+    axon-projection-cooldown: ${AXON_ERROR_REPORTING_COOLDOWN:5m}
 
 laa:
   springboot:
