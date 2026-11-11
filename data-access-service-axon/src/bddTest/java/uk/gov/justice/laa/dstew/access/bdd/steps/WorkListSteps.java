@@ -42,18 +42,36 @@ public final class WorkListSteps {
 
   @Then("the current work-list item is eventually assigned to me")
   public void itemAssigned() {
-    // The assign command is synchronous; preserving the explicit step leaves a stable seam for a
-    // read-model assertion.
+    JsonNode item = workList.awaitAssignedItem(context.workItemId());
+    context.assignmentVersion(item.path("assignmentVersion").asLong());
+  }
+
+  @When("I unassign the current work-list item")
+  public void unassignCurrentItem() {
+    ApiResponse response = workList.unassign(context.workItemId(), context.assignmentVersion());
+    context.lastResponse(response);
     assertEquals(
         200,
-        context.lastResponse().status(),
-        "Step failed: the current work-list item is eventually assigned to me. Unexpected response: "
-            + context.lastResponse().body());
+        response.status(),
+        "Step failed: I unassign the current work-list item. Unexpected response: "
+            + response.body());
+  }
+
+  @Then("the current work-list item is eventually unassigned")
+  public void itemUnassigned() {
+    JsonNode item = workList.awaitUnassignedItem(context.workItemType(), context.workItemId());
+    context.assignmentVersion(item.path("assignmentVersion").asLong());
+  }
+
+  @Then("the prior authority is eventually absent from the work list")
+  public void priorAuthorityIsAbsent() {
+    workList.awaitItemAbsent(context.priorAuthorityId());
   }
 
   private void selectItem(String type, UUID itemId) {
     JsonNode item = workList.awaitUnassignedItem(type, itemId);
     context.workItemId(UUID.fromString(item.path("itemId").asText()));
+    context.workItemType(type);
     context.assignmentVersion(item.path("assignmentVersion").asLong());
   }
 }

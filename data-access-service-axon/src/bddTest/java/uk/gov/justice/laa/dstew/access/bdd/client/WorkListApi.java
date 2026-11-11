@@ -23,9 +23,29 @@ public final class WorkListApi {
     return findItem(response.body(), itemId);
   }
 
+  public JsonNode awaitAssignedItem(UUID itemId) {
+    ApiResponse response =
+        polling.awaitGet(
+            "/api/v0/work-list?assignedToMe=true&unassigned=false&pageSize=100",
+            candidate -> findItem(candidate.body(), itemId) != null);
+    return findItem(response.body(), itemId);
+  }
+
+  public void awaitItemAbsent(UUID itemId) {
+    polling.awaitGet(
+        "/api/v0/work-list?unassigned=true&assignedToMe=true&pageSize=100",
+        candidate -> findItem(candidate.body(), itemId) == null);
+  }
+
   public ApiResponse assign(UUID workItemId, long expectedAssignmentVersion) {
     return apiClient.post(
         "/api/v0/work-list/" + workItemId + "/assign",
+        java.util.Map.of("expectedAssignmentVersion", expectedAssignmentVersion));
+  }
+
+  public ApiResponse unassign(UUID workItemId, long expectedAssignmentVersion) {
+    return apiClient.post(
+        "/api/v0/work-list/" + workItemId + "/unassign",
         java.util.Map.of("expectedAssignmentVersion", expectedAssignmentVersion));
   }
 

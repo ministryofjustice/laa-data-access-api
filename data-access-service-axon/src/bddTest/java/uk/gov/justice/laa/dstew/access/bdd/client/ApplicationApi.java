@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.bdd.client;
 import com.microsoft.playwright.options.FilePayload;
 import com.microsoft.playwright.options.FormData;
 import java.util.UUID;
+import java.util.function.Predicate;
 import uk.gov.justice.laa.dstew.access.bdd.support.ApiClient;
 import uk.gov.justice.laa.dstew.access.bdd.support.ApiResponse;
 import uk.gov.justice.laa.dstew.access.bdd.support.HttpPolling;
@@ -39,6 +40,10 @@ public final class ApplicationApi {
 
   public ApiResponse searchByReference(String laaReference) {
     return apiClient.get("/api/v0/applications?laaReference=" + laaReference + "&pageSize=100");
+  }
+
+  public ApiResponse awaitHistory(UUID applicationId, Predicate<ApiResponse> condition) {
+    return polling.awaitGet("/api/v0/applications/" + applicationId + "/history-search", condition);
   }
 
   public ApiResponse awaitSubmitted(UUID applicationId) {

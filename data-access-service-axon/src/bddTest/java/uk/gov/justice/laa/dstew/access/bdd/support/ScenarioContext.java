@@ -7,6 +7,7 @@ public final class ScenarioContext {
   private UUID proceedingId;
   private UUID priorAuthorityId;
   private UUID workItemId;
+  private String workItemType;
   private long applicationVersion;
   private long priorAuthorityVersion;
   private long assignmentVersion;
@@ -43,6 +44,16 @@ public final class ScenarioContext {
 
   public void workItemId(UUID value) {
     workItemId = value;
+  }
+
+  public String workItemType() {
+    if (workItemType == null || workItemType.isBlank())
+      throw new IllegalStateException("No work-list item type is available in this scenario");
+    return workItemType;
+  }
+
+  public void workItemType(String value) {
+    workItemType = value;
   }
 
   public long applicationVersion() {

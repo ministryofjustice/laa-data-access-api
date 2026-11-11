@@ -8,6 +8,8 @@ import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import io.cucumber.java.en_scouse.Youseknowlikewhen;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.bdd.client.ApplicationApi;
 import uk.gov.justice.laa.dstew.access.bdd.config.BddConfiguration;
@@ -124,6 +126,12 @@ public final class ApplicationSteps {
     context.lastResponse(applications.awaitDecision(context.applicationId(), decision));
   }
 
+  @Then("the application history eventually documents the complete lifecycle")
+  public void historyDocumentsCompleteLifecycle() {
+    context.lastResponse(
+        applications.awaitHistory(context.applicationId(), this::hasCompleteLifecycleHistory));
+  }
+
   private static void assertStatus(
       ScenarioContext context, String step, ApiResponse response, int... statuses) {
     context.lastResponse(response);
@@ -144,5 +152,43 @@ public final class ApplicationSteps {
         return application;
     }
     return null;
+  }
+
+  private boolean hasCompleteLifecycleHistory(ApiResponse response) {
+    JsonNode history = response.body();
+    return eventTypes(history.path("events"))
+            .equals(
+                List.of(
+                    "APPLICATION_CREATED",
+                    "ASSIGN_APPLICATION_TO_CASEWORKER",
+                    "APPLICATION_MAKE_DECISION_GRANTED"))
+        && priorAuthorityHistory(history);
+  }
+
+  private boolean priorAuthorityHistory(JsonNode history) {
+    for (JsonNode priorAuthority : history.path("priorAuthorities")) {
+      if (context
+          .priorAuthorityId()
+          .toString()
+          .equals(priorAuthority.path("priorAuthorityId").asText())) {
+        return eventTypes(priorAuthority.path("events"))
+            .equals(
+                List.of(
+                    "PRIOR_AUTHORITY_SUBMITTED",
+                    "ASSIGN_APPLICATION_TO_CASEWORKER",
+                    "UNASSIGN_APPLICATION_TO_CASEWORKER",
+                    "ASSIGN_APPLICATION_TO_CASEWORKER",
+                    "PRIOR_AUTHORITY_MAKE_DECISION_GRANTED"));
+      }
+    }
+    return false;
+  }
+
+  private static List<String> eventTypes(JsonNode events) {
+    List<String> eventTypes = new ArrayList<>();
+    for (JsonNode event : events) {
+      eventTypes.add(event.path("domainEventType").asText(event.path("eventType").asText()));
+    }
+    return eventTypes;
   }
 }
