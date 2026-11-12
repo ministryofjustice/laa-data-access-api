@@ -1,0 +1,21 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPath": "/get_file",
+    "queryParameters": {
+      "file_key": {
+        "matches": ".+"
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "fileURL": "http://sds-wiremock-smoketest:8080/files/smoke-document.pdf"
+    }
+  }
+}
+

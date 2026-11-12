@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPath": "/files/smoke-document.pdf"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": "attachment; filename=smoke-document.pdf"
+    },
+    "body": "%PDF-1.4\n% SDS WireMock BDD fixture\n%%EOF\n"
+  }
+}
+
