@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  packages: read
 
 concurrency:
   group: ${{ github.workflow }}-smoke-${{ github.ref }}
@@ -34,11 +35,15 @@ jobs:
 
       # Temporary: isolate Cucumber dependency resolution before starting Docker.
       - name: Diagnose BDD dependency resolution
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >-
           ./gradlew :data-access-service-axon:compileBddTestJava build
           --refresh-dependencies --stacktrace --info --console=plain
 
       - name: Run smoke tests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./scripts/run-infrastructure-smoke-tests.sh
 
       - name: Upload smoke-test reports and diagnostics
