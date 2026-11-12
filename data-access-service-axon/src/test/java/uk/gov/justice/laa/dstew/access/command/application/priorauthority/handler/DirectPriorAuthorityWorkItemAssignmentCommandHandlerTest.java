@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority.handler;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -12,10 +13,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
+import uk.gov.justice.laa.dstew.access.command.worklist.assign.AssignedWorkItems;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectPriorAuthorityWorkItemAssignmentCommand;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
@@ -26,10 +30,13 @@ class DirectPriorAuthorityWorkItemAssignmentCommandHandlerTest {
 
   @Mock private PriorAuthorityAggregate priorAuthority;
   @Mock private EventAppender eventAppender;
+  @Mock private ApplicationDataStore applicationDataStore;
+  @Mock private ApplicationDataPayload applicationDataPayload;
 
   @Test
   void givenValidPriorAuthority_whenHandle_thenAssignsWorkItem() {
     UUID workItemId = UUID.randomUUID();
+    UUID parentApplicationId = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
     DirectPriorAuthorityWorkItemAssignmentCommand command =
         new DirectPriorAuthorityWorkItemAssignmentCommand(
@@ -39,14 +46,21 @@ class DirectPriorAuthorityWorkItemAssignmentCommandHandlerTest {
     when(priorAuthority.getAssignmentVersion()).thenReturn(0L);
     when(priorAuthority.getCaseworkerId()).thenReturn(null);
     when(priorAuthority.getDataVersion()).thenReturn(2L);
+    when(priorAuthority.getApplicationId()).thenReturn(parentApplicationId);
+    when(applicationDataStore.latestVersion(parentApplicationId)).thenReturn(3L);
+    when(applicationDataStore.get(parentApplicationId, 3L)).thenReturn(applicationDataPayload);
+    when(applicationDataPayload.laaReference()).thenReturn("LAA-PARENT");
 
-    new DirectPriorAuthorityWorkItemAssignmentCommandHandler()
-        .handle(command, priorAuthority, eventAppender);
+    AssignedWorkItems result =
+        new DirectPriorAuthorityWorkItemAssignmentCommandHandler()
+            .handle(command, priorAuthority, applicationDataStore, eventAppender);
 
     verify(eventAppender)
         .append(
             new WorkItemAssigned(
                 workItemId, WorkItemType.PRIOR_AUTHORITY, 2L, 1L, caseworkerId, OCCURRED_AT));
+    assertThat(result.items())
+        .containsExactly(new AssignedWorkItems.AssignedItem(workItemId, "LAA-PARENT"));
   }
 
   @Test
@@ -63,7 +77,7 @@ class DirectPriorAuthorityWorkItemAssignmentCommandHandlerTest {
     assertThatThrownBy(
             () ->
                 new DirectPriorAuthorityWorkItemAssignmentCommandHandler()
-                    .handle(command, priorAuthority, eventAppender))
+                    .handle(command, priorAuthority, applicationDataStore, eventAppender))
         .isInstanceOf(WorkItemAssignmentConflictException.class)
         .hasMessage(
             "Work item " + workItemId + " cannot be updated: the assignment version is stale");
@@ -72,7 +86,7 @@ class DirectPriorAuthorityWorkItemAssignmentCommandHandlerTest {
     assertThatThrownBy(
             () ->
                 new DirectPriorAuthorityWorkItemAssignmentCommandHandler()
-                    .handle(command, priorAuthority, eventAppender))
+                    .handle(command, priorAuthority, applicationDataStore, eventAppender))
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage("No prior-authority work item found with id: " + workItemId);
 
@@ -94,7 +108,7 @@ class DirectPriorAuthorityWorkItemAssignmentCommandHandlerTest {
     assertThatThrownBy(
             () ->
                 new DirectPriorAuthorityWorkItemAssignmentCommandHandler()
-                    .handle(command, priorAuthority, eventAppender))
+                    .handle(command, priorAuthority, applicationDataStore, eventAppender))
         .isInstanceOf(WorkItemAssignmentConflictException.class)
         .hasMessage("Work item " + workItemId + " cannot be updated: it is already assigned");
 
@@ -114,7 +128,7 @@ class DirectPriorAuthorityWorkItemAssignmentCommandHandlerTest {
     assertThatThrownBy(
             () ->
                 new DirectPriorAuthorityWorkItemAssignmentCommandHandler()
-                    .handle(command, priorAuthority, eventAppender))
+                    .handle(command, priorAuthority, applicationDataStore, eventAppender))
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage("No prior-authority work item found with id: " + workItemId);
 

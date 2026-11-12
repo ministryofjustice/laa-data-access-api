@@ -25,6 +25,7 @@ components:
         assignmentVersion:
           type: integer
           format: int64
+          description: Version of the item's assignment. It increments whenever the assignment changes. Use this value as `expectedAssignmentVersion` in assign and unassign requests
         assignmentBoundaryType:
           type: string
           enum:
@@ -89,8 +90,35 @@ components:
           type: integer
           format: int64
           minimum: 0
+          description: The item's current `assignmentVersion`, from the work list or the item's details. The request is rejected with 409 when it is stale
         eventHistory:
           $ref: "../open-api-common/components.yml#/components/schemas/EventHistoryRequest"
+
+    WorkListAssignedItem:
+      type: object
+      required:
+        - itemId
+        - laaReference
+      properties:
+        itemId:
+          type: string
+          format: uuid
+          description: Application ID for an application item, or prior-authority submission ID for a PA item
+        laaReference:
+          type: string
+          description: LAA reference for the application item or the parent application of a PA item
+
+    WorkListAssignResponse:
+      type: object
+      required:
+        - assignedItems
+      properties:
+        assignedItems:
+          type: array
+          description: Every item assigned by the request, with the addressed item first
+          items:
+            $ref: "#/components/schemas/WorkListAssignedItem"
+
     WorkListUnassignRequest:
       type: object
       required:
@@ -100,5 +128,6 @@ components:
           type: integer
           format: int64
           minimum: 0
+          description: The item's current `assignmentVersion`, from the work list or the item's details. The request is rejected with 409 when it is stale
         eventHistory:
           $ref: "../open-api-common/components.yml#/components/schemas/EventHistoryRequest"

@@ -26,6 +26,7 @@ import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.WorkListAssignRequest;
+import uk.gov.justice.laa.dstew.access.model.WorkListAssignResponse;
 import uk.gov.justice.laa.dstew.access.model.WorkListUnassignRequest;
 import uk.gov.justice.laa.dstew.access.version.VersionToken;
 
@@ -121,6 +122,16 @@ public abstract class AbstractLinkedGroupIntegrationTest extends BaseIntegration
         HttpMethod.POST,
         new HttpEntity<>(new WorkListAssignRequest(version), headersFor(caseworkerId)),
         String.class);
+  }
+
+  /** Assigns an application work item and returns the typed response body. */
+  protected ResponseEntity<WorkListAssignResponse> assignForResponse(
+      UUID itemId, UUID caseworkerId, long version) {
+    return restTemplate.exchange(
+        url("/api/v0/work-list/" + itemId + "/assign"),
+        HttpMethod.POST,
+        new HttpEntity<>(new WorkListAssignRequest(version), headersFor(caseworkerId)),
+        WorkListAssignResponse.class);
   }
 
   /** Unassigns an application work item at the expected version. */

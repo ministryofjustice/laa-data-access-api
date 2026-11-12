@@ -22,6 +22,9 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
@@ -234,6 +237,42 @@ public class PriorAuthorityProjection {
         event.documentId(),
         event.occurredAt(),
         document -> document.withDocumentType(event.documentType()));
+  }
+
+  /** Records the assignment version after a prior-authority work item is assigned. */
+  @EventHandler
+  public void on(WorkItemAssigned event) {
+    updateAssignmentVersion(
+        event.workItemType(), event.workItemId(), event.assignmentVersion(), event.occurredAt());
+  }
+
+  /** Records the assignment version after a prior-authority work item is unassigned. */
+  @EventHandler
+  public void on(WorkItemUnassigned event) {
+    updateAssignmentVersion(
+        event.workItemType(), event.workItemId(), event.assignmentVersion(), event.occurredAt());
+  }
+
+  private void updateAssignmentVersion(
+      WorkItemType workItemType,
+      UUID priorAuthorityId,
+      long assignmentVersion,
+      Instant occurredAt) {
+    if (workItemType != WorkItemType.PRIOR_AUTHORITY) {
+      return;
+    }
+    repository
+        .findById(priorAuthorityId)
+        .ifPresent(
+            current -> {
+              current.setAssignmentVersion(assignmentVersion);
+              current.setModifiedAt(occurredAt);
+              repository.save(current);
+            });
+  }
+
+  private boolean isPending(PriorAuthorityReadModel priorAuthority) {
+    return PriorAuthorityStatus.SUBMITTED.name().equals(priorAuthority.getStatus());
   }
 
   private void updateDocument(

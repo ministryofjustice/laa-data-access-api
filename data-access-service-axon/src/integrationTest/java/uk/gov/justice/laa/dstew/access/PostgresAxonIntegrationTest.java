@@ -87,6 +87,7 @@ import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
 import uk.gov.justice.laa.dstew.access.model.WorkListAssignRequest;
+import uk.gov.justice.laa.dstew.access.model.WorkListAssignResponse;
 import uk.gov.justice.laa.dstew.access.model.WorkListUnassignRequest;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
@@ -1021,6 +1022,7 @@ class PostgresAxonIntegrationTest {
             .decisionStatus(DecisionStatusResponse.PENDING)
             .client(actual.getClient())
             .version(0L)
+            .assignmentVersion(0L)
             .provider(
                 ProviderResponse.builder()
                     .officeCode("1A001B")
@@ -1413,14 +1415,21 @@ class PostgresAxonIntegrationTest {
 
   private UUID assignForManualDecision(UUID applicationId) {
     UUID caseworkerId = TestJwtDecoderConfig.CASEWORKER_ID;
-    ResponseEntity<Void> response =
+    ResponseEntity<WorkListAssignResponse> response =
         restTemplate.exchange(
             "http://localhost:" + port + "/api/v0/work-list/" + applicationId + "/assign",
             HttpMethod.POST,
             new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
-            Void.class);
+            WorkListAssignResponse.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody().getAssignedItems())
+        .singleElement()
+        .satisfies(
+            item -> {
+              assertThat(item.getItemId()).isEqualTo(applicationId);
+              assertThat(item.getLaaReference()).isEqualTo("LAA-123");
+            });
     assertThat(projectionAwaiter.awaitApplicationVersion(applicationId, 1L).getCaseworkerId())
         .isEqualTo(caseworkerId);
     return caseworkerId;
@@ -1943,13 +1952,20 @@ class PostgresAxonIntegrationTest {
             String.class);
     assertThat(submitResponse.getStatusCode()).isIn(HttpStatus.OK, HttpStatus.ACCEPTED);
 
-    ResponseEntity<Void> assignResponse =
+    ResponseEntity<WorkListAssignResponse> assignResponse =
         restTemplate.exchange(
             "http://localhost:" + port + "/api/v0/work-list/" + priorAuthorityId + "/assign",
             HttpMethod.POST,
             new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
-            Void.class);
+            WorkListAssignResponse.class);
     assertThat(assignResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(assignResponse.getBody().getAssignedItems())
+        .singleElement()
+        .satisfies(
+            item -> {
+              assertThat(item.getItemId()).isEqualTo(priorAuthorityId);
+              assertThat(item.getLaaReference()).isEqualTo("LAA-123");
+            });
 
     ResponseEntity<Void> unassignResponse =
         restTemplate.exchange(

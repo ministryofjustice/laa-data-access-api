@@ -649,6 +649,24 @@ class ApplicationProjectionTest {
   }
 
   @Test
+  void givenDecisionEvent_whenHandled_thenDoesNotChangeAssignmentVersion() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-20T08:00:00Z");
+    ApplicationReadModel existing =
+        ApplicationReadModel.builder().applicationId(applicationId).assignmentVersion(5L).build();
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+    when(applicationReadRepository.save(existing)).thenReturn(existing);
+
+    projection.on(
+        new ApplicationDecisionMadeEvent(
+            applicationId, 3L, 4L, "GRANTED", AutoGrantedState.MANUAL, occurredAt));
+
+    assertThat(existing.getAssignmentVersion()).isEqualTo(5L);
+    assertThat(existing.getApplicationVersion()).isEqualTo(3L);
+    assertThat(existing.getApplicationDataVersion()).isEqualTo(4L);
+  }
+
+  @Test
   void givenReadyEvent_whenHandled_thenAdvancesReferencedDataVersion() {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-21T09:30:00Z");
@@ -684,6 +702,7 @@ class ApplicationProjectionTest {
             applicationId, WorkItemType.APPLICATION, 1L, 1L, caseworkerId, occurredAt));
 
     assertThat(existing.getCaseworkerId()).isEqualTo(caseworkerId);
+    assertThat(existing.getAssignmentVersion()).isEqualTo(1L);
     assertThat(existing.getApplicationVersion()).isEqualTo(1L);
     assertThat(existing.getApplicationDataVersion()).isEqualTo(1L);
     assertThat(existing.getModifiedAt()).isEqualTo(occurredAt);
@@ -708,6 +727,7 @@ class ApplicationProjectionTest {
         new WorkItemUnassigned(applicationId, WorkItemType.APPLICATION, 1L, 2L, occurredAt));
 
     assertThat(existing.getCaseworkerId()).isNull();
+    assertThat(existing.getAssignmentVersion()).isEqualTo(2L);
     assertThat(existing.getApplicationVersion()).isEqualTo(1L);
     assertThat(existing.getApplicationDataVersion()).isEqualTo(1L);
     assertThat(existing.getModifiedAt()).isEqualTo(occurredAt);
@@ -724,6 +744,7 @@ class ApplicationProjectionTest {
             .applicationId(applicationId)
             .applicationVersion(0L)
             .applicationDataVersion(0L)
+            .assignmentVersion(7L)
             .build();
     when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
 
@@ -733,6 +754,7 @@ class ApplicationProjectionTest {
 
     assertThat(existing.getApplicationDataVersion()).isEqualTo(1L);
     assertThat(existing.getApplicationVersion()).isEqualTo(0L);
+    assertThat(existing.getAssignmentVersion()).isEqualTo(7L);
     assertThat(existing.getModifiedAt()).isEqualTo(occurredAt);
     verify(applicationReadRepository).save(existing);
   }

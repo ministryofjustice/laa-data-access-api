@@ -184,6 +184,7 @@ components:
         - uploadedDocuments
         - linkedApplications
         - version
+        - assignmentVersion
       properties:
         applicationId:
           type: string
@@ -263,6 +264,14 @@ components:
           type: integer
           format: int64
           description: Current application version, used for concurrency control on commands
+        assignmentVersion:
+          type: integer
+          format: int64
+          description: >-
+            Version of the application's assignment. It increments whenever the assignment changes,
+            but not when notes or decisions change. Use this value as `expectedAssignmentVersion`
+            in assignment requests. The `version` field is used for concurrency control on other
+            commands.
         potentialDuplicates:
           type: array
           description: List of potential duplicate applications

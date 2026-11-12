@@ -66,6 +66,7 @@ components:
       required:
         - priorAuthorityId
         - applicationId
+        - assignmentVersion
       properties:
         priorAuthorityType:
           type: string
@@ -120,6 +121,13 @@ components:
         assignedTo:
           type: string
           format: uuid
+        assignmentVersion:
+          type: integer
+          format: int64
+          description: >-
+            Current assignment version of the prior authority. It increases by one on every
+            assignment change and is not affected by decisions. Send it as
+            expectedAssignmentVersion when assigning the prior authority.
         officeCode:
           type: string
 

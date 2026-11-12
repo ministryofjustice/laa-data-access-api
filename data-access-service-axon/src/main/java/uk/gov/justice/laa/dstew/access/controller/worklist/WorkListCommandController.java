@@ -9,11 +9,14 @@ import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.api.WorkListCommandApi;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.AssignWorkItemCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.AssignWorkItemUseCase;
+import uk.gov.justice.laa.dstew.access.command.worklist.assign.AssignedWorkItems;
 import uk.gov.justice.laa.dstew.access.command.worklist.unassign.UnassignWorkItemCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.unassign.UnassignWorkItemUseCase;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.model.WorkListAssignRequest;
+import uk.gov.justice.laa.dstew.access.model.WorkListAssignResponse;
+import uk.gov.justice.laa.dstew.access.model.WorkListAssignedItem;
 import uk.gov.justice.laa.dstew.access.model.WorkListUnassignRequest;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedUserId;
 
@@ -38,17 +41,27 @@ public class WorkListCommandController implements WorkListCommandApi {
   }
 
   @Override
-  public ResponseEntity<Void> assignWorkListItem(
+  public ResponseEntity<WorkListAssignResponse> assignWorkListItem(
       ServiceName serviceName, UUID itemId, WorkListAssignRequest request) {
-    assignWorkItemUseCase.execute(
-        new AssignWorkItemCommand(
-            itemId,
-            authenticatedUserId.get(),
-            request.getExpectedAssignmentVersion(),
-            serialise(request),
-            eventDescription(request.getEventHistory()),
-            Instant.now()));
-    return ResponseEntity.ok().build();
+    AssignedWorkItems assigned =
+        assignWorkItemUseCase.execute(
+            new AssignWorkItemCommand(
+                itemId,
+                authenticatedUserId.get(),
+                request.getExpectedAssignmentVersion(),
+                serialise(request),
+                eventDescription(request.getEventHistory()),
+                Instant.now()));
+    return ResponseEntity.ok(
+        new WorkListAssignResponse()
+            .assignedItems(
+                assigned.items().stream()
+                    .map(
+                        item ->
+                            new WorkListAssignedItem()
+                                .itemId(item.itemId())
+                                .laaReference(item.laaReference()))
+                    .toList()));
   }
 
   @Override
