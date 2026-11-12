@@ -45,8 +45,8 @@ sourceSets {
     }
     bddTest {
         java.srcDir 'src/bddTest/java'
-        compileClasspath += sourceSets.testUtilities.output
-        runtimeClasspath += sourceSets.testUtilities.output
+        compileClasspath += sourceSets.main.output + sourceSets.testUtilities.output
+        runtimeClasspath += sourceSets.main.output + sourceSets.testUtilities.output
     }
 }
 
@@ -157,6 +157,7 @@ tasks.register('bddTest', Test) {
     testClassesDirs = sourceSets.bddTest.output.classesDirs
     classpath = sourceSets.bddTest.runtimeClasspath
     useJUnitPlatform()
+    systemProperty 'cucumber.glue', 'uk.gov.justice.laa.dstew.access.bdd'
     systemProperty 'cucumber.plugin', System.getProperty(
             'cucumber.plugin',
             "pretty,html:${layout.buildDirectory.get().asFile}/reports/cucumber/index.html,json:${layout.buildDirectory.get().asFile}/reports/cucumber/cucumber.json")
@@ -165,6 +166,11 @@ tasks.register('bddTest', Test) {
     }
     if (System.getProperty('cucumber.execution.dry-run')) {
         systemProperty 'cucumber.execution.dry-run', System.getProperty('cucumber.execution.dry-run')
+    }
+    testLogging {
+        events TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED
+        exceptionFormat = 'full'
+        showStandardStreams = true
     }
 }
 
