@@ -8,7 +8,7 @@ application {
 }
 
 dependencies {
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.22.3'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.22.4'
     implementation 'info.picocli:picocli:4.7.7'
     implementation 'net.datafaker:datafaker:2.7.0'
     runtimeOnly 'org.postgresql:postgresql:42.7.14'

@@ -8,20 +8,20 @@ plugins {
 }
 
 def versions = [
-        sentry                  : '8.60.0',
-        axonFramework           : '5.4.0',
-        jsonSchemaValidator     : '3.0.8',
+        sentry                  : '8.63.0',
+        axonFramework           : '5.4.1',
+        jsonSchemaValidator     : '3.0.9',
         swaggerAnnotations      : '2.2.55',
-        springdocOpenapi        : '3.1.1',
-        springCloudAws          : '4.2.0',
+        springdocOpenapi        : '3.2.0',
+        springCloudAws          : '4.2.1',
         lombok                  : '1.18.48',
         datafaker               : '2.7.0',
         archunit                : '1.5.1',
         testcontainers          : '2.0.5',
         micrometerSpringBoot    : '2.3.0',
         logbackEcsEncoder       : '1.8.0',
-        cucumber                : '7.30.0',
-        playwright              : '1.57.0'
+        cucumber                : '8.0.4',
+        playwright              : '1.64.0'
 ]
 
 sourceSets {
@@ -124,7 +124,7 @@ dependencies {
 
     // Pact provider verification runs in the dedicated `pactTest` source set against the real
     // application on in-memory H2. Only the broker client and HTTP replay support are extra.
-    pactTestImplementation 'au.com.dius.pact.provider:spring7:4.7.5'
+    pactTestImplementation 'au.com.dius.pact.provider:spring7:4.7.7'
     pactTestImplementation 'org.springframework.boot:spring-boot-starter-test'
 
     bddTestImplementation 'org.junit.jupiter:junit-jupiter'
