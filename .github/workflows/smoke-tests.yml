@@ -1,0 +1,53 @@
+name: Smoke tests
+
+on:
+  pull_request:
+    types: [ opened, reopened, synchronize ]
+  push:
+    branches: [ main ]
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-smoke-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  smoke-tests:
+    name: Smoke tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@ad2b38190b15e4d6bdf0c97fb4fca8412226d287 # v5.3.0
+        with:
+          java-version: '25'
+          distribution: corretto
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6
+
+      - name: Run smoke tests
+        run: ./scripts/run-infrastructure-smoke-tests.sh
+
+      - name: Upload smoke-test reports and diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: smoke-test-reports
+          path: |
+            data-access-service-axon/build/reports/cucumber/
+            data-access-service-axon/build/reports/tests/bddTest/
+            data-access-service-axon/build/test-results/bddTest/
+            data-access-service-axon/build/reports/smoke-stack/
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Ensure smoke-test stack is stopped
+        if: always()
+        run: docker compose -f docker-compose.smoke-test.yml -p laa-data-access-smoke-test down --volumes --remove-orphans

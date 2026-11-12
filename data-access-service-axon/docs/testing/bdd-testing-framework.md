@@ -12,7 +12,12 @@ test of every possible behaviour. It consists of happy-path scenarios that verif
 including its interactions with the database, OAuth2, and SDS. It does not attempt to cover every edge case or error 
 condition. Those are covered by unit and integration tests.
 
-These tests will run in the CI/CD pipeline against an ephemeral environment. The environment has:
+The standalone **Smoke tests** GitHub Actions workflow runs these tests when any PR
+is opened, reopened or updated, and on pushes to `main`, including merges. It runs
+against a disposable Docker Compose stack on the runner, not a deployed environment.
+It does not currently gate deployments; see the
+[infrastructure smoke-test guide](../../../docs/infrastructure-smoke-tests.md) for
+how to change that. The environment has:
 
 * a PostgreSQL database with the same schema as production
 * a mock OAuth2 server that issues tokens with the same claims as production
@@ -25,12 +30,22 @@ and the SDS document boundary together.
 
 ## Running the BDD Tests
 
-Run the commands from the repository root. The smoke-test image contains the Axon service JAR, so
-build the JAR before bringing up the stack.
+Run the shared local/CI runner from the repository root to build the service, wait
+for readiness, run `@smoke` scenarios, collect diagnostics and remove the disposable
+stack and its database volume:
+
+```bash
+./scripts/run-infrastructure-smoke-tests.sh
+```
+
+See the [infrastructure smoke-test guide](../../../docs/infrastructure-smoke-tests.md)
+for prerequisites, CI reports and future deployment gating.
+
+To manage the stack manually, build the Axon service JAR before bringing it up:
 
 ```bash
 ./gradlew :data-access-service-axon:bootJar
-docker compose -f docker-compose.smoke-test.yml up --build --detach
+docker compose -f docker-compose.smoke-test.yml up --build --detach --wait --wait-timeout 180
 ./gradlew :data-access-service-axon:bddTest
 ```
 

@@ -113,12 +113,14 @@ Execute
 
 ### Run infrastructure smoke tests
 
-Infrastructure smoke tests run the built Docker image against a real Postgres database and
-verify the live HTTP API. See [`docs/infrastructure-smoke-tests.md`](docs/infrastructure-smoke-tests.md)
-for full details.
+The Cucumber `@smoke` scenarios run against the Axon Docker image, a real Postgres
+database, mock OAuth2 and mock SDS. The same runner builds the image, starts the
+disposable stack, runs the scenarios and removes the stack and its database volume.
+See [`docs/infrastructure-smoke-tests.md`](docs/infrastructure-smoke-tests.md) for details.
 
-The script is useful for testing the application locally.
-The smoke tests will also run in CI eventually.
+The standalone **Smoke tests** GitHub Actions workflow runs when any PR is raised,
+reopened or updated, regardless of its target branch, and on pushes to `main`
+(including merges). It reports failures independently of the deployment workflows.
 
 ```bash
 ./scripts/run-infrastructure-smoke-tests.sh
