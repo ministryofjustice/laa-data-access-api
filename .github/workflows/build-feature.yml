@@ -55,6 +55,9 @@ jobs:
       packages: write
     with:
       java_distribution: *JDK_DISTRIBUTION
+      # Temporary: compare BDD dependency resolution with the smoke-test workflow.
+      build_command: ':data-access-service-axon:compileBddTestJava build'
+      build_args: '--refresh-dependencies --stacktrace --info --console=plain'
       release_type: 'snapshot'
       override_version: ${{ needs.compute-snapshot-version.outputs.snapshot_version }}
       jacoco_coverage_report: 'true'
