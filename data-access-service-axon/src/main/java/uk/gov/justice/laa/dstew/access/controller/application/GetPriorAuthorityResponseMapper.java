@@ -37,6 +37,7 @@ public class GetPriorAuthorityResponseMapper {
     response.setSubmittedAt(
         result.submittedAt() == null ? null : result.submittedAt().atOffset(ZoneOffset.UTC));
     response.setAssignmentVersion(result.assignmentVersion());
+    response.setAssignedTo(result.caseworkerId());
     response.setDecision(
         result.decisionDetails() == null ? null : toDecision(result.decisionDetails().decision()));
     response.setDecisionJustification(

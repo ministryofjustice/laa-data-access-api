@@ -39,6 +39,21 @@ application command handler dispatches linked-group commands after locking the r
 the subscribing route projection updates those routes in the same transaction, as described in
 [Linked applications](linked-applications.md).
 
+## Prior-authority assignment
+
+`prior-authority-projection` owns `prior_authority_current_state`, including the caseworker ID
+returned as `assignedTo` by `GET /prior-authorities/{id}`. `WorkItemAssigned` sets the caseworker ID
+and assignment version; `WorkItemUnassigned` clears the caseworker ID and sets the new assignment
+version. The detail response retains the last assignee after a decision removes the work-list row.
+
+Migration V33 adds the nullable `caseworker_id` column. It does not backfill existing assignments.
+After deploying the migration and projection change, an operator must reset and replay
+`prior-authority-projection` through the approved Axon processor lifecycle. Preserve the event store,
+prior-authority data versions, and draft storage. Wait for catch-up and compare detail `assignedTo`
+and `assignmentVersion` with the latest assignment events before treating historical rows as rebuilt.
+The detail and work-list processors run independently, so their responses can still differ briefly
+while either processor catches up.
+
 ## Current application projection
 
 `ApplicationProjection` stores thin, searchable control state and the current
