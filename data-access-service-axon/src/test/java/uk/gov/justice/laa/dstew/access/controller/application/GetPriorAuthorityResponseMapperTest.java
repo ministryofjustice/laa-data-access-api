@@ -9,10 +9,13 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Stream;
+import org.assertj.core.groups.Tuple;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.DisbursementInformation;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ExpertFeeInformation;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
@@ -286,8 +289,8 @@ class GetPriorAuthorityResponseMapperTest {
     assertThat(response.getDecisionDetails().getApportionment().getClientShareAmount())
         .isEqualByComparingTo("25");
     assertThat(response.getUploadedDocuments()).hasSize(1);
-    assertThat(response.getUploadedDocuments().get(0).getDocumentType()).isNull();
-    assertThat(response.getUploadedDocuments().get(0).getUploadedAt()).isNull();
+    assertThat(response.getUploadedDocuments().getFirst().getDocumentType()).isNull();
+    assertThat(response.getUploadedDocuments().getFirst().getUploadedAt()).isNull();
   }
 
   @Test
@@ -399,21 +402,6 @@ class GetPriorAuthorityResponseMapperTest {
   }
 
   @Test
-  void givenNullUploadedDocuments_whenMapped_thenLeavesUploadedDocumentsNull() {
-    PriorAuthorityResult result =
-        PriorAuthorityResult.builder()
-            .priorAuthorityId(UUID.randomUUID())
-            .applicationId(UUID.randomUUID())
-            .justification("justification")
-            .status("DRAFT")
-            .build();
-
-    var response = mapper.toResponse(result);
-
-    assertThat(response.getUploadedDocuments()).isNull();
-  }
-
-  @Test
   void givenNullableNestedValues_whenMapped_thenLeavesTheirApiValuesNull() {
     PriorAuthorityResult expert =
         PriorAuthorityResult.builder()
@@ -499,17 +487,19 @@ class GetPriorAuthorityResponseMapperTest {
     var response = mapper.toResponse(result);
 
     assertThat(response.getUploadedDocuments()).hasSize(2);
-    assertThat(response.getUploadedDocuments().get(0).getDocumentType())
+    assertThat(response.getUploadedDocuments().getFirst().getDocumentType())
         .isEqualTo(uk.gov.justice.laa.dstew.access.model.DocumentType.GATEWAY_EVIDENCE);
-    assertThat(response.getUploadedDocuments().get(0).getFileType()).isEqualTo("PDF");
-    assertThat(response.getUploadedDocuments().get(0).getFileName()).isEqualTo("a.pdf");
-    assertThat(response.getUploadedDocuments().get(0).getMediaType()).isEqualTo("application/pdf");
-    assertThat(response.getUploadedDocuments().get(0).getSize()).isEqualTo(12L);
-    assertThat(response.getUploadedDocuments().get(0).getSourceService()).isEqualTo("CIVIL_APPLY");
-    assertThat(response.getUploadedDocuments().get(0).getChecksum()).isEqualTo("checksum-one");
-    assertThat(response.getUploadedDocuments().get(0).getUploadedAt())
+    assertThat(response.getUploadedDocuments().getFirst().getFileType()).isEqualTo("PDF");
+    assertThat(response.getUploadedDocuments().getFirst().getFileName()).isEqualTo("a.pdf");
+    assertThat(response.getUploadedDocuments().getFirst().getMediaType())
+        .isEqualTo("application/pdf");
+    assertThat(response.getUploadedDocuments().getFirst().getSize()).isEqualTo(12L);
+    assertThat(response.getUploadedDocuments().getFirst().getSourceService())
+        .isEqualTo("CIVIL_APPLY");
+    assertThat(response.getUploadedDocuments().getFirst().getChecksum()).isEqualTo("checksum-one");
+    assertThat(response.getUploadedDocuments().getFirst().getUploadedAt())
         .isEqualTo(uploadedAt.atOffset(ZoneOffset.UTC));
-    assertThat(response.getUploadedDocuments().get(1).getUploadedAt()).isNull();
+    assertThat(response.getUploadedDocuments().getLast().getUploadedAt()).isNull();
   }
 
   @Test
@@ -532,30 +522,23 @@ class GetPriorAuthorityResponseMapperTest {
 
     assertThat(response.getUploadedDocuments())
         .extracting("documentId", "fileName")
-        .containsExactly(
-            org.assertj.core.groups.Tuple.tuple(firstId, "first.pdf"),
-            org.assertj.core.groups.Tuple.tuple(lastId, "last.pdf"));
+        .containsExactly(Tuple.tuple(firstId, "first.pdf"), Tuple.tuple(lastId, "last.pdf"));
   }
 
   @ParameterizedTest
-  @ValueSource(booleans = {true, false})
-  void givenNoActiveDocuments_whenMapped_thenPreservesNullOrEmptyContract(boolean anyUploaded) {
-    PriorAuthorityResult result =
-        PriorAuthorityResult.builder()
-            .uploadedDocuments(
-                anyUploaded ? List.of(document(UUID.randomUUID(), Instant.now(), true)) : List.of())
-            .build();
-
-    var documents = mapper.toResponse(result).getUploadedDocuments();
-
-    if (anyUploaded) {
-      assertThat(documents).isEmpty();
-    } else {
-      assertThat(documents).isNull();
-    }
+  @NullAndEmptySource
+  @MethodSource("onlyDeletedDocuments")
+  void givenNoActiveDocuments_whenMapped_thenReturnsEmptyList(List<DocumentMetadata> documents) {
+    var result = PriorAuthorityResult.builder().uploadedDocuments(documents).build();
+    assertThat(mapper.toResponse(result).getUploadedDocuments()).isEmpty();
   }
 
-  private DocumentMetadata document(UUID documentId, Instant uploadedAt, boolean deleted) {
+  private static Stream<List<DocumentMetadata>> onlyDeletedDocuments() {
+    return Stream.of(
+        List.of(document(UUID.randomUUID(), Instant.parse("2026-01-01T00:00:00Z"), true)));
+  }
+
+  private static DocumentMetadata document(UUID documentId, Instant uploadedAt, boolean deleted) {
     return new DocumentMetadata(
         documentId,
         "GATEWAY_EVIDENCE",

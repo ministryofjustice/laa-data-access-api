@@ -736,7 +736,7 @@ class PriorAuthorityDraftIntegrationTest {
 
   @Test
   void
-      givenProviderWithoutThePriorAuthorityOffice_whenUploadDocument_thenReturns403AndDoesNotAppendEvent() {
+      givenProviderWithoutPriorAuthorityOffice_whenUploadDocument_thenReturns403AndDoesNotAppendEvent() {
     UUID priorAuthorityId = saveDraft(grantedApplication(), PriorAuthorityType.EXPERT, null, null);
     int eventsBefore = eventCount(priorAuthorityId);
 
@@ -748,12 +748,12 @@ class PriorAuthorityDraftIntegrationTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     assertThat(eventCount(priorAuthorityId)).isEqualTo(eventsBefore);
-    assertThat(getPriorAuthority(priorAuthorityId).getUploadedDocuments()).isNull();
+    assertThat(getPriorAuthority(priorAuthorityId).getUploadedDocuments()).isEmpty();
   }
 
   @Test
   void
-      givenProviderWithoutThePriorAuthorityOffice_whenUpdateDocumentType_thenReturns403AndDoesNotAppendEvent() {
+      givenProviderWithoutPriorAuthorityOffice_whenUpdateDocumentType_thenReturns403AndDoesNotAppendEvent() {
     UUID priorAuthorityId = saveDraft(grantedApplication(), PriorAuthorityType.EXPERT, null, null);
     when(sdsService.saveEvidenceFile(any(), any(), any()))
         .thenReturn(new SdsUploadResult(null, null, "checksum"));

@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
 import java.time.ZoneOffset;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -56,10 +57,7 @@ public class GetPriorAuthorityResponseMapper {
 
   private List<UploadedDocument> toUploadedDocuments(PriorAuthorityResult result) {
     if (result.uploadedDocuments() == null) {
-      return null;
-    }
-    if (result.uploadedDocuments().isEmpty()) {
-      return null;
+      return Collections.emptyList();
     }
     Map<UUID, String> filenames =
         result.documentFilenames() == null ? Map.of() : result.documentFilenames();
