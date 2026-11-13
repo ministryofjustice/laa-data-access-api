@@ -227,7 +227,7 @@ class GetPriorAuthorityResponseMapperTest {
                     ExpertFeeInformation.builder()
                         .newFixedRateAmount(BigDecimal.valueOf(250))
                         .newHourlyRateAmount(BigDecimal.valueOf(175))
-                        .newTimeRequested(new TimeRequested(3, 15))
+                        .grantedTime(new TimeRequested(3, 15))
                         .build(),
                     DisbursementInformation.builder().newAmount(BigDecimal.valueOf(50)).build(),
                     ApportionmentInformation.builder()
@@ -274,9 +274,8 @@ class GetPriorAuthorityResponseMapperTest {
         .isEqualByComparingTo("250");
     assertThat(response.getDecisionDetails().getExpert().getNewHourlyRateAmount())
         .isEqualByComparingTo("175");
-    assertThat(response.getDecisionDetails().getExpert().getNewTimeRequested().getHours())
-        .isEqualTo(3);
-    assertThat(response.getDecisionDetails().getExpert().getNewTimeRequested().getMinutes())
+    assertThat(response.getDecisionDetails().getExpert().getGrantedTime().getHours()).isEqualTo(3);
+    assertThat(response.getDecisionDetails().getExpert().getGrantedTime().getMinutes())
         .isEqualTo(15);
     assertThat(response.getExpertDetails().getExpertCosts().getTimeRequested().getHours())
         .isEqualTo(2);
@@ -292,7 +291,7 @@ class GetPriorAuthorityResponseMapperTest {
   }
 
   @Test
-  void givenDecisionWithoutTimeOverride_whenMapped_thenNewTimeRequestedIsNull() {
+  void givenDecisionWithoutTimeOverride_whenMapped_thenGrantedTimeIsNull() {
     PriorAuthorityResult result =
         PriorAuthorityResult.builder()
             .decisionDetails(
@@ -309,7 +308,7 @@ class GetPriorAuthorityResponseMapperTest {
 
     var response = mapper.toResponse(result);
 
-    assertThat(response.getDecisionDetails().getExpert().getNewTimeRequested()).isNull();
+    assertThat(response.getDecisionDetails().getExpert().getGrantedTime()).isNull();
   }
 
   @Test

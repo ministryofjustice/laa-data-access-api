@@ -199,7 +199,7 @@ public class GetPriorAuthorityResponseMapper {
           new uk.gov.justice.laa.dstew.access.model.ExpertFeeInformation();
       expertInfo.setNewFixedRateAmount(details.expert().getNewFixedRateAmount());
       expertInfo.setNewHourlyRateAmount(details.expert().getNewHourlyRateAmount());
-      expertInfo.setNewTimeRequested(toTimeRequested(details.expert().getNewTimeRequested()));
+      expertInfo.setGrantedTime(toTimeRequested(details.expert().getGrantedTime()));
       result.setExpert(expertInfo);
     }
     if (details.disbursement() != null) {
@@ -210,7 +210,6 @@ public class GetPriorAuthorityResponseMapper {
     }
     if (details.apportionment() != null) {
       Apportionment apportionmentInfo = new Apportionment();
-      // apportionmentInfo.setPartiesSharingCosts(...) // Not available in command object
       apportionmentInfo.setClientShareAmount(details.apportionment().getNewClientShareAmount());
       result.setApportionment(apportionmentInfo);
     }

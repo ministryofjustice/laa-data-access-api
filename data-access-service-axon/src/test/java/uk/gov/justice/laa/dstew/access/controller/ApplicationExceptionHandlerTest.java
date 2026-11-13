@@ -107,7 +107,7 @@ class ApplicationExceptionHandlerTest {
         catchThrowable(
             () ->
                 mapper.readValue(
-                    "{\"expert\":{\"newTimeRequested\":{\"hours\":2.5,\"minutes\":0}}}",
+                    "{\"expert\":{\"grantedTime\":{\"hours\":2.5,\"minutes\":0}}}",
                     MakePriorAuthorityDecisionRequest.class));
     assertThat(cause).isInstanceOf(MismatchedInputException.class);
 
@@ -118,7 +118,7 @@ class ApplicationExceptionHandlerTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     assertThat(response.getBody().getDetail()).isEqualTo("Generic Validation Error");
     assertThat(response.getBody().getProperties())
-        .containsEntry("errors", List.of("expert.newTimeRequested.hours: invalid value"));
+        .containsEntry("errors", List.of("expert.grantedTime.hours: invalid value"));
   }
 
   @Test

@@ -281,8 +281,7 @@ public class PriorAuthorityDecisionAcceptIntegrationTest {
             .priorAuthorityVersion(0L)
             .expert(
                 new ExpertMakePriorAuthorityDecisionRequest()
-                    .newTimeRequested(
-                        DecisionTimeRequested.builder().hours(3).minutes(15).build()));
+                    .grantedTime(DecisionTimeRequested.builder().hours(3).minutes(15).build()));
 
     ResponseEntity<Void> decisionResponse =
         restTemplate.exchange(
@@ -294,9 +293,8 @@ public class PriorAuthorityDecisionAcceptIntegrationTest {
     assertThat(decisionResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     awaitDecidedPriorAuthorityProjection(priorAuthorityId);
     PriorAuthorityResponse response = getPriorAuthority(priorAuthorityId);
-    assertThat(response.getDecisionDetails().getExpert().getNewTimeRequested().getHours())
-        .isEqualTo(3);
-    assertThat(response.getDecisionDetails().getExpert().getNewTimeRequested().getMinutes())
+    assertThat(response.getDecisionDetails().getExpert().getGrantedTime().getHours()).isEqualTo(3);
+    assertThat(response.getDecisionDetails().getExpert().getGrantedTime().getMinutes())
         .isEqualTo(15);
     assertThat(response.getExpertDetails().getExpertCosts().getTimeRequested().getHours())
         .isEqualTo(2);
@@ -367,7 +365,7 @@ public class PriorAuthorityDecisionAcceptIntegrationTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     assertThat(response.getBody()).contains("Generic Validation Error");
-    assertThat(response.getBody()).contains("newTimeRequested");
+    assertThat(response.getBody()).contains("grantedTime");
     assertNoDecisionData(priorAuthorityId);
   }
 
@@ -388,7 +386,7 @@ public class PriorAuthorityDecisionAcceptIntegrationTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     assertThat(response.getBody())
         .contains(
-            "expert.newTimeRequested is only permitted for EXPERT prior authorities with HOURLY billing");
+            "expert.grantedTime is only permitted for EXPERT prior authorities with HOURLY billing");
     assertNoDecisionData(priorAuthorityId);
   }
 
@@ -439,13 +437,13 @@ public class PriorAuthorityDecisionAcceptIntegrationTest {
         String.class);
   }
 
-  private String decisionJson(String newTimeRequestedJson) {
+  private String decisionJson(String grantedTimeJson) {
     return """
         {"decision":"GRANTED","decisionJustification":"Granted","amountGranted":200,
          "dateGranted":"2026-11-01T10:00:00Z","eventHistory":{},"priorAuthorityVersion":0,
-         "expert":{"newTimeRequested":%s}}
+         "expert":{"grantedTime":%s}}
         """
-        .formatted(newTimeRequestedJson);
+        .formatted(grantedTimeJson);
   }
 
   private UUID saveDraftAndSubmit(
