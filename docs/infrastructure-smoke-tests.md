@@ -110,6 +110,10 @@ as UID/GID 999 with `fsGroup=999` and a `PGDATA` subdirectory on the ephemeral v
 so initialisation does not need root capabilities. SDS OAuth2 uses synthetic credentials,
 not the shared UAT OAuth2 secret.
 
+WireMock runs explicitly as UID/GID 1000 because its image defaults to root.
+The ConfigMap mappings remain read-only; the image's root-only `uid` entrypoint
+option is not used.
+
 The smoke release's monitoring NetworkPolicy selects only its API pods. A run-labelled
 dependency NetworkPolicy permits PostgreSQL, mock Entra and SDS ingress from that run's
 API pods on their service ports. Other releases' network policies remain unchanged;
