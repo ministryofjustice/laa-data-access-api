@@ -16,16 +16,4 @@ public record PriorAuthorityDocumentTypeUpdateCommand(
     String serialisedRequest,
     Instant occurredAt,
     AuthenticatedCaller caller)
-    implements CallerCommand {
-
-  /** Temporary source-compatible constructor for non-HTTP command fixtures. */
-  @Deprecated(forRemoval = true)
-  public PriorAuthorityDocumentTypeUpdateCommand(
-      UUID priorAuthorityId,
-      UUID documentId,
-      String documentType,
-      String serialisedRequest,
-      Instant occurredAt) {
-    this(priorAuthorityId, documentId, documentType, serialisedRequest, occurredAt, null);
-  }
-}
+    implements CallerCommand {}
