@@ -155,7 +155,9 @@ The smoke Compose stack replaces the external Secure Document Store (SDS) with W
 service; production SDS is never contacted. Its mappings are in `infra/wiremock/sds/mappings/` and
 cover client-credentials tokens, upload (`/save_file` and `/save_or_update_file`), lookup
 (`/get_file`), download (`/files/smoke-document.pdf`), and deletion (`/delete_files`). The download
-mapping returns a small PDF fixture for every scenario.
+mapping returns a small PDF fixture for every scenario. The `/get_file` mapping builds `fileURL`
+from the request `Host` header (`{{request.headers.Host}}`), so the download URL points at whichever
+WireMock hostname the caller used; this requires WireMock global response templating.
 
 To add an SDS behaviour, create or update a WireMock mapping JSON file in that directory. Define a
 specific `request` match (method, path, query parameters, headers, and/or body) and the response

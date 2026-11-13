@@ -2,8 +2,9 @@
 
 ## Purpose
 
-The Cucumber `@smoke` scenarios verify the live Axon HTTP API in a disposable Docker
-Compose stack. They exercise application and prior-authority lifecycles, including
+The Cucumber `@smoke` scenarios verify the live Axon HTTP API in a disposable stack: a
+local Docker Compose stack, or a per-run Kubernetes stack in CI. They exercise application
+and prior-authority lifecycles, including
 PostgreSQL migrations, OAuth2 security, asynchronous projections and SDS document
 operations. OAuth2 and SDS are test doubles; no deployed services are contacted.
 
@@ -70,25 +71,78 @@ If startup fails, test reports may not exist; inspect the stack diagnostics firs
 ## GitHub Actions
 
 The [Smoke tests](../.github/workflows/smoke-tests.yml) workflow is reusable only
-(`workflow_call`). It does not run on its own. Two build workflows call it as a
-separate `smoke-tests` job:
+(`workflow_call`). It does not run on its own. Two build workflows call it:
 
-- [`build-feature.yml`](../.github/workflows/build-feature.yml) runs it on PRs,
-  after `build-and-test`.
-- [`build-main.yml`](../.github/workflows/build-main.yml) runs it on pushes to
-  `main`, after `release`.
+- [`build-feature.yml`](../.github/workflows/build-feature.yml) runs it on PRs, after
+  `ecr-publish-service-image`.
+- [`build-main.yml`](../.github/workflows/build-main.yml) runs it on pushes to `main`,
+  after `ecr-publish-service-image`.
 
-The image publish jobs (`ecr-publish-service-image`) wait for `smoke-tests`. The
-deploy jobs wait for those publish jobs, so a smoke failure stops the deployment
-chain.
+The candidate image is published first. The smoke job tests that exact
+`published_image_version` tag, and the UAT, feature, staging and production deploy jobs
+deploy the same tag only after the smoke job succeeds. A smoke failure therefore stops
+the deployment chain. The Compose stack is no longer used in CI.
 
-The job uses a GitHub-hosted Ubuntu runner, Corretto Java 25, the Gradle wrapper
-and the same script used locally. It needs no deployment credentials. It has a
-25-minute timeout and a final cleanup step as a backstop for the script's trap.
-Reports and diagnostics are uploaded as the `smoke-test-reports` artifact and kept
-for 14 days, even if an earlier step fails. If a report file is missing because the
-run failed before producing it, the upload step logs a warning instead of failing.
+## Kubernetes smoke tests (CI)
 
-To require success before merging, add the **Smoke tests** job as a required check
-in the repository's ruleset or branch protection after its first CI run. No branch
-protection or repository settings are changed by this workflow.
+Each run creates an isolated stack in the `uat` namespace, named from `GITHUB_RUN_ID` and
+`GITHUB_RUN_ATTEMPT`:
+
+| Resource | Source |
+|----------|--------|
+| PostgreSQL 17 (ephemeral `emptyDir`, random password in a Secret) | [`.helm/smoke-test/stack.yaml`](../.helm/smoke-test/stack.yaml) |
+| Mock Entra (`navikt/mock-oauth2-server` 6.0.2) | Same manifest, config from [`infra/mock-oauth2/config-smoke-test.json`](../infra/mock-oauth2/config-smoke-test.json) |
+| SDS WireMock (3.13.1, global templating) | Same manifest, mappings from [`infra/wiremock/sds/mappings`](../infra/wiremock/sds/mappings) |
+| API release | [`.helm/data-access-api`](../.helm/data-access-api) with `values/uat.yaml` then `values/smoke-test.yaml` |
+
+The API release uses `spring.profile=smoke`, a per-run database, the in-cluster mock
+Entra issuer and SDS, JWT validation enabled, dev tokens enabled, and external
+integration events, ingress, Grafana and port-forward pods disabled. The
+`values/uat.yaml` defaults are unchanged. Services are `ClusterIP` only, and no ingress
+is created.
+
+The dependency pods have explicit CPU and memory requests and limits. PostgreSQL runs
+as UID/GID 999 with `fsGroup=999` and a `PGDATA` subdirectory on the ephemeral volume,
+so initialisation does not need root capabilities. SDS OAuth2 uses synthetic credentials,
+not the shared UAT OAuth2 secret.
+
+The smoke release's monitoring NetworkPolicy selects only its API pods. A run-labelled
+dependency NetworkPolicy permits PostgreSQL, mock Entra and SDS ingress from that run's
+API pods on their service ports. Other releases' network policies remain unchanged;
+Kubernetes allow rules are additive, so namespace-wide policies can still grant wider
+access. Teardown also removes the run's dependency NetworkPolicy.
+
+The runner reaches the API on `localhost:8080` and mock Entra on `localhost:9998` through
+port-forwards. No database port-forward is needed. The BDD client sends the
+`Host: smoke-<run>-mock-oauth2.<namespace>.svc.cluster.local:9999` header through
+`LAA_BDD_TOKEN_ISSUER_HOST`, so token `iss` matches `ENTRA_ISSUER_URI` in the API. The SDS
+`fileURL` is built from the request `Host` header, so it resolves to the run's WireMock.
+
+[`scripts/kubernetes-smoke-stack.sh`](../scripts/kubernetes-smoke-stack.sh) manages the
+stack:
+
+| Command | Behaviour |
+|---------|-----------|
+| `up` | Creates labelled ConfigMaps, applies the rendered stack, waits for readiness, then runs `helm upgrade --install`. |
+| `down` | Uninstalls the run's Helm release and deletes resources labelled with its run ID. |
+| `cleanup-abandoned [hours]` | Runs `down` for every run whose resources are older than the threshold. |
+
+Every resource carries `app.kubernetes.io/part-of=laa-data-access-smoke-test`,
+`laa-smoke-run-id` and `laa-smoke-created-epoch`, so teardown and cleanup touch only
+smoke-test resources. The
+[cleanup workflow](../.github/workflows/smoke-test-cleanup.yml) runs hourly and removes
+stacks older than six hours left by cancelled or crashed runs. Its schedule and
+authentication must be approved by the platform owners.
+
+The smoke job runs under the `uat` environment, so its protection rules apply. It has a
+30-minute timeout. A final `always()` step runs `down` for the run, and diagnostics
+(pod status, events, and logs for each component) are included in the
+`smoke-test-reports` artifact.
+
+The image tag is passed from `ecr-publish-service-image` (`published_image_version`).
+The workflow does not resolve a registry digest, so the tag is the immutable identity for
+the tested image.
+
+## Compose smoke tests (local)
+
+The local runner described above remains available. It is not used in CI.
