@@ -34,6 +34,10 @@ final class PactStates {
   // Fresh draft per interaction, identifier injected: for requests that submit a draft or upload
   // to it.
   static final String NEW_APPLICATION_DRAFT_EXISTS = "a new application draft exists";
+  // Two fresh submitted applications per interaction, neither in a linked group, identifiers
+  // injected: for requests that link them.
+  static final String NEW_UNLINKED_APPLICATIONS_EXIST =
+      "two new submitted applications exist without a linked group";
 
   // Work list
   static final String WORK_LIST_ITEMS_EXIST = "work list items exist";
