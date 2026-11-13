@@ -207,8 +207,14 @@ You can also use the Swagger UI to execute endpoints, which is described below i
 #### Making a Prior Authority decision
 
 Submit a decision with `PATCH
-/api/v0/prior-authorities/{priorAuthorityId}/decision`. For an expert decision, the optional
-`newTimeRequested` value can be included alongside other expert fee overrides:
+/api/v0/prior-authorities/{priorAuthorityId}/decision`. `priorAuthorityVersion` is required for
+optimistic concurrency control: use the `version` value from a prior `GET
+/api/v0/prior-authorities/{priorAuthorityId}` response. A submitted prior authority with no
+decision yet returns `version: 0`. Sending a `priorAuthorityVersion` that no longer matches the
+prior authority's current `version` returns `409 Conflict`.
+
+For an expert decision, the optional `newTimeRequested` value can be included alongside other
+expert fee overrides:
 
 ```json
 {

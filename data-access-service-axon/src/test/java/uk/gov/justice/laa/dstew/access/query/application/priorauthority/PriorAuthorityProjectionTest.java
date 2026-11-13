@@ -490,6 +490,7 @@ class PriorAuthorityProjectionTest {
     assertThat(result.priorAuthorityType()).isEqualTo(COUNSEL);
     assertThat(result.justification()).isEqualTo("Counsel is required");
     assertThat(result.status()).isEqualTo(status);
+    assertThat(result.dataVersion()).isEqualTo(4L);
     assertThat(result.submittedAt()).isEqualTo(submittedAt);
     assertThat(result.counselDetails().counselType()).isEqualTo(CounselType.TWO_JUNIOR_COUNSEL);
     assertThat(result.expertDetails()).isNull();

@@ -16,6 +16,7 @@ public record PriorAuthorityResult(
     UUID applicationId,
     String justification,
     String status,
+    long dataVersion,
     long assignmentVersion,
     Instant submittedAt,
     PriorAuthorityType priorAuthorityType,
@@ -39,6 +40,7 @@ public record PriorAuthorityResult(
         priorAuthority.getApplicationId(),
         content.justification(),
         priorAuthority.getStatus(),
+        priorAuthority.getDataVersion(),
         priorAuthority.getAssignmentVersion(),
         PriorAuthorityStatus.DRAFT.name().equals(priorAuthority.getStatus())
             ? null

@@ -260,6 +260,108 @@ public class PriorAuthorityDecisionAcceptIntegrationTest {
   }
 
   @Test
+  void givenSubmittedPriorAuthority_whenRetrieved_thenReturnsVersionZero() throws Exception {
+    UUID applicationId = grantedApplication();
+    UUID priorAuthorityId =
+        saveDraftAndSubmit(
+            applicationId,
+            PriorAuthorityType.DISBURSEMENT,
+            "Interpreter costs for proceedings",
+            validDisbursementRequest());
+
+    PriorAuthorityResponse priorAuthority = getPriorAuthority(priorAuthorityId);
+
+    assertThat(priorAuthority.getStatus()).isEqualTo(PriorAuthorityResponse.StatusEnum.SUBMITTED);
+    assertThat(priorAuthority.getVersion()).isZero();
+  }
+
+  @Test
+  void givenVersionFromGetResponse_whenUsedToMakeADecision_thenSucceedsAndVersionIncrements()
+      throws Exception {
+    UUID applicationId = grantedApplication();
+    UUID priorAuthorityId =
+        saveDraftAndSubmit(
+            applicationId,
+            PriorAuthorityType.DISBURSEMENT,
+            "Interpreter costs for proceedings",
+            validDisbursementRequest());
+    assignPriorAuthority(priorAuthorityId);
+
+    Long versionFromGetResponse = getPriorAuthority(priorAuthorityId).getVersion();
+
+    MakePriorAuthorityDecisionRequest decisionRequest =
+        new MakePriorAuthorityDecisionRequest()
+            .decision(DecisionStatus.GRANTED)
+            .decisionJustification("Granted as per policy guidelines")
+            .amountGranted(BigDecimal.valueOf(150.0))
+            .dateGranted(OffsetDateTime.now())
+            .eventHistory(new EventHistoryRequest())
+            .priorAuthorityVersion(versionFromGetResponse);
+
+    ResponseEntity<Void> decisionResponse =
+        restTemplate.exchange(
+            decisionUrl(priorAuthorityId),
+            HttpMethod.PATCH,
+            new HttpEntity<>(decisionRequest, headers()),
+            Void.class);
+
+    assertThat(decisionResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    awaitDecidedPriorAuthorityProjection(priorAuthorityId);
+    PriorAuthorityResponse decided = getPriorAuthority(priorAuthorityId);
+    assertThat(decided.getStatus()).isEqualTo(PriorAuthorityResponse.StatusEnum.DECIDED);
+    assertThat(decided.getVersion()).isEqualTo(versionFromGetResponse + 1);
+  }
+
+  @Test
+  void givenStaleVersionObtainedBeforeADecision_whenMakingADecision_thenReturnsConflict()
+      throws Exception {
+    UUID applicationId = grantedApplication();
+    UUID priorAuthorityId =
+        saveDraftAndSubmit(
+            applicationId,
+            PriorAuthorityType.DISBURSEMENT,
+            "Interpreter costs for proceedings",
+            validDisbursementRequest());
+    assignPriorAuthority(priorAuthorityId);
+    Long staleVersion = getPriorAuthority(priorAuthorityId).getVersion();
+
+    MakePriorAuthorityDecisionRequest firstDecisionRequest =
+        new MakePriorAuthorityDecisionRequest()
+            .decision(DecisionStatus.GRANTED)
+            .decisionJustification("Granted as per policy guidelines")
+            .amountGranted(BigDecimal.valueOf(150.0))
+            .dateGranted(OffsetDateTime.now())
+            .eventHistory(new EventHistoryRequest())
+            .priorAuthorityVersion(staleVersion);
+    ResponseEntity<Void> firstDecision =
+        restTemplate.exchange(
+            decisionUrl(priorAuthorityId),
+            HttpMethod.PATCH,
+            new HttpEntity<>(firstDecisionRequest, headers()),
+            Void.class);
+    assertThat(firstDecision.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    awaitDecidedPriorAuthorityProjection(priorAuthorityId);
+
+    MakePriorAuthorityDecisionRequest staleDecisionRequest =
+        new MakePriorAuthorityDecisionRequest()
+            .decision(DecisionStatus.REFUSED)
+            .decisionJustification("Second decision attempt using a stale version")
+            .amountGranted(BigDecimal.ZERO)
+            .dateGranted(OffsetDateTime.now())
+            .eventHistory(new EventHistoryRequest())
+            .priorAuthorityVersion(staleVersion);
+
+    ResponseEntity<String> staleDecisionResponse =
+        restTemplate.exchange(
+            decisionUrl(priorAuthorityId),
+            HttpMethod.PATCH,
+            new HttpEntity<>(staleDecisionRequest, headers()),
+            String.class);
+
+    assertThat(staleDecisionResponse.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+  }
+
+  @Test
   void givenHourlyExpert_whenDecisionWithTimeOverride_thenResponseShowsOverrideAndOriginal()
       throws Exception {
     UUID applicationId = grantedApplication();
