@@ -84,8 +84,10 @@ class PriorAuthorityProjectionTest {
     for (int replay = 0; replay < 2; replay++) {
       projection.on(assigned);
       assertThat(model.getAssignmentVersion()).isEqualTo(1L);
+      assertThat(model.getCaseworkerId()).isEqualTo(assigned.caseworkerId());
       projection.on(unassigned);
       assertThat(model.getAssignmentVersion()).isEqualTo(2L);
+      assertThat(model.getCaseworkerId()).isNull();
     }
 
     assertThat(model.getDataVersion()).isEqualTo(1L);
@@ -461,12 +463,14 @@ class PriorAuthorityProjectionTest {
   void givenPriorAuthorityId_whenQueryHandled_thenReturnsHydratedResult(String status) {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
     Instant submittedAt = Instant.parse("2026-09-11T10:00:00Z");
     PriorAuthorityReadModel model =
         PriorAuthorityReadModel.builder()
             .priorAuthorityId(priorAuthorityId)
             .applicationId(applicationId)
             .dataVersion(4L)
+            .caseworkerId(caseworkerId)
             .status(status)
             .build();
     PriorAuthorityContent content =
@@ -488,6 +492,7 @@ class PriorAuthorityProjectionTest {
     assertThat(result.priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(result.applicationId()).isEqualTo(applicationId);
     assertThat(result.priorAuthorityType()).isEqualTo(COUNSEL);
+    assertThat(result.caseworkerId()).isEqualTo(caseworkerId);
     assertThat(result.justification()).isEqualTo("Counsel is required");
     assertThat(result.status()).isEqualTo(status);
     assertThat(result.submittedAt()).isEqualTo(submittedAt);
