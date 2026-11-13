@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,11 +29,15 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsUploadResult;
 
 @ExtendWith(MockitoExtension.class)
 class UploadEvidenceDocumentUseCaseTest {
+
+  private static final AuthenticatedCaller CALLER =
+      new AuthenticatedCaller(Optional.empty(), Set.of(), Set.of("1A001B"), Set.of());
 
   @Mock private PriorAuthorityDraftStore draftStore;
   @Mock private RetryingCommandDispatcher dispatcher;
@@ -66,7 +71,7 @@ class UploadEvidenceDocumentUseCaseTest {
         .when(dispatcher)
         .dispatch(org.mockito.ArgumentMatchers.any(PriorAuthorityDocumentUploadCommand.class));
 
-    var response = useCase.execute(priorAuthorityId, file, "CIVIL_APPLY");
+    var response = useCase.execute(priorAuthorityId, file, "CIVIL_APPLY", CALLER);
 
     assertThat(response.documentId()).isNotNull();
     assertThat(response.fileType()).isEqualTo("PDF");
@@ -92,7 +97,8 @@ class UploadEvidenceDocumentUseCaseTest {
                 response.uploadedAt(),
                 "evidence.pdf",
                 12L,
-                "application/pdf"));
+                "application/pdf",
+                CALLER));
   }
 
   @Test
@@ -106,7 +112,7 @@ class UploadEvidenceDocumentUseCaseTest {
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.empty());
 
     assertThatExceptionOfType(ResourceNotFoundException.class)
-        .isThrownBy(() -> useCase.execute(priorAuthorityId, file, "CIVIL_APPLY"));
+        .isThrownBy(() -> useCase.execute(priorAuthorityId, file, "CIVIL_APPLY", CALLER));
   }
 
   @Test
@@ -137,7 +143,7 @@ class UploadEvidenceDocumentUseCaseTest {
         .when(dispatcher)
         .dispatch(org.mockito.ArgumentMatchers.any(PriorAuthorityDocumentUploadCommand.class));
 
-    useCase.execute(priorAuthorityId, file, "CIVIL_APPLY");
+    useCase.execute(priorAuthorityId, file, "CIVIL_APPLY", CALLER);
 
     ArgumentCaptor<PriorAuthorityDocumentUploadCommand> commandCaptor =
         ArgumentCaptor.forClass(PriorAuthorityDocumentUploadCommand.class);
@@ -168,7 +174,7 @@ class UploadEvidenceDocumentUseCaseTest {
         .dispatch(new ValidateApplicationGrantedCommand(applicationId));
 
     assertThatExceptionOfType(InvalidApplicationStateException.class)
-        .isThrownBy(() -> useCase.execute(priorAuthorityId, file, "CIVIL_APPLY"));
+        .isThrownBy(() -> useCase.execute(priorAuthorityId, file, "CIVIL_APPLY", CALLER));
 
     verify(dispatcher).dispatch(new ValidateApplicationGrantedCommand(applicationId));
     verifyNoMoreInteractions(dispatcher);
@@ -182,7 +188,7 @@ class UploadEvidenceDocumentUseCaseTest {
         new MockMultipartFile("file", "evidence.txt", "text/plain", "not a PDF".getBytes());
 
     assertThatExceptionOfType(IllegalArgumentException.class)
-        .isThrownBy(() -> useCase.execute(UUID.randomUUID(), file, "CIVIL_APPLY"))
+        .isThrownBy(() -> useCase.execute(UUID.randomUUID(), file, "CIVIL_APPLY", CALLER))
         .withMessage("Unsupported document content type");
 
     verifyNoInteractions(sdsService);
@@ -196,7 +202,7 @@ class UploadEvidenceDocumentUseCaseTest {
         new MockMultipartFile("file", "evidence.pdf", "application/pdf", "not a PDF".getBytes());
 
     assertThatExceptionOfType(IllegalArgumentException.class)
-        .isThrownBy(() -> useCase.execute(UUID.randomUUID(), file, "CIVIL_APPLY"))
+        .isThrownBy(() -> useCase.execute(UUID.randomUUID(), file, "CIVIL_APPLY", CALLER))
         .withMessage("Uploaded file is not a valid PDF document");
 
     verifyNoInteractions(sdsService);
@@ -212,7 +218,7 @@ class UploadEvidenceDocumentUseCaseTest {
     when(file.getInputStream()).thenThrow(new IOException("Unable to read file"));
 
     assertThatExceptionOfType(IllegalArgumentException.class)
-        .isThrownBy(() -> useCase.execute(UUID.randomUUID(), file, "CIVIL_APPLY"))
+        .isThrownBy(() -> useCase.execute(UUID.randomUUID(), file, "CIVIL_APPLY", CALLER))
         .withMessage("Unable to validate uploaded document")
         .withCauseInstanceOf(IOException.class);
 

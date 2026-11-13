@@ -19,28 +19,4 @@ public record PriorAuthorityDocumentUploadCommand(
     Long fileSize,
     String contentType,
     AuthenticatedCaller caller)
-    implements CallerCommand {
-
-  /** Temporary source-compatible constructor for non-HTTP command fixtures. */
-  @Deprecated(forRemoval = true)
-  public PriorAuthorityDocumentUploadCommand(
-      UUID priorAuthorityId,
-      UUID documentId,
-      String sourceService,
-      String checksum,
-      Instant occurredAt,
-      String originalFilename,
-      Long fileSize,
-      String contentType) {
-    this(
-        priorAuthorityId,
-        documentId,
-        sourceService,
-        checksum,
-        occurredAt,
-        originalFilename,
-        fileSize,
-        contentType,
-        null);
-  }
-}
+    implements CallerCommand {}

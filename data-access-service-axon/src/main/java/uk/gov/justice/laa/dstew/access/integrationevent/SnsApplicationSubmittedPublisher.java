@@ -3,9 +3,9 @@ package uk.gov.justice.laa.dstew.access.integrationevent;
 import software.amazon.awssdk.services.sns.SnsClient;
 import software.amazon.awssdk.services.sns.model.MessageAttributeValue;
 import software.amazon.awssdk.services.sns.model.PublishRequest;
-import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
+import uk.gov.justice.laa.dstew.access.util.RequestSerialiser;
 
 /** AWS SNS adapter for {@link ApplicationSubmittedEvent}. */
 @ExcludeFromGeneratedCodeCoverage
@@ -25,16 +25,12 @@ public class SnsApplicationSubmittedPublisher implements ApplicationSubmittedPub
 
   @Override
   public void publish(ApplicationSubmittedEvent event) {
-    try {
-      snsClient.publish(
-          PublishRequest.builder()
-              .topicArn(topicArn)
-              .message(objectMapper.writeValueAsString(event))
-              .messageAttributes(java.util.Map.of("eventType", stringAttribute(event.eventType())))
-              .build());
-    } catch (JacksonException exception) {
-      throw new IllegalStateException("Unable to serialise ApplicationSubmitted event", exception);
-    }
+    snsClient.publish(
+        PublishRequest.builder()
+            .topicArn(topicArn)
+            .message(RequestSerialiser.serialise(objectMapper, event))
+            .messageAttributes(java.util.Map.of("eventType", stringAttribute(event.eventType())))
+            .build());
   }
 
   private MessageAttributeValue stringAttribute(String value) {

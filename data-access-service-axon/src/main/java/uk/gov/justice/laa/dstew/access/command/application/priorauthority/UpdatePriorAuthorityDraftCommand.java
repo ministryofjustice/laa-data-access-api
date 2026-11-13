@@ -18,17 +18,4 @@ public record UpdatePriorAuthorityDraftCommand(
     String schemaName,
     Instant occurredAt,
     AuthenticatedCaller caller)
-    implements CallerCommand {
-
-  /** Temporary source-compatible constructor for non-HTTP command fixtures. */
-  @Deprecated(forRemoval = true)
-  public UpdatePriorAuthorityDraftCommand(
-      UUID priorAuthorityId,
-      PriorAuthorityContent content,
-      String serialisedRequest,
-      int schemaVersion,
-      String schemaName,
-      Instant occurredAt) {
-    this(priorAuthorityId, content, serialisedRequest, schemaVersion, schemaName, occurredAt, null);
-  }
-}
+    implements CallerCommand {}

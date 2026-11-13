@@ -74,10 +74,4 @@ public class DeletePriorAuthorityDocumentUseCase {
           exception);
     }
   }
-
-  /** Temporary source-compatible overload for non-HTTP fixtures. */
-  @Deprecated(forRemoval = true)
-  public void execute(UUID priorAuthorityId, UUID documentId) {
-    execute(priorAuthorityId, documentId, null);
-  }
 }

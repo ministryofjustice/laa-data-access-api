@@ -73,11 +73,4 @@ public class UploadPriorAuthorityDocumentUseCase {
         sourceService,
         checksum);
   }
-
-  /** Temporary source-compatible overload for non-HTTP fixtures. */
-  @Deprecated(forRemoval = true)
-  public DocumentUploadResult execute(
-      UUID priorAuthorityId, MultipartFile file, String sourceService) {
-    return execute(priorAuthorityId, file, sourceService, null);
-  }
 }

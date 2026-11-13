@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
@@ -39,10 +40,14 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityCont
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 
 @ExtendWith(MockitoExtension.class)
 class SubmitPriorAuthorityDraftCommandHandlerTest {
+
+  private static final AuthenticatedCaller CALLER =
+      new AuthenticatedCaller(Optional.empty(), Set.of(), Set.of("1A001B"), Set.of());
 
   private static final Instant OCCURRED_AT = Instant.parse("2026-09-01T10:00:00Z");
 
@@ -66,7 +71,7 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
         new PriorAuthorityDataPayload(
             priorAuthorityId, applicationId, content, "{}", Instant.parse("2026-08-31T09:00:00Z"));
     SubmitPriorAuthorityDraftCommand command =
-        new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT);
+        new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT, CALLER);
     PriorAuthorityState state =
         startedState(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT, 1);
 
@@ -113,7 +118,7 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
   void givenMissingDraft_whenHandle_thenThrowsResourceNotFoundException() {
     UUID priorAuthorityId = UUID.randomUUID();
     SubmitPriorAuthorityDraftCommand command =
-        new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT);
+        new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT, CALLER);
 
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.empty());
 
@@ -144,7 +149,7 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
     PriorAuthorityDataPayload payload =
         new PriorAuthorityDataPayload(priorAuthorityId, applicationId, content, "{}", OCCURRED_AT);
     SubmitPriorAuthorityDraftCommand command =
-        new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT);
+        new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT, CALLER);
     PriorAuthorityState state =
         startedState(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT, 4);
 
@@ -201,7 +206,7 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
     PriorAuthorityDataPayload payload =
         new PriorAuthorityDataPayload(priorAuthorityId, applicationId, content, "{}", OCCURRED_AT);
     SubmitPriorAuthorityDraftCommand command =
-        new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT);
+        new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT, CALLER);
     PriorAuthorityState state =
         startedState(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT, 1);
 
@@ -242,7 +247,7 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
     PriorAuthorityDataPayload payload =
         new PriorAuthorityDataPayload(priorAuthorityId, applicationId, content, "{}", OCCURRED_AT);
     SubmitPriorAuthorityDraftCommand command =
-        new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT);
+        new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT, CALLER);
     PriorAuthorityState state =
         startedState(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT, 1);
 

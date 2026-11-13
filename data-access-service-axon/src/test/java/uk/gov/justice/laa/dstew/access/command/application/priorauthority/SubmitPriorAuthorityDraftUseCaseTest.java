@@ -15,6 +15,7 @@ import static org.mockito.Mockito.when;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,10 +30,14 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.query.ProjectionReadinessGateway;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthoritySubmittedByPriorAuthorityIdQuery;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 @ExtendWith(MockitoExtension.class)
 class SubmitPriorAuthorityDraftUseCaseTest {
+
+  private static final AuthenticatedCaller CALLER =
+      new AuthenticatedCaller(Optional.empty(), Set.of(), Set.of("1A001B"), Set.of());
 
   @Mock private RetryingCommandDispatcher dispatcher;
   @Mock private ProjectionReadinessGateway projectionGateway;
@@ -136,7 +141,7 @@ class SubmitPriorAuthorityDraftUseCaseTest {
     lenient()
         .when(draftStore.find(priorAuthorityId))
         .thenReturn(Optional.of(stubDraftPayload(priorAuthorityId, UUID.randomUUID())));
-    return new SubmitPriorAuthorityDraftCommand(priorAuthorityId, Instant.now());
+    return new SubmitPriorAuthorityDraftCommand(priorAuthorityId, Instant.now(), CALLER);
   }
 
   private static PriorAuthorityDataPayload stubDraftPayload(

@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
@@ -19,11 +20,15 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType
 import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityVersionConflictException;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Unit tests for {@link PriorAuthorityDecider}. */
 class PriorAuthorityDeciderTest {
+
+  private static final AuthenticatedCaller CALLER =
+      new AuthenticatedCaller(Optional.empty(), Set.of(), Set.of("1A001B"), Set.of());
 
   private static final Instant OCCURRED_AT = Instant.parse("2026-08-01T10:00:00Z");
 
@@ -39,7 +44,8 @@ class PriorAuthorityDeciderTest {
             "{}",
             1,
             "PriorAuthority.json",
-            OCCURRED_AT);
+            OCCURRED_AT,
+            CALLER);
     PriorAuthorityDraftStartedEvent event =
         PriorAuthorityDecider.decideStartDraft(command, "1A001B");
 
@@ -63,7 +69,8 @@ class PriorAuthorityDeciderTest {
             "{}",
             1,
             "PriorAuthority.json",
-            OCCURRED_AT);
+            OCCURRED_AT,
+            CALLER);
 
     PriorAuthorityDraftStartedEvent event = PriorAuthorityDecider.decideStartDraft(command, null);
 
@@ -79,7 +86,7 @@ class PriorAuthorityDeciderTest {
     state.priorAuthorityType = PriorAuthorityType.COUNSEL.name();
     state.schemaVersion = 2;
     SubmitPriorAuthorityDraftCommand command =
-        new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT);
+        new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT, CALLER);
 
     PriorAuthoritySubmittedEvent event =
         PriorAuthorityDecider.decideSubmit(command, state, 4L, "FIXED_RATE");
@@ -433,7 +440,8 @@ class PriorAuthorityDeciderTest {
             OCCURRED_AT,
             "evidence.pdf",
             7L,
-            "application/pdf");
+            "application/pdf",
+            CALLER);
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityDocumentUploadedEvent event =
         PriorAuthorityDecider.decideDocumentUploaded(command, applicationId);
@@ -454,7 +462,7 @@ class PriorAuthorityDeciderTest {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
     PriorAuthorityDocumentDeleteCommand command =
-        new PriorAuthorityDocumentDeleteCommand(priorAuthorityId, documentId, OCCURRED_AT);
+        new PriorAuthorityDocumentDeleteCommand(priorAuthorityId, documentId, OCCURRED_AT, CALLER);
     UUID applicationId = UUID.randomUUID();
 
     PriorAuthorityDocumentDeletedEvent event =
@@ -472,7 +480,7 @@ class PriorAuthorityDeciderTest {
     UUID documentId = UUID.randomUUID();
     PriorAuthorityDocumentTypeUpdateCommand command =
         new PriorAuthorityDocumentTypeUpdateCommand(
-            priorAuthorityId, documentId, "GATEWAY_EVIDENCE", "{}", OCCURRED_AT);
+            priorAuthorityId, documentId, "GATEWAY_EVIDENCE", "{}", OCCURRED_AT, CALLER);
 
     PriorAuthorityDocumentTypeUpdatedEvent event =
         PriorAuthorityDecider.decideDocumentTypeUpdated(command);
@@ -494,7 +502,8 @@ class PriorAuthorityDeciderTest {
             "{}",
             1,
             "PriorAuthority.json",
-            OCCURRED_AT);
+            OCCURRED_AT,
+            CALLER);
 
     PriorAuthorityDraftUpdatedEvent event =
         PriorAuthorityDecider.decideDraftUpdated(command, applicationId);
