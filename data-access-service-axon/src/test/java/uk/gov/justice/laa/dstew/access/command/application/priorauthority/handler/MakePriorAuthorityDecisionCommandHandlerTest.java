@@ -138,7 +138,7 @@ class MakePriorAuthorityDecisionCommandHandlerTest {
             "GRANTED",
             "Decision recorded",
             BigDecimal.valueOf(100.00),
-            ExpertFeeInformation.builder().newTimeRequested(timeRequested).build(),
+            ExpertFeeInformation.builder().grantedTime(timeRequested).build(),
             null,
             null,
             OCCURRED_AT,
@@ -161,7 +161,7 @@ class MakePriorAuthorityDecisionCommandHandlerTest {
             payloadCaptor.capture(),
             eq("{}"),
             eq(OCCURRED_AT));
-    assertThat(payloadCaptor.getValue().expert().getNewTimeRequested()).isEqualTo(timeRequested);
+    assertThat(payloadCaptor.getValue().expert().getGrantedTime()).isEqualTo(timeRequested);
     verify(eventAppender)
         .append(
             new PriorAuthorityDecisionMadeEvent(

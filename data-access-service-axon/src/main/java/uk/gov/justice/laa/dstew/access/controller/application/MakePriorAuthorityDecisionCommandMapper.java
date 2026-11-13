@@ -70,7 +70,7 @@ public class MakePriorAuthorityDecisionCommandMapper {
         : ExpertFeeInformation.builder()
             .newFixedRateAmount(value.getNewFixedRateAmount())
             .newHourlyRateAmount(value.getNewHourlyRateAmount())
-            .newTimeRequested(toTimeRequested(value.getNewTimeRequested()))
+            .grantedTime(toTimeRequested(value.getGrantedTime()))
             .build();
   }
 

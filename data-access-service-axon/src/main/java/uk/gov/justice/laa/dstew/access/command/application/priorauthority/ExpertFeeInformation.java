@@ -15,5 +15,5 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
 public class ExpertFeeInformation {
   private BigDecimal newFixedRateAmount;
   private BigDecimal newHourlyRateAmount;
-  private TimeRequested newTimeRequested;
+  private TimeRequested grantedTime;
 }

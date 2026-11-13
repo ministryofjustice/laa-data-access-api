@@ -131,8 +131,7 @@ class PriorAuthorityDeciderTest {
     state.billingType = BillingType.HOURLY.name();
     MakePriorAuthorityDecisionCommand command =
         decisionCommand(
-            state,
-            ExpertFeeInformation.builder().newTimeRequested(new TimeRequested(3, 15)).build());
+            state, ExpertFeeInformation.builder().grantedTime(new TimeRequested(3, 15)).build());
 
     Optional<PriorAuthorityDecisionMadeEvent> result =
         PriorAuthorityDecider.decideDecision(state, command);
@@ -151,8 +150,7 @@ class PriorAuthorityDeciderTest {
     state.billingType = billingType;
     MakePriorAuthorityDecisionCommand command =
         decisionCommand(
-            state,
-            ExpertFeeInformation.builder().newTimeRequested(new TimeRequested(3, 15)).build());
+            state, ExpertFeeInformation.builder().grantedTime(new TimeRequested(3, 15)).build());
 
     assertThatThrownBy(() -> PriorAuthorityDecider.decideDecision(state, command))
         .isInstanceOf(ValidationException.class)
@@ -160,7 +158,7 @@ class PriorAuthorityDeciderTest {
         .extracting(ValidationException::errors)
         .asInstanceOf(InstanceOfAssertFactories.LIST)
         .containsExactly(
-            "expert.newTimeRequested is only permitted for EXPERT prior authorities with HOURLY billing");
+            "expert.grantedTime is only permitted for EXPERT prior authorities with HOURLY billing");
   }
 
   @Test

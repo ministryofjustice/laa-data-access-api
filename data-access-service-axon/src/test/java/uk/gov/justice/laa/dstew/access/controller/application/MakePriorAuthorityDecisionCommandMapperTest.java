@@ -74,7 +74,7 @@ class MakePriorAuthorityDecisionCommandMapperTest {
         .isEqualByComparingTo(BigDecimal.valueOf(450.25));
     assertThat(command.expertFee().getNewHourlyRateAmount())
         .isEqualByComparingTo(BigDecimal.valueOf(125.75));
-    assertThat(command.expertFee().getNewTimeRequested()).isNull();
+    assertThat(command.expertFee().getGrantedTime()).isNull();
     assertThat(command.disbursementInformation()).isNotNull();
     assertThat(command.disbursementInformation().getNewAmount())
         .isEqualByComparingTo(BigDecimal.valueOf(300.00));
@@ -122,7 +122,7 @@ class MakePriorAuthorityDecisionCommandMapperTest {
   }
 
   @Test
-  void givenNewTimeRequested_whenMapped_thenStoresTimeOverride() {
+  void givenGrantedTime_whenMapped_thenStoresTimeOverride() {
     when(authenticatedUserId.get()).thenReturn(TestJwtDecoderConfig.CASEWORKER_ID);
     MakePriorAuthorityDecisionRequest request =
         MakePriorAuthorityDecisionRequest.builder()
@@ -134,15 +134,15 @@ class MakePriorAuthorityDecisionCommandMapperTest {
                 EventHistoryRequest.builder().eventDescription("Decision recorded").build())
             .expert(
                 ExpertMakePriorAuthorityDecisionRequest.builder()
-                    .newTimeRequested(DecisionTimeRequested.builder().hours(3).minutes(15).build())
+                    .grantedTime(DecisionTimeRequested.builder().hours(3).minutes(15).build())
                     .build())
             .build();
 
     MakePriorAuthorityDecisionCommand command = mapper.toCommand(UUID.randomUUID(), request);
 
-    assertThat(command.expertFee().getNewTimeRequested()).isEqualTo(new TimeRequested(3, 15));
+    assertThat(command.expertFee().getGrantedTime()).isEqualTo(new TimeRequested(3, 15));
     assertThat(command.serialisedRequest())
-        .contains("\"newTimeRequested\":{\"hours\":3,\"minutes\":15}");
+        .contains("\"grantedTime\":{\"hours\":3,\"minutes\":15}");
   }
 
   @Test
