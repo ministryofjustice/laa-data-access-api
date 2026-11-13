@@ -20,59 +20,6 @@ public record MakeApplicationDecisionCommand(
     String eventDescription,
     Instant occurredAt) {
 
-  /**
-   * Legacy constructor retained while callers migrate to the assignment-authorised decision
-   * contract. Step 3 will enforce a non-null ownership identity for manual decisions.
-   */
-  @Deprecated(forRemoval = true)
-  public MakeApplicationDecisionCommand(
-      UUID applicationId,
-      long expectedApplicationVersion,
-      String overallDecision,
-      List<MakeDecisionProceeding> proceedings,
-      Map<String, Object> certificate,
-      String serialisedRequest,
-      String eventDescription,
-      Instant occurredAt) {
-    this(
-        applicationId,
-        null,
-        expectedApplicationVersion,
-        overallDecision,
-        proceedings,
-        certificate,
-        serialisedRequest,
-        eventDescription,
-        occurredAt);
-  }
-
-  /**
-   * Legacy constructor retained while callers migrate away from the removed automatic-grant flag.
-   * Normal decisions always represent manual assessment.
-   */
-  @Deprecated(forRemoval = true)
-  public MakeApplicationDecisionCommand(
-      UUID applicationId,
-      long expectedApplicationVersion,
-      String overallDecision,
-      Boolean ignoredAutoGranted,
-      List<MakeDecisionProceeding> proceedings,
-      Map<String, Object> certificate,
-      String serialisedRequest,
-      String eventDescription,
-      Instant occurredAt) {
-    this(
-        applicationId,
-        null,
-        expectedApplicationVersion,
-        overallDecision,
-        proceedings,
-        certificate,
-        serialisedRequest,
-        eventDescription,
-        occurredAt);
-  }
-
   public MakeApplicationDecisionCommand {
     proceedings = List.copyOf(proceedings);
     certificate = certificate == null ? null : Map.copyOf(certificate);

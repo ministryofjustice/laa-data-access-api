@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.junit.jupiter.api.Test;
@@ -33,10 +34,14 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 @ExtendWith(MockitoExtension.class)
 class PriorAuthorityDocumentTypeUpdateCommandHandlerTest {
+
+  private static final AuthenticatedCaller CALLER =
+      new AuthenticatedCaller(Optional.empty(), Set.of(), Set.of("1A001B"), Set.of());
 
   private static final Instant OCCURRED_AT = Instant.parse("2026-09-01T10:00:00Z");
 
@@ -65,7 +70,7 @@ class PriorAuthorityDocumentTypeUpdateCommandHandlerTest {
             Map.of(documentId, "file.pdf"));
     PriorAuthorityDocumentTypeUpdateCommand command =
         new PriorAuthorityDocumentTypeUpdateCommand(
-            priorAuthorityId, documentId, "GATEWAY_EVIDENCE", "new", OCCURRED_AT);
+            priorAuthorityId, documentId, "GATEWAY_EVIDENCE", "new", OCCURRED_AT, CALLER);
 
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(existingDraft));
     when(priorAuthority.getState())
@@ -97,7 +102,7 @@ class PriorAuthorityDocumentTypeUpdateCommandHandlerTest {
     UUID documentId = UUID.randomUUID();
     PriorAuthorityDocumentTypeUpdateCommand command =
         new PriorAuthorityDocumentTypeUpdateCommand(
-            priorAuthorityId, documentId, "GATEWAY_EVIDENCE", "new", OCCURRED_AT);
+            priorAuthorityId, documentId, "GATEWAY_EVIDENCE", "new", OCCURRED_AT, CALLER);
 
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.empty());
     when(priorAuthority.getState()).thenReturn(draftState(priorAuthorityId, UUID.randomUUID()));
@@ -125,7 +130,7 @@ class PriorAuthorityDocumentTypeUpdateCommandHandlerTest {
             priorAuthorityId, applicationId, existingContent, "old", OCCURRED_AT);
     PriorAuthorityDocumentTypeUpdateCommand command =
         new PriorAuthorityDocumentTypeUpdateCommand(
-            priorAuthorityId, documentId, "GATEWAY_EVIDENCE", "new", OCCURRED_AT);
+            priorAuthorityId, documentId, "GATEWAY_EVIDENCE", "new", OCCURRED_AT, CALLER);
 
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(existingDraft));
     when(priorAuthority.getState()).thenReturn(draftState(priorAuthorityId, applicationId));
@@ -154,7 +159,7 @@ class PriorAuthorityDocumentTypeUpdateCommandHandlerTest {
     when(priorAuthority.getState()).thenReturn(state);
     PriorAuthorityDocumentTypeUpdateCommand command =
         new PriorAuthorityDocumentTypeUpdateCommand(
-            priorAuthorityId, UUID.randomUUID(), "GATEWAY_EVIDENCE", "new", OCCURRED_AT);
+            priorAuthorityId, UUID.randomUUID(), "GATEWAY_EVIDENCE", "new", OCCURRED_AT, CALLER);
 
     assertThatThrownBy(
             () ->
@@ -189,7 +194,7 @@ class PriorAuthorityDocumentTypeUpdateCommandHandlerTest {
     when(priorAuthority.getState()).thenReturn(state);
     PriorAuthorityDocumentTypeUpdateCommand command =
         new PriorAuthorityDocumentTypeUpdateCommand(
-            priorAuthorityId, documentId, "GATEWAY_EVIDENCE", "new", OCCURRED_AT);
+            priorAuthorityId, documentId, "GATEWAY_EVIDENCE", "new", OCCURRED_AT, CALLER);
 
     assertThatThrownBy(
             () ->

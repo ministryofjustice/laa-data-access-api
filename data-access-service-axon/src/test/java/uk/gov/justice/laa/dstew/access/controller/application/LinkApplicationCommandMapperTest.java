@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -16,11 +18,14 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 class LinkApplicationCommandMapperTest {
 
   private static final Instant OCCURRED_AT = Instant.parse("2026-09-15T09:30:00Z");
+  private static final AuthenticatedCaller CALLER =
+      new AuthenticatedCaller(Optional.empty(), Set.of(), Set.of("1A001B"), Set.of());
 
   private final Clock fixedClock = Clock.fixed(OCCURRED_AT, ZoneOffset.UTC);
   private final LinkApplicationCommandMapper mapper = new LinkApplicationCommandMapper(fixedClock);
@@ -31,10 +36,11 @@ class LinkApplicationCommandMapperTest {
     UUID targetApplicationId = UUID.randomUUID();
     var request = new ApplicationLinkRequest(targetApplicationId, ApplicationLinkType.FAMILY);
 
-    var command = mapper.toCommand(sourceApplicationId, request);
+    var command = mapper.toCommand(sourceApplicationId, request, CALLER);
 
     assertThat(command.sourceApplicationId()).isEqualTo(sourceApplicationId);
     assertThat(command.targetApplicationId()).isEqualTo(targetApplicationId);
+    assertThat(command.caller()).isEqualTo(CALLER);
   }
 
   @Test
@@ -42,7 +48,7 @@ class LinkApplicationCommandMapperTest {
     var request = new ApplicationLinkRequest(UUID.randomUUID(), ApplicationLinkType.FAMILY);
     request.setEventHistory(new EventHistoryRequest().eventDescription("description"));
 
-    var command = mapper.toCommand(UUID.randomUUID(), request);
+    var command = mapper.toCommand(UUID.randomUUID(), request, CALLER);
 
     assertThat(command.justification()).isEqualTo("description");
   }
@@ -54,7 +60,7 @@ class LinkApplicationCommandMapperTest {
     var request = new ApplicationLinkRequest(UUID.randomUUID(), ApplicationLinkType.FAMILY);
     request.setEventHistory(eventHistory);
 
-    var command = mapper.toCommand(UUID.randomUUID(), request);
+    var command = mapper.toCommand(UUID.randomUUID(), request, CALLER);
 
     assertThat(command.justification()).isNull();
   }
@@ -67,7 +73,7 @@ class LinkApplicationCommandMapperTest {
   void givenFamilyLinkType_whenMapped_thenMapsToDomainLinkType() {
     var request = new ApplicationLinkRequest(UUID.randomUUID(), ApplicationLinkType.FAMILY);
 
-    var command = mapper.toCommand(UUID.randomUUID(), request);
+    var command = mapper.toCommand(UUID.randomUUID(), request, CALLER);
 
     assertThat(command.linkType()).isEqualTo(LinkType.FAMILY);
   }
@@ -76,7 +82,7 @@ class LinkApplicationCommandMapperTest {
   void givenFixedClock_whenMapped_thenOccurredAtMatchesClock() {
     var request = new ApplicationLinkRequest(UUID.randomUUID(), ApplicationLinkType.FAMILY);
 
-    var command = mapper.toCommand(UUID.randomUUID(), request);
+    var command = mapper.toCommand(UUID.randomUUID(), request, CALLER);
 
     assertThat(command.occurredAt()).isEqualTo(OCCURRED_AT);
   }
@@ -88,7 +94,7 @@ class LinkApplicationCommandMapperTest {
     request.setLinkedGroupVersion(
         "djE6bGlua2VkLWdyb3VwOjdjOWU2Njc5LTc0MjUtNDBkZS05NDRiLWUwN2ZjMWY5MGFlNzo3");
 
-    var command = mapper.toCommand(UUID.randomUUID(), request);
+    var command = mapper.toCommand(UUID.randomUUID(), request, CALLER);
 
     assertThat(command.expectedTargetGroup()).isEqualTo(new ExpectedLinkedGroup(groupId, 7L));
   }
@@ -97,7 +103,7 @@ class LinkApplicationCommandMapperTest {
   void givenNullVersionToken_whenMapped_thenMapsNullExpectedGroup() {
     var request = new ApplicationLinkRequest(UUID.randomUUID(), ApplicationLinkType.FAMILY);
 
-    var command = mapper.toCommand(UUID.randomUUID(), request);
+    var command = mapper.toCommand(UUID.randomUUID(), request, CALLER);
 
     assertThat(command.expectedTargetGroup()).isNull();
   }
@@ -107,7 +113,7 @@ class LinkApplicationCommandMapperTest {
     var request = new ApplicationLinkRequest(UUID.randomUUID(), ApplicationLinkType.FAMILY);
     request.setLinkedGroupVersion("not-a-token");
 
-    assertThatThrownBy(() -> mapper.toCommand(UUID.randomUUID(), request))
+    assertThatThrownBy(() -> mapper.toCommand(UUID.randomUUID(), request, CALLER))
         .isInstanceOfSatisfying(
             ValidationException.class,
             exception ->

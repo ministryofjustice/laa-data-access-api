@@ -7,6 +7,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import tools.jackson.core.JacksonException;
@@ -25,8 +27,12 @@ import uk.gov.justice.laa.dstew.access.model.ExpertDetails;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.TimeRequested;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 
 class SavePriorAuthorityDraftCommandMapperTest {
+
+  private static final AuthenticatedCaller CALLER =
+      new AuthenticatedCaller(Optional.empty(), Set.of(), Set.of("1A001B"), Set.of());
 
   private final SavePriorAuthorityDraftCommandMapper mapper =
       new SavePriorAuthorityDraftCommandMapper(JsonMapper.builder().build());
@@ -35,7 +41,7 @@ class SavePriorAuthorityDraftCommandMapperTest {
   void givenExpertRequest_whenCreateMapped_thenMapsAllExpertFields() {
     UUID applicationId = UUID.randomUUID();
     CreatePriorAuthorityDraftCommand command =
-        mapper.toCreateCommand(expertRequest().applicationId(applicationId));
+        mapper.toCreateCommand(expertRequest().applicationId(applicationId), CALLER);
     var expertDetails = command.content().expertDetails();
     var expertCosts = expertDetails.expertCosts();
     var timeRequested = expertCosts.timeRequested();
@@ -43,6 +49,7 @@ class SavePriorAuthorityDraftCommandMapperTest {
 
     assertThat(command.priorAuthorityId()).isNotNull();
     assertThat(command.applicationId()).isEqualTo(applicationId);
+    assertThat(command.caller()).isEqualTo(CALLER);
     assertThat(command.content().priorAuthorityType())
         .isEqualTo(
             uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.EXPERT);
@@ -67,7 +74,7 @@ class SavePriorAuthorityDraftCommandMapperTest {
 
   @Test
   void givenCounselRequest_whenCreateMapped_thenMapsCounselDetails() {
-    CreatePriorAuthorityDraftCommand command = mapper.toCreateCommand(counselRequest());
+    CreatePriorAuthorityDraftCommand command = mapper.toCreateCommand(counselRequest(), CALLER);
 
     assertThat(command.content().priorAuthorityType())
         .isEqualTo(
@@ -80,7 +87,8 @@ class SavePriorAuthorityDraftCommandMapperTest {
 
   @Test
   void givenDisbursementRequest_whenCreateMapped_thenMapsDisbursementDetails() {
-    CreatePriorAuthorityDraftCommand command = mapper.toCreateCommand(disbursementRequest());
+    CreatePriorAuthorityDraftCommand command =
+        mapper.toCreateCommand(disbursementRequest(), CALLER);
 
     assertThat(command.content().priorAuthorityType())
         .isEqualTo(
@@ -94,7 +102,7 @@ class SavePriorAuthorityDraftCommandMapperTest {
 
   @Test
   void givenRequest_whenCreateMapped_thenSchemaMetadataIsVersion1AndPriorAuthorityJson() {
-    CreatePriorAuthorityDraftCommand command = mapper.toCreateCommand(expertRequest());
+    CreatePriorAuthorityDraftCommand command = mapper.toCreateCommand(expertRequest(), CALLER);
 
     assertThat(command.schemaVersion()).isEqualTo(1);
     assertThat(command.schemaName()).isEqualTo("PriorAuthority.json");
@@ -102,14 +110,14 @@ class SavePriorAuthorityDraftCommandMapperTest {
 
   @Test
   void givenRequest_whenCreateMapped_thenTimestampIsNonNull() {
-    CreatePriorAuthorityDraftCommand command = mapper.toCreateCommand(expertRequest());
+    CreatePriorAuthorityDraftCommand command = mapper.toCreateCommand(expertRequest(), CALLER);
 
     assertThat(command.occurredAt()).isNotNull();
   }
 
   @Test
   void givenRequest_whenCreateMapped_thenContentIsSerialised() {
-    CreatePriorAuthorityDraftCommand command = mapper.toCreateCommand(expertRequest());
+    CreatePriorAuthorityDraftCommand command = mapper.toCreateCommand(expertRequest(), CALLER);
 
     assertThat(command.serialisedRequest()).contains("Need expert assessment");
     assertThatCode(() -> JsonMapper.builder().build().readTree(command.serialisedRequest()))
@@ -124,9 +132,11 @@ class SavePriorAuthorityDraftCommandMapperTest {
             priorAuthorityId,
             SavePriorAuthorityDraftRequest.builder()
                 .justification("Need expert assessment")
-                .build());
+                .build(),
+            CALLER);
 
     assertThat(command.priorAuthorityId()).isEqualTo(priorAuthorityId);
+    assertThat(command.caller()).isEqualTo(CALLER);
     assertThat(command.content().priorAuthorityType()).isNull();
   }
 
@@ -139,7 +149,7 @@ class SavePriorAuthorityDraftCommandMapperTest {
 
     when(objectMapper.writeValueAsString(request)).thenThrow(new JacksonException("boom") {});
 
-    assertThatThrownBy(() -> failingMapper.toCreateCommand(request))
+    assertThatThrownBy(() -> failingMapper.toCreateCommand(request, CALLER))
         .isInstanceOf(IllegalStateException.class)
         .hasMessage("Unable to serialise CreatePriorAuthorityDraftRequest")
         .hasCauseInstanceOf(JacksonException.class);
@@ -153,7 +163,8 @@ class SavePriorAuthorityDraftCommandMapperTest {
                 .applicationId(UUID.randomUUID())
                 .priorAuthorityType(PriorAuthorityType.EXPERT)
                 .expertDetails(ExpertDetails.builder().expertType("Forensic Accountant").build())
-                .build());
+                .build(),
+            CALLER);
 
     assertThat(command.content().expertDetails().expertCosts()).isNull();
   }
@@ -177,7 +188,8 @@ class SavePriorAuthorityDraftCommandMapperTest {
                                 .apportionment(null)
                                 .build())
                         .build())
-                .build());
+                .build(),
+            CALLER);
 
     assertThat(command.content().expertDetails().expertCosts().billingType()).isNull();
     assertThat(command.content().expertDetails().expertCosts().hourlyRate()).isNull();

@@ -8,6 +8,8 @@ import static org.mockito.Mockito.verify;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,10 +21,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ValidatePriorAuthorityGroupEligibilityCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteResolver;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 @ExtendWith(MockitoExtension.class)
 class CreatePriorAuthorityDraftUseCaseTest {
+
+  private static final AuthenticatedCaller CALLER =
+      new AuthenticatedCaller(Optional.empty(), Set.of(), Set.of("1A001B"), Set.of());
 
   @Mock private RetryingCommandDispatcher dispatcher;
   @Mock private ApplicationGroupRouteResolver routeResolver;
@@ -57,7 +63,7 @@ class CreatePriorAuthorityDraftUseCaseTest {
     CreatePriorAuthorityDraftCommand command = stubCommand();
     UUID groupId = UUID.randomUUID();
     Mockito.when(routeResolver.resolveGroupForPriorAuthorityCreation(command.applicationId()))
-        .thenReturn(java.util.Optional.of(groupId));
+        .thenReturn(Optional.of(groupId));
 
     useCase.execute(command);
 
@@ -86,6 +92,13 @@ class CreatePriorAuthorityDraftUseCaseTest {
 
   private static CreatePriorAuthorityDraftCommand stubCommand() {
     return new CreatePriorAuthorityDraftCommand(
-        UUID.randomUUID(), UUID.randomUUID(), null, "{}", 1, "PriorAuthority.json", Instant.now());
+        UUID.randomUUID(),
+        UUID.randomUUID(),
+        null,
+        "{}",
+        1,
+        "PriorAuthority.json",
+        Instant.now(),
+        CALLER);
   }
 }

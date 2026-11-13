@@ -14,12 +14,4 @@ public record PriorAuthorityDocumentDeleteCommand(
     UUID documentId,
     Instant occurredAt,
     AuthenticatedCaller caller)
-    implements CallerCommand {
-
-  /** Temporary source-compatible constructor for non-HTTP command fixtures. */
-  @Deprecated(forRemoval = true)
-  public PriorAuthorityDocumentDeleteCommand(
-      UUID priorAuthorityId, UUID documentId, Instant occurredAt) {
-    this(priorAuthorityId, documentId, occurredAt, null);
-  }
-}
+    implements CallerCommand {}

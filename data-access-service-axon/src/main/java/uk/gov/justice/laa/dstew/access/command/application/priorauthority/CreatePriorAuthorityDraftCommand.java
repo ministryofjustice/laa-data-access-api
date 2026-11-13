@@ -17,26 +17,4 @@ public record CreatePriorAuthorityDraftCommand(
     int schemaVersion,
     String schemaName,
     Instant occurredAt,
-    AuthenticatedCaller caller) {
-
-  /** Temporary source-compatible constructor for non-HTTP command fixtures. */
-  @Deprecated(forRemoval = true)
-  public CreatePriorAuthorityDraftCommand(
-      UUID priorAuthorityId,
-      UUID applicationId,
-      PriorAuthorityContent content,
-      String serialisedRequest,
-      int schemaVersion,
-      String schemaName,
-      Instant occurredAt) {
-    this(
-        priorAuthorityId,
-        applicationId,
-        content,
-        serialisedRequest,
-        schemaVersion,
-        schemaName,
-        occurredAt,
-        null);
-  }
-}
+    AuthenticatedCaller caller) {}

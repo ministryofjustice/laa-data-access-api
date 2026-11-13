@@ -41,6 +41,9 @@ import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerFactory;
 @ExtendWith(MockitoExtension.class)
 class PriorAuthorityDraftCommandControllerTest {
 
+  private static final AuthenticatedCaller CALLER =
+      new AuthenticatedCaller(Optional.empty(), Set.of(), Set.of("1A001B"), Set.of());
+
   @Mock private CreatePriorAuthorityDraftUseCase createUseCase;
   @Mock private UpdatePriorAuthorityDraftUseCase updateUseCase;
   @Mock private SubmitPriorAuthorityDraftUseCase submitUseCase;
@@ -72,7 +75,14 @@ class PriorAuthorityDraftCommandControllerTest {
         new CreatePriorAuthorityDraftRequest().applicationId(applicationId);
     CreatePriorAuthorityDraftCommand command =
         new CreatePriorAuthorityDraftCommand(
-            priorAuthorityId, applicationId, null, "{}", 1, "PriorAuthority.json", Instant.now());
+            priorAuthorityId,
+            applicationId,
+            null,
+            "{}",
+            1,
+            "PriorAuthority.json",
+            Instant.now(),
+            CALLER);
     when(saveCommandMapper.toCreateCommand(any(), any())).thenReturn(command);
     when(createUseCase.execute(command)).thenReturn(true);
 
@@ -97,7 +107,14 @@ class PriorAuthorityDraftCommandControllerTest {
         new CreatePriorAuthorityDraftRequest().applicationId(applicationId);
     CreatePriorAuthorityDraftCommand command =
         new CreatePriorAuthorityDraftCommand(
-            priorAuthorityId, applicationId, null, "{}", 1, "PriorAuthority.json", Instant.now());
+            priorAuthorityId,
+            applicationId,
+            null,
+            "{}",
+            1,
+            "PriorAuthority.json",
+            Instant.now(),
+            CALLER);
     when(saveCommandMapper.toCreateCommand(any(), any())).thenReturn(command);
     when(createUseCase.execute(command)).thenReturn(false);
 
@@ -114,7 +131,7 @@ class PriorAuthorityDraftCommandControllerTest {
     SavePriorAuthorityDraftRequest request = new SavePriorAuthorityDraftRequest();
     UpdatePriorAuthorityDraftCommand command =
         new UpdatePriorAuthorityDraftCommand(
-            priorAuthorityId, null, "{}", 1, "PriorAuthority.json", Instant.now());
+            priorAuthorityId, null, "{}", 1, "PriorAuthority.json", Instant.now(), CALLER);
     when(saveCommandMapper.toUpdateCommand(eq(priorAuthorityId), eq(request), any()))
         .thenReturn(command);
 
@@ -130,7 +147,7 @@ class PriorAuthorityDraftCommandControllerTest {
     UUID priorAuthorityId = UUID.randomUUID();
     Instant submittedAt = Instant.parse("2026-09-01T10:00:00Z");
     SubmitPriorAuthorityDraftCommand command =
-        new SubmitPriorAuthorityDraftCommand(priorAuthorityId, submittedAt);
+        new SubmitPriorAuthorityDraftCommand(priorAuthorityId, submittedAt, CALLER);
     when(submitCommandMapper.toSubmitCommand(eq(priorAuthorityId), any())).thenReturn(command);
     when(submitUseCase.submit(command)).thenReturn(true);
 
@@ -151,7 +168,7 @@ class PriorAuthorityDraftCommandControllerTest {
   void givenProjectionTimeout_whenSubmitPriorAuthorityDraft_thenReturnsAcceptedResponse() {
     UUID priorAuthorityId = UUID.randomUUID();
     SubmitPriorAuthorityDraftCommand command =
-        new SubmitPriorAuthorityDraftCommand(priorAuthorityId, Instant.now());
+        new SubmitPriorAuthorityDraftCommand(priorAuthorityId, Instant.now(), CALLER);
     when(submitCommandMapper.toSubmitCommand(eq(priorAuthorityId), any())).thenReturn(command);
     when(submitUseCase.submit(command)).thenReturn(false);
 

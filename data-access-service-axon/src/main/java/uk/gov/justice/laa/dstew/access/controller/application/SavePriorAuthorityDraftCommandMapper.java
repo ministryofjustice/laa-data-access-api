@@ -55,11 +55,6 @@ public class SavePriorAuthorityDraftCommandMapper {
         caller);
   }
 
-  @Deprecated(forRemoval = true)
-  CreatePriorAuthorityDraftCommand toCreateCommand(CreatePriorAuthorityDraftRequest request) {
-    return toCreateCommand(request, null);
-  }
-
   /** Creates a save-draft command for an existing draft identified by the given submission ID. */
   public UpdatePriorAuthorityDraftCommand toUpdateCommand(
       UUID priorAuthorityId, SavePriorAuthorityDraftRequest request, AuthenticatedCaller caller) {
@@ -78,12 +73,6 @@ public class SavePriorAuthorityDraftCommandMapper {
         SCHEMA_VERSION_NAME,
         Instant.now(),
         caller);
-  }
-
-  @Deprecated(forRemoval = true)
-  UpdatePriorAuthorityDraftCommand toUpdateCommand(
-      UUID priorAuthorityId, SavePriorAuthorityDraftRequest request) {
-    return toUpdateCommand(priorAuthorityId, request, null);
   }
 
   private PriorAuthorityContent toContent(
