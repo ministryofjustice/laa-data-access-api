@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.pact;
 
 import static org.awaitility.Awaitility.await;
 import static uk.gov.justice.laa.dstew.access.pact.PactApplicationFixtures.applicationDraft;
+import static uk.gov.justice.laa.dstew.access.pact.PactApplicationFixtures.submittedApplication;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -138,6 +139,19 @@ class ApplicationStateSeeder {
         .atMost(PROJECTION_WAIT)
         .pollInterval(POLL_INTERVAL)
         .until(() -> applicationDraftStore.find(applicationId).isPresent());
+    return applicationId;
+  }
+
+  /**
+   * A brand-new submitted application under a generated identifier: auto-grant outcome still
+   * pending, application version 0, in no linked group. Every call creates another one, so a
+   * request that links it cannot affect any other interaction in the run.
+   */
+  UUID newSubmitted() {
+    UUID applicationId = UUID.randomUUID();
+    String referenceSuffix = applicationId.toString().substring(0, 4).toUpperCase();
+    ensureSubmitted(
+        submittedApplication(applicationId, "LAA-REF-N" + referenceSuffix, "Noa", "Newman"));
     return applicationId;
   }
 

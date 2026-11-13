@@ -111,6 +111,21 @@ class ProviderStates {
   }
 
   /**
+   * Two submitted applications created fresh for this one interaction, neither in a linked group,
+   * so linking them cannot affect any other interaction in the run. Returns {@code applicationId},
+   * for the request path, and {@code leadApplicationId}, for the request body, as injected values.
+   * Linking two standalone applications makes the target the lead of the new group.
+   */
+  Map<String, Object> newUnlinkedApplicationsExist() {
+    log.info("State: {}", PactStates.NEW_UNLINKED_APPLICATIONS_EXIST);
+    UUID applicationId = applications.newSubmitted();
+    UUID leadApplicationId = applications.newSubmitted();
+    return Map.of(
+        "applicationId", applicationId.toString(),
+        "leadApplicationId", leadApplicationId.toString());
+  }
+
+  /**
    * Pauses the application projection so a create cannot observe its read model within the
    * configured wait and returns 202 instead of 201. {@link #applicationReadModelCaughtUp()} must
    * run afterwards.

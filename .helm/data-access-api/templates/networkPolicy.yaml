@@ -4,7 +4,13 @@ metadata:
   name: {{ .Release.Name }}-{{ .Chart.Name }}-allow-prometheus-scraping
   namespace: {{ .Release.Namespace }}
 spec:
+  {{- if and .Values.smokeTest .Values.smokeTest.enabled }}
+  podSelector:
+    matchLabels:
+      {{- include "data-access-api.selectorLabels" . | nindent 6 }}
+  {{- else }}
   podSelector: {}
+  {{- end }}
   policyTypes:
     - Ingress
   ingress:

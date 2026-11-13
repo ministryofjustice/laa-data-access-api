@@ -121,6 +121,16 @@ public class DataAccessApiProviderTests extends AbstractProviderPactTests {
     return states.newApplicationDraftExists();
   }
 
+  /**
+   * POST applications/{id}/link. Creates two fresh submitted applications in no linked group and
+   * returns {@code applicationId} (for the path) and {@code leadApplicationId} (for the body) for
+   * injection, so no two interactions that link share a pair.
+   */
+  @State(PactStates.NEW_UNLINKED_APPLICATIONS_EXIST)
+  public Map<String, Object> newUnlinkedApplicationsExist() {
+    return states.newUnlinkedApplicationsExist();
+  }
+
   /** POST applications expecting 202. */
   @State(PactStates.APPLICATION_READ_MODEL_LAGGING)
   public void applicationReadModelLagging() {
