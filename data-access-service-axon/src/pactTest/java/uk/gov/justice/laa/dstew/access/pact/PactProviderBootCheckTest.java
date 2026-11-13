@@ -19,6 +19,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.DeletePriorAuthorityDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
+import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.FindPriorAuthorityByPriorAuthorityIdQuery;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerFactory;
 
@@ -51,6 +53,8 @@ class PactProviderBootCheckTest extends AbstractProviderPactTests {
     states.noApplicationWithId();
     states.workListItemsExist();
     assertThat(states.newApplicationDraftExists()).containsKey("applicationId");
+    assertThat(states.newUnlinkedApplicationsExist())
+        .containsKeys("applicationId", "leadApplicationId");
   }
 
   @Test
@@ -78,6 +82,21 @@ class PactProviderBootCheckTest extends AbstractProviderPactTests {
     assertThat(first).isNotEqualTo(second);
     assertThat(applicationDraftStore.find(first)).isPresent();
     assertThat(applicationDraftStore.find(second)).isPresent();
+  }
+
+  @Test
+  void freshUnlinkedApplicationsStateCreatesTwoStandaloneApplicationsEveryTime() {
+    // Consumers link these, so no two interactions may share a pair.
+    Map<String, Object> first = states.newUnlinkedApplicationsExist();
+    Map<String, Object> second = states.newUnlinkedApplicationsExist();
+
+    assertThat(first.get("applicationId")).isNotEqualTo(first.get("leadApplicationId"));
+    assertThat(first.get("applicationId")).isNotEqualTo(second.get("applicationId"));
+    for (String key : List.of("applicationId", "leadApplicationId")) {
+      ApplicationReadModel application = application(first, key);
+      assertThat(application).isNotNull();
+      assertThat(application.getLinkedGroupId()).isNull();
+    }
   }
 
   @Test
@@ -143,6 +162,14 @@ class PactProviderBootCheckTest extends AbstractProviderPactTests {
 
   private PriorAuthorityResult priorAuthority(Map<String, Object> injected) {
     return find(UUID.fromString((String) injected.get("priorAuthorityId")));
+  }
+
+  private ApplicationReadModel application(Map<String, Object> injected, String key) {
+    return queryGateway
+        .query(
+            new FindApplicationByIdQuery(UUID.fromString((String) injected.get(key))),
+            ApplicationReadModel.class)
+        .join();
   }
 
   private static UUID applicationDraft(Map<String, Object> injected) {

@@ -32,9 +32,10 @@ each state through the real use cases, and `DataAccessApiProviderTests` replays 
    cannot be guaranteed. Express an empty result with a filter nothing matches, or use a reserved
    missing ID for 404 cases.
 6. **Generated identifiers are injected.** The service generates document identifiers, and the
-   "new" states (`a new prior authority draft ...`, `a new application draft exists`) generate the
-   prior authority or application identifier too. The handler returns them and your pact uses
-   Pact's provider-state injected value for each (see below).
+   "new" states (`a new prior authority draft ...`, `a new application draft exists`, `two new
+   submitted applications exist without a linked group`) generate the prior authority or
+   application identifiers too. The handler returns them and your pact uses Pact's provider-state
+   injected value for each, in the path or in the body (see below).
 7. **Fixed-ID prior authority states are for reads only.** A request that changes a prior authority
    (PUT draft, POST submit, POST documents, PATCH or DELETE a document) must use one of the
    `a new prior authority draft ...` states, which create a fresh prior authority for that one
@@ -61,6 +62,7 @@ each state through the real use cases, and `DataAccessApiProviderTests` replays 
 | `no application exists with id 00000000-0000-0000-0000-00000000dead` | That ID is never created | | Any application endpoint expecting 404 |
 | `the application read model is lagging` | The application projection is paused for this interaction, so POST applications returns 202 with a Location after the configured wait | | POST applications expecting 202 |
 | `a new application draft exists` | A draft created for this interaction only, under a generated identifier: in the draft store, submittable, accepts document uploads, content schema version 1, office code `1A001B`, status on submission `APPLICATION_SUBMITTED`. Not returned by GET application by id until submitted. Returns `applicationId` as an injected value (see "Using injected identifiers") | Anything time-based | POST application-drafts/{id}/submit, POST applications/{id}/documents |
+| `two new submitted applications exist without a linked group` | Two submitted applications created for this interaction only, under generated identifiers: auto-grant outcome pending, version 0, neither in a linked group, both office code `1A001B`. Returns `applicationId` (for the request path) and `leadApplicationId` (for the request body) as injected values (see "Using injected identifiers"). Linking makes the body application the lead | Anything time-based | POST applications/{id}/link with `linkedGroupVersion` null or omitted, expecting 204 |
 
 ## Work list
 
@@ -161,6 +163,49 @@ new_interaction
       example: "/api/v0/application-drafts/74c694d7-1a96-4c1f-8adc-f2160f1c9c82/submit",
     ),
   )
+```
+
+A request body takes an injected value the same way. The link request carries `applicationId` in
+the path and `leadApplicationId` in the body, both from `two new submitted applications exist
+without a linked group`:
+
+```ruby
+new_interaction
+  .given("two new submitted applications exist without a linked group")
+  .upon_receiving("a request to family link an application to a lead application")
+  .with_request(
+    method: :post,
+    path: generate_from_provider_state(
+      expression: "/api/v0/applications/${applicationId}/link",
+      example: "/api/v0/applications/74c694d7-1a96-4c1f-8adc-f2160f1c9c82/link",
+    ),
+    body: {
+      linkType: "FAMILY",
+      applicationId: generate_from_provider_state(
+        expression: "${leadApplicationId}",
+        example: "2fc821fd-439d-48a2-a558-4871c94154c7",
+      ),
+      linkedGroupVersion: nil,
+    },
+  )
+  .will_respond_with(status: 204)
+```
+
+In Pact JVM the body value comes from `valueFromProviderState`:
+
+```java
+builder
+    .given("two new submitted applications exist without a linked group")
+    .uponReceiving("link an application to a lead application")
+    .pathFromProviderState(
+        "/api/v0/applications/${applicationId}/link",
+        "/api/v0/applications/74c694d7-1a96-4c1f-8adc-f2160f1c9c82/link")
+    .method("POST")
+    .body(
+        new PactDslJsonBody()
+            .stringValue("linkType", "FAMILY")
+            .valueFromProviderState(
+                "applicationId", "${leadApplicationId}", "2fc821fd-439d-48a2-a558-4871c94154c7"))
 ```
 
 ## Running verification
