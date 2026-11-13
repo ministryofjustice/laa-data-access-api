@@ -3,8 +3,6 @@ name: Clean up abandoned smoke-test stacks
 # Removes per-run smoke-test resources left behind by cancelled or crashed runs.
 # Only resources labelled app.kubernetes.io/part-of=laa-data-access-smoke-test are affected.
 on:
-  schedule:
-    - cron: '17 * * * *'
   workflow_dispatch:
 
 permissions:
