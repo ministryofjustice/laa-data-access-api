@@ -133,6 +133,18 @@ class GetPriorAuthorityResponseMapperTest {
   }
 
   @Test
+  void givenDataVersion_whenMapped_thenReturnsItAsVersion() {
+    PriorAuthorityResult result =
+        PriorAuthorityResult.builder()
+            .priorAuthorityId(UUID.randomUUID())
+            .applicationId(UUID.randomUUID())
+            .dataVersion(2L)
+            .build();
+
+    assertThat(mapper.toResponse(result).getVersion()).isEqualTo(2L);
+  }
+
+  @Test
   void givenCounselAndDisbursementResults_whenMapped_thenMapsTheirDetails() {
     PriorAuthorityResult counsel =
         PriorAuthorityResult.builder()
