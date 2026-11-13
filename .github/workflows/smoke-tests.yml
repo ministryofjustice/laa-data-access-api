@@ -1,19 +1,11 @@
 name: Smoke tests
 
+# Reusable only: run from the build workflows after the build and integration stage.
 on:
-  pull_request:
-    types: [ opened, reopened, synchronize ]
-  push:
-    branches: [ main ]
   workflow_call:
 
 permissions:
   contents: read
-  packages: read
-
-concurrency:
-  group: ${{ github.workflow }}-smoke-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   smoke-tests:
@@ -32,14 +24,6 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
-
-      # Temporary: isolate Cucumber dependency resolution before starting Docker.
-      - name: Diagnose BDD dependency resolution
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: >-
-          ./gradlew :data-access-service-axon:compileBddTestJava build
-          --refresh-dependencies --stacktrace --info --console=plain
 
       - name: Run smoke tests
         env:

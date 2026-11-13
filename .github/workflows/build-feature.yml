@@ -65,6 +65,12 @@ jobs:
     secrets:
       gh_token: ${{ secrets.GITHUB_TOKEN }}
 
+  smoke-tests:
+    needs: [ build-and-test ]
+    uses: ./.github/workflows/smoke-tests.yml
+    permissions:
+      contents: read
+
   vulnerability-scan-app:
     runs-on: ubuntu-latest
     needs: [ build-and-test ]
@@ -84,7 +90,7 @@ jobs:
           args: --severity-threshold=high
 
   ecr-publish-service-image:
-    needs: [ build-and-test, compute-snapshot-version ]
+    needs: [ build-and-test, compute-snapshot-version, smoke-tests ]
     uses: ministryofjustice/laa-ccms-common-workflows/.github/workflows/ecr-publish-image.yml@035ee98ca0047659f865532ea6234abd69529ee8 # v2.5.0
     permissions:
       contents: read

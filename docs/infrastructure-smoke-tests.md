@@ -69,45 +69,26 @@ If startup fails, test reports may not exist; inspect the stack diagnostics firs
 
 ## GitHub Actions
 
-The [Smoke tests](../.github/workflows/smoke-tests.yml) workflow runs independently on:
+The [Smoke tests](../.github/workflows/smoke-tests.yml) workflow is reusable only
+(`workflow_call`). It does not run on its own. Two build workflows call it as a
+separate `smoke-tests` job:
 
-- Every PR when opened, reopened or updated with new commits, including draft PRs
-  and PRs targeting branches other than `main`.
-- Pushes to `main`, including merges and direct pushes.
-- Calls from another workflow through `workflow_call`.
+- [`build-feature.yml`](../.github/workflows/build-feature.yml) runs it on PRs,
+  after `build-and-test`.
+- [`build-main.yml`](../.github/workflows/build-main.yml) runs it on pushes to
+  `main`, after `release`.
+
+The image publish jobs (`ecr-publish-service-image`) wait for `smoke-tests`. The
+deploy jobs wait for those publish jobs, so a smoke failure stops the deployment
+chain.
 
 The job uses a GitHub-hosted Ubuntu runner, Corretto Java 25, the Gradle wrapper
-and the same script used locally. It needs no deployment credentials. Superseded
-PR runs are cancelled; main runs are not cancelled by this policy. The job has a
+and the same script used locally. It needs no deployment credentials. It has a
 25-minute timeout and a final cleanup step as a backstop for the script's trap.
 Reports and diagnostics are uploaded as the `smoke-test-reports` artifact and kept
 for 14 days, even if an earlier step fails. If a report file is missing because the
 run failed before producing it, the upload step logs a warning instead of failing.
 
-### Enabling a gate later
-
-For now, a smoke failure reports a failed check but does not stop the existing
-deployment workflows. No branch protection or repository settings are changed.
-
-To require success before merging, configure the **Smoke tests** job as a required
-check in the repository's ruleset or branch protection after its first CI run.
-
-To gate deployments, add a reusable-workflow job to the relevant build workflow:
-
-```yaml
-jobs:
-  smoke-tests:
-    uses: ./.github/workflows/smoke-tests.yml
-  # Add smoke-tests to the existing deployment job's needs, preserving its
-  # other prerequisites, permissions, environment and steps.
-```
-
-Then make the deployment job depend on the caller job with `needs`. Keep the
-following in mind when making this change:
-
-- An independent workflow cannot be a `needs` dependency of a job in another
-  workflow; only a caller job that uses it can.
-- Remove the standalone workflow's own `pull_request` and `push` triggers once the
-  caller pattern is in place, so the same commit is not tested twice.
-- Give the caller's job a concurrency group distinct from the reusable workflow's
-  `-smoke-` group, so a new commit cannot cancel the caller's own run.
+To require success before merging, add the **Smoke tests** job as a required check
+in the repository's ruleset or branch protection after its first CI run. No branch
+protection or repository settings are changed by this workflow.

@@ -118,9 +118,10 @@ database, mock OAuth2 and mock SDS. The same runner builds the image, starts the
 disposable stack, runs the scenarios and removes the stack and its database volume.
 See [`docs/infrastructure-smoke-tests.md`](docs/infrastructure-smoke-tests.md) for details.
 
-The standalone **Smoke tests** GitHub Actions workflow runs when any PR is raised,
-reopened or updated, regardless of its target branch, and on pushes to `main`
-(including merges). It reports failures independently of the deployment workflows.
+In GitHub Actions, the **Smoke tests** workflow runs as a stage in the build pipelines.
+On PRs it runs after the build and integration tests. On pushes to `main` it runs after
+the release step. Image publishing and deployment wait for it, so a smoke failure blocks
+them.
 
 ```bash
 ./scripts/run-infrastructure-smoke-tests.sh

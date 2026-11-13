@@ -12,12 +12,12 @@ test of every possible behaviour. It consists of happy-path scenarios that verif
 including its interactions with the database, OAuth2, and SDS. It does not attempt to cover every edge case or error 
 condition. Those are covered by unit and integration tests.
 
-The standalone **Smoke tests** GitHub Actions workflow runs these tests when any PR
-is opened, reopened or updated, and on pushes to `main`, including merges. It runs
-against a disposable Docker Compose stack on the runner, not a deployed environment.
-It does not currently gate deployments; see the
+In GitHub Actions, the **Smoke tests** workflow runs these tests as a stage in the
+PR and `main` build pipelines, after build and integration. It runs against a
+disposable Docker Compose stack on the runner, not a deployed environment. Publishing
+and deployment wait for it. See the
 [infrastructure smoke-test guide](../../../docs/infrastructure-smoke-tests.md) for
-how to change that. The environment has:
+details. The environment has:
 
 * a PostgreSQL database with the same schema as production
 * a mock OAuth2 server that issues tokens with the same claims as production
