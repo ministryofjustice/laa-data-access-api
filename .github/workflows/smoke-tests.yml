@@ -10,6 +10,17 @@ on:
         description: "Published image tag to test and later deploy"
         required: true
         type: string
+    secrets:
+      KUBE_CERT:
+        required: true
+      KUBE_TOKEN:
+        required: true
+      KUBE_CLUSTER:
+        required: true
+      KUBE_NAMESPACE:
+        required: true
+      ECR_ROLE_TO_ASSUME:
+        required: true
 
 permissions:
   contents: read

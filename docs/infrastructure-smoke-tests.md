@@ -83,6 +83,10 @@ The candidate image is published first. The smoke job tests that exact
 deploy the same tag only after the smoke job succeeds. A smoke failure therefore stops
 the deployment chain. The Compose stack is no longer used in CI.
 
+Both callers explicitly pass only `KUBE_CERT`, `KUBE_TOKEN`, `KUBE_CLUSTER`,
+`KUBE_NAMESPACE` and `ECR_ROLE_TO_ASSUME`, declared by the reusable workflow.
+`GITHUB_TOKEN` is available automatically; other repository secrets are not inherited.
+
 ## Kubernetes smoke tests (CI)
 
 Each run creates an isolated stack in the `uat` namespace, named from `GITHUB_RUN_ID` and

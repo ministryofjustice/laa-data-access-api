@@ -59,7 +59,12 @@ jobs:
     uses: ./.github/workflows/smoke-tests.yml
     with:
       image-tag: ${{ needs.ecr-publish-service-image.outputs.published_image_version }}
-    secrets: inherit
+    secrets:
+      KUBE_CERT: ${{ secrets.KUBE_CERT }}
+      KUBE_TOKEN: ${{ secrets.KUBE_TOKEN }}
+      KUBE_CLUSTER: ${{ secrets.KUBE_CLUSTER }}
+      KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
+      ECR_ROLE_TO_ASSUME: ${{ secrets.ECR_ROLE_TO_ASSUME }}
     permissions:
       contents: read
       id-token: write
