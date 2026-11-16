@@ -208,7 +208,7 @@ You can also use the Swagger UI to execute endpoints, which is described below i
 
 Submit a decision with `PATCH
 /api/v0/prior-authorities/{priorAuthorityId}/decision`. For an expert decision, the optional
-`newTimeRequested` value can be included alongside other expert fee overrides:
+`grantedTime` value can be included alongside other expert fee overrides:
 
 ```json
 {
@@ -220,7 +220,7 @@ Submit a decision with `PATCH
   "priorAuthorityVersion": 0,
   "expert": {
     "newHourlyRateAmount": 95.00,
-    "newTimeRequested": {
+    "grantedTime": {
       "hours": 3,
       "minutes": 15
     }
@@ -233,7 +233,7 @@ Submit a decision with `PATCH
 - `hours` must be an integer greater than or equal to 0, and `minutes` must be an integer from 0 to
   59. Non-integer values are rejected with a `400 ProblemDetail`.
 - The provider's original `timeRequested` is retained. The override is returned in
-  `decisionDetails.expert.newTimeRequested`.
+  `decisionDetails.expert.grantedTime`.
 
 #### Getting tokens from local mock-oauth2-server
 

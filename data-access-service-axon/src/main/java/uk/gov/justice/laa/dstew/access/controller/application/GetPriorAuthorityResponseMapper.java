@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
 import java.time.ZoneOffset;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -57,10 +58,7 @@ public class GetPriorAuthorityResponseMapper {
 
   private List<UploadedDocument> toUploadedDocuments(PriorAuthorityResult result) {
     if (result.uploadedDocuments() == null) {
-      return null;
-    }
-    if (result.uploadedDocuments().isEmpty()) {
-      return null;
+      return Collections.emptyList();
     }
     Map<UUID, String> filenames =
         result.documentFilenames() == null ? Map.of() : result.documentFilenames();
@@ -200,7 +198,7 @@ public class GetPriorAuthorityResponseMapper {
           new uk.gov.justice.laa.dstew.access.model.ExpertFeeInformation();
       expertInfo.setNewFixedRateAmount(details.expert().getNewFixedRateAmount());
       expertInfo.setNewHourlyRateAmount(details.expert().getNewHourlyRateAmount());
-      expertInfo.setNewTimeRequested(toTimeRequested(details.expert().getNewTimeRequested()));
+      expertInfo.setGrantedTime(toTimeRequested(details.expert().getGrantedTime()));
       result.setExpert(expertInfo);
     }
     if (details.disbursement() != null) {
@@ -211,7 +209,6 @@ public class GetPriorAuthorityResponseMapper {
     }
     if (details.apportionment() != null) {
       Apportionment apportionmentInfo = new Apportionment();
-      // apportionmentInfo.setPartiesSharingCosts(...) // Not available in command object
       apportionmentInfo.setClientShareAmount(details.apportionment().getNewClientShareAmount());
       result.setApportionment(apportionmentInfo);
     }
