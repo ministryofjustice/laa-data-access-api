@@ -111,7 +111,7 @@ down() {
 
   log "Deleting labelled resources for run ${RUN_ID}..."
   kubectl -n "${KUBE_NAMESPACE}" delete \
-    deployments,services,secrets,configmaps,pods \
+    deployments,services,secrets,configmaps,pods,networkpolicies \
     -l "app.kubernetes.io/part-of=${PART_OF},${RUN_LABEL}=${RUN_ID}" \
     --ignore-not-found --wait=false \
     || log "WARNING: resource deletion failed for run ${RUN_ID}."

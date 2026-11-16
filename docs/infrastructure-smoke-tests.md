@@ -89,7 +89,7 @@ Both callers explicitly pass only `KUBE_CERT`, `KUBE_TOKEN`, `KUBE_CLUSTER`,
 
 ## Kubernetes smoke tests (CI)
 
-Each run creates a separate stack in the `uat` namespace, named from `GITHUB_RUN_ID` and
+Each run creates an isolated stack in the `uat` namespace, named from `GITHUB_RUN_ID` and
 `GITHUB_RUN_ATTEMPT`:
 
 | Resource | Source |
@@ -114,12 +114,11 @@ WireMock runs explicitly as UID/GID 1000 because its image defaults to root.
 The ConfigMap mappings remain read-only; the image's root-only `uid` entrypoint
 option is not used.
 
-New smoke runs do not create NetworkPolicies. They rely on the existing UAT
-namespace policies, including the policy that allows ingress from other pods in the
-namespace. That policy permits cross-run connections; run-specific service names direct
-normal traffic to the correct dependencies but do not enforce network isolation.
-Confirm the namespace policies are deployed and enforced before running the stack.
-Smoke releases do not add a monitoring ingress policy.
+The smoke release's monitoring NetworkPolicy selects only its API pods. A run-labelled
+dependency NetworkPolicy permits PostgreSQL, mock Entra and SDS ingress from that run's
+API pods on their service ports. Other releases' network policies remain unchanged;
+Kubernetes allow rules are additive, so namespace-wide policies can still grant wider
+access. Teardown also removes the run's dependency NetworkPolicy.
 
 The runner reaches the API on `localhost:8080` and mock Entra on `localhost:9998` through
 port-forwards. No database port-forward is needed. The BDD client sends the
@@ -133,17 +132,15 @@ stack:
 | Command | Behaviour |
 |---------|-----------|
 | `up` | Creates labelled ConfigMaps, applies the rendered stack, waits for readiness, then runs `helm upgrade --install`. |
-| `down` | Uninstalls the run's Helm release and deletes supported workload resources labelled with its run ID. |
+| `down` | Uninstalls the run's Helm release and deletes resources labelled with its run ID. |
 | `cleanup-abandoned [hours]` | Runs `down` for every run whose resources are older than the threshold. |
 
-Dependency resources carry `app.kubernetes.io/part-of=laa-data-access-smoke-test`,
-`laa-smoke-run-id` and `laa-smoke-created-epoch`; the API is removed through its
-run-specific Helm release. The
-[cleanup workflow](../.github/workflows/smoke-test-cleanup.yml) can be triggered manually
-to remove stacks older than six hours left by cancelled or crashed runs. Previously
-created dependency NetworkPolicies are not removed by this cleanup and require separate
-platform-owned review and cleanup. Uninstalling an older Helm release can still remove
-the monitoring NetworkPolicy owned by that release.
+Every resource carries `app.kubernetes.io/part-of=laa-data-access-smoke-test`,
+`laa-smoke-run-id` and `laa-smoke-created-epoch`, so teardown and cleanup touch only
+smoke-test resources. The
+[cleanup workflow](../.github/workflows/smoke-test-cleanup.yml) runs hourly and removes
+stacks older than six hours left by cancelled or crashed runs. Its schedule and
+authentication must be approved by the platform owners.
 
 The smoke job runs under the `uat` environment, so its protection rules apply. It has a
 30-minute timeout. A final `always()` step runs `down` for the run, and diagnostics
