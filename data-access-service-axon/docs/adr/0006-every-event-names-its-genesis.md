@@ -92,19 +92,23 @@ than reconstructing them from current ownership or group membership.
    caseworker account can have its own genesis. Related cases are not automatically its
    dependents and do not automatically share its retention schedule.
 
-### Linking and unlinking: target semantics
+### Linking and unlinking: event-specific scope
 
-The wider proposal's merge/link arrangement retains both roots and genesis IDs. Each lifecycle
-stream retains its own pre-link history. Pointers to subsequent shared domain events appear in
-both streams until unlinking; earlier histories are not copied. Unlinking stops adding shared
-pointers but does not remove those already recorded. Neither root closes and existing dependents
-do not transfer.
+Linking retains both roots and genesis IDs. Each lifecycle stream contains pointers only to
+events concerning its genesis. A linking event concerns both roots and therefore appears in
+both streams. Adding a PA to one of those applications concerns only its parent's genesis,
+even while the applications are linked.
+
+Linking does not broaden the scope of subsequent events or copy earlier histories. An unlink
+event appears in the streams it names without removing previously recorded pointers. Neither
+root closes and existing dependents do not transfer.
 
 These are pointers to the same events, not duplicate business commands or duplicate domain
 events. The lifecycle streams do not enforce the link or its retention consequences.
 
-This is a target requiring reconciliation with current ADS linked-group behaviour, not a
-claim that the branch implements it. See "Contradictions and implementation gaps" below.
+The current `genesisIds()` implementations express this event-specific scope. The pointer
+stream itself is follow-on work. Self-contained means that a stream includes the events
+concerning its genesis, not that it includes every event concerning every linked member.
 
 ### Current implementation
 
@@ -130,7 +134,7 @@ claim that the branch implements it. See "Contradictions and implementation gaps
   - `PriorAuthorityDocumentTypeUpdatedEvent`: `parentApplicationId`.
 - `GenesisScopeArchitectureTest` (ArchUnit) fails the build if an `@Event` does not implement
   `GenesisScoped`. It also checks a dissolved group's IDs and one missing-ID failure. It
-  does not prove complete event coverage for every linked root.
+  does not test delivery into the planned lifecycle streams.
 
 ### Planned use
 
@@ -149,7 +153,6 @@ claim that the branch implements it. See "Contradictions and implementation gaps
   addressing and read-side lifecycle history are different concerns.
 - **A dedicated `genesisId` field on every event:** rejected. All but three events already carry
   the necessary fields for the current ADS mapping; a duplicate field can disagree with them.
-  Wider linked-event sharing may require additional event facts.
 - **Resolving the genesis in a projection:** rejected. Every consumer would need lookup state,
   and events would no longer be self-describing. In particular, current membership cannot
   reliably reconstruct which roots a historical event concerned.
@@ -171,15 +174,16 @@ claim that the branch implements it. See "Contradictions and implementation gaps
   retention. In particular, [ADR 0005][assignment-adr] remains the command-side assignment
   decision; its per-application assignment events are not duplicate lifecycle pointers.
 
-## Contradictions and implementation gaps
+## Implementation status and follow-on work
 
-The earlier draft's closing-root merge, exclusion of person records and assumed data copying
-have been removed. The remaining differences must not be hidden by adopting the papers' terms:
+The event scopes above are intentional, not incomplete sharing between linked roots. Member
+add/remove events name the lead and member; lead-change events name the old and new lead.
+Other members do not receive a pointer merely because they belong to the group.
 
-| Topic | Evidence in this branch | Required reconciliation |
+The remaining work concerns the history reader and wider adoption, not a change to these scopes:
+
+| Topic | Evidence in this branch | Follow-on work |
 |---|---|---|
-| Shared activity while linked | `ApplicationUpdatedEvent`, `PriorAuthoritySubmittedEvent` and work-item assignment events return only their own application's genesis ID. | The wider paper describes subsequent events appearing in both linked lifecycle streams. Decide how that applies to ADS linking and record the affected roots at event time before claiming this behaviour. The current event fields do not supply them. |
-| Self-contained group histories | Member add/remove events name only lead and member; lead-change events name only old and new lead. Other members receive no pointer from those events' `genesisIds()`. | Agree which roots are affected. If every current member must see the group change, the events need enough historical scope to identify them; a lookup of today's membership is insufficient. |
 | Application history delivery | `ApplicationHistoryProjection`, `PriorAuthorityHistoryProjection` and their assemblers still provide history. This branch adds `GenesisScoped`, not the lifecycle-stream replacement. | The papers describe the intended ADS view. Treat the pointer stream and replacement history reader as follow-on work, not delivered by this ADR's branch. |
 | Wider identity model | `GenesisScoped` uses `Set<UUID>` and derives IDs from root application fields. | Person/account geneses, non-UUID external identities and a broader case-file mapping are not implemented here. Agree their issuing and mapping contracts before adoption across systems. |
 
@@ -190,7 +194,6 @@ processing is a read-side concern, separate from whether a business command succ
 ## Reconsider when
 
 - A dependent needs to change genesis or be retained independently.
-- ADS linking must share subsequent event pointers across every member.
 - Another system starts geneses that we ingest, for example during migration.
 - A wider case or user-record lifecycle cannot be represented by the current application UUID.
 - Retention policy requires deletion of identifiers or shared event references.
