@@ -242,21 +242,30 @@ public class PriorAuthorityProjection {
   /** Records the assignment version after a prior-authority work item is assigned. */
   @EventHandler
   public void on(WorkItemAssigned event) {
-    updateAssignmentVersion(
-        event.workItemType(), event.workItemId(), event.assignmentVersion(), event.occurredAt());
+    updateAssignment(
+        event.workItemType(),
+        event.workItemId(),
+        event.assignmentVersion(),
+        event.caseworkerId(),
+        event.occurredAt());
   }
 
   /** Records the assignment version after a prior-authority work item is unassigned. */
   @EventHandler
   public void on(WorkItemUnassigned event) {
-    updateAssignmentVersion(
-        event.workItemType(), event.workItemId(), event.assignmentVersion(), event.occurredAt());
+    updateAssignment(
+        event.workItemType(),
+        event.workItemId(),
+        event.assignmentVersion(),
+        null,
+        event.occurredAt());
   }
 
-  private void updateAssignmentVersion(
+  private void updateAssignment(
       WorkItemType workItemType,
       UUID priorAuthorityId,
       long assignmentVersion,
+      UUID caseworkerId,
       Instant occurredAt) {
     if (workItemType != WorkItemType.PRIOR_AUTHORITY) {
       return;
@@ -266,6 +275,7 @@ public class PriorAuthorityProjection {
         .ifPresent(
             current -> {
               current.setAssignmentVersion(assignmentVersion);
+              current.setCaseworkerId(caseworkerId);
               current.setModifiedAt(occurredAt);
               repository.save(current);
             });

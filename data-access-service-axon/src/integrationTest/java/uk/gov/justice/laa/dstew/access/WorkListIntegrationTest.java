@@ -334,6 +334,7 @@ class WorkListIntegrationTest extends BaseIntegrationTest {
     createGrantedApplication(parentApplicationId);
     UUID priorAuthorityId = createAndSubmitPriorAuthorityDraft(parentApplicationId);
     awaitPriorAuthorityDetailsAssignmentVersion(priorAuthorityId, 0L);
+    assertThat(priorAuthorityDetails(priorAuthorityId).getAssignedTo()).isNull();
 
     assertThat(
             assignAtVersion(
@@ -341,12 +342,22 @@ class WorkListIntegrationTest extends BaseIntegrationTest {
         .extracting(ResponseEntity::getStatusCode)
         .isEqualTo(HttpStatus.OK);
     awaitPriorAuthorityDetailsAssignmentVersion(priorAuthorityId, 1L);
+    assertThat(priorAuthorityDetails(priorAuthorityId).getAssignedTo())
+        .isEqualTo(TestJwtDecoderConfig.CASEWORKER_ID);
+    awaitWorkListContains(
+        "?assignedToMe=true&unassigned=false",
+        priorAuthorityId,
+        TestJwtDecoderConfig.CASEWORKER_ID,
+        1L,
+        WorkListItemType.PRIOR_AUTHORITY);
     assertThat(
             unassignAtVersion(
                 priorAuthorityId, priorAuthorityDetailsAssignmentVersion(priorAuthorityId)))
         .extracting(ResponseEntity::getStatusCode)
         .isEqualTo(HttpStatus.OK);
     awaitPriorAuthorityDetailsAssignmentVersion(priorAuthorityId, 2L);
+    assertThat(priorAuthorityDetails(priorAuthorityId).getAssignedTo()).isNull();
+    awaitWorkListContains("", priorAuthorityId, null, 2L, WorkListItemType.PRIOR_AUTHORITY);
 
     assertThat(assignAtVersion(priorAuthorityId, 1L).getStatusCode())
         .isEqualTo(HttpStatus.CONFLICT);
@@ -356,6 +367,8 @@ class WorkListIntegrationTest extends BaseIntegrationTest {
         .extracting(ResponseEntity::getStatusCode)
         .isEqualTo(HttpStatus.OK);
     awaitPriorAuthorityDetailsAssignmentVersion(priorAuthorityId, 3L);
+    assertThat(priorAuthorityDetails(priorAuthorityId).getAssignedTo())
+        .isEqualTo(TestJwtDecoderConfig.CASEWORKER_ID);
   }
 
   @Test
@@ -1226,6 +1239,10 @@ class WorkListIntegrationTest extends BaseIntegrationTest {
   }
 
   private long priorAuthorityDetailsAssignmentVersion(UUID priorAuthorityId) {
+    return priorAuthorityDetails(priorAuthorityId).getAssignmentVersion();
+  }
+
+  private PriorAuthorityResponse priorAuthorityDetails(UUID priorAuthorityId) {
     ResponseEntity<PriorAuthorityResponse> response =
         restTemplate.exchange(
             "http://localhost:" + port + "/api/v0/prior-authorities/" + priorAuthorityId,
@@ -1234,7 +1251,7 @@ class WorkListIntegrationTest extends BaseIntegrationTest {
             PriorAuthorityResponse.class);
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody()).isNotNull();
-    return response.getBody().getAssignmentVersion();
+    return response.getBody();
   }
 
   private WorkListResponse getWorkList(String query, UUID caseworkerId) {

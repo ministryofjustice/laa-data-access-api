@@ -52,6 +52,9 @@ public class PriorAuthorityReadModel {
 
   private String decision;
 
+  @Column(name = "caseworker_id")
+  private UUID caseworkerId;
+
   @Column(name = "assignment_version", nullable = false)
   private long assignmentVersion;
 

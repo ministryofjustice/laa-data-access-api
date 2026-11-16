@@ -122,14 +122,17 @@ class GetPriorAuthorityResponseMapperTest {
 
   @Test
   void givenAssignmentVersion_whenMapped_thenReturnsItAsAssignmentVersion() {
+    UUID caseworkerId = UUID.randomUUID();
     PriorAuthorityResult result =
         PriorAuthorityResult.builder()
             .priorAuthorityId(UUID.randomUUID())
             .applicationId(UUID.randomUUID())
+            .caseworkerId(caseworkerId)
             .assignmentVersion(3L)
             .build();
 
     assertThat(mapper.toResponse(result).getAssignmentVersion()).isEqualTo(3L);
+    assertThat(mapper.toResponse(result).getAssignedTo()).isEqualTo(caseworkerId);
   }
 
   @Test
@@ -174,6 +177,7 @@ class GetPriorAuthorityResponseMapperTest {
     var response = mapper.toResponse(result);
 
     assertThat(response.getPriorAuthorityType()).isNull();
+    assertThat(response.getAssignedTo()).isNull();
     assertThat(response.getSubmittedAt()).isNull();
     assertThat(response.getExpertDetails()).isNull();
     assertThat(response.getCounselDetails()).isNull();
