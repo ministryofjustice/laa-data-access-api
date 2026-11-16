@@ -324,10 +324,11 @@ public class ApplicationProjection {
               application.setApplicationVersion(event.applicationVersion());
               application.setApplicationDataVersion(event.applicationDataVersion());
               application.setModifiedAt(event.occurredAt());
-              application.setOfficeCode(
-                  ApplicationReadModelAssembler.officeCode(
-                      applicationDataStore.get(
-                          event.applicationId(), event.applicationDataVersion())));
+              ApplicationDataPayload data =
+                  applicationDataStore.get(event.applicationId(), event.applicationDataVersion());
+              application.setOfficeCode(ApplicationReadModelAssembler.officeCode(data));
+              application.setAutoGranted(
+                  data == null ? application.getAutoGranted() : data.autoGranted());
               applicationReadRepository.save(application);
             });
   }
@@ -457,12 +458,14 @@ public class ApplicationProjection {
         .findById(applicationId)
         .ifPresent(
             application -> {
+              ApplicationDataPayload data =
+                  applicationDataStore.get(applicationId, applicationDataVersion);
               application.setApplicationDataVersion(applicationDataVersion);
               application.setApplicationVersion(applicationVersion);
               application.setModifiedAt(occurredAt);
-              application.setOfficeCode(
-                  ApplicationReadModelAssembler.officeCode(
-                      applicationDataStore.get(applicationId, applicationDataVersion)));
+              application.setOfficeCode(ApplicationReadModelAssembler.officeCode(data));
+              application.setAutoGranted(
+                  data == null ? application.getAutoGranted() : data.autoGranted());
               applicationReadRepository.save(application);
             });
   }
@@ -483,13 +486,15 @@ public class ApplicationProjection {
         .findById(applicationId)
         .ifPresent(
             application -> {
+              ApplicationDataPayload data =
+                  applicationDataStore.get(applicationId, applicationDataVersion);
               application.setApplicationDataVersion(applicationDataVersion);
               application.setApplicationVersion(applicationVersion);
               application.setModifiedAt(occurredAt);
-              application.setOfficeCode(
-                  ApplicationReadModelAssembler.officeCode(
-                      applicationDataStore.get(applicationId, applicationDataVersion)));
+              application.setOfficeCode(ApplicationReadModelAssembler.officeCode(data));
               application.setStatus(applicationStatus.getValue());
+              application.setAutoGranted(
+                  data == null ? application.getAutoGranted() : data.autoGranted());
               applicationReadRepository.save(application);
             });
   }
