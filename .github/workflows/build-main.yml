@@ -145,7 +145,7 @@ jobs:
 
   deploy-shared-mock-oauth2:
     runs-on: ubuntu-latest
-    needs: [ release, smoke-tests ]
+    needs: [ release, ecr-publish-service-image ]
     environment: uat
     permissions:
       id-token: write
@@ -247,7 +247,7 @@ jobs:
 
   deploy-matrix-rc-feature:
     runs-on: ubuntu-latest
-    needs: [ release, prepare-feature-environments, smoke-tests, ecr-publish-service-image ]
+    needs: [ release, prepare-feature-environments, ecr-publish-service-image ]
     environment: uat
     strategy:
       fail-fast: false
