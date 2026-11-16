@@ -105,7 +105,13 @@ class LinkedGroupWorkItemAssignmentCommandHandlerTest {
                     CASEWORKER_ID,
                     OCCURRED_AT),
                 new WorkItemAssigned(
-                    FIRST_ID, WorkItemType.APPLICATION, FIRST_ID, 1L, 1L, CASEWORKER_ID, OCCURRED_AT)));
+                    FIRST_ID,
+                    WorkItemType.APPLICATION,
+                    FIRST_ID,
+                    1L,
+                    1L,
+                    CASEWORKER_ID,
+                    OCCURRED_AT)));
     assertThat(result.items())
         .containsExactly(
             new AssignedWorkItems.AssignedItem(SECOND_ID, "LAA-SECOND"),
@@ -161,7 +167,13 @@ class LinkedGroupWorkItemAssignmentCommandHandlerTest {
         .append(
             List.of(
                 new WorkItemAssigned(
-                    SECOND_ID, WorkItemType.APPLICATION, SECOND_ID, 1L, 1L, CASEWORKER_ID, OCCURRED_AT)));
+                    SECOND_ID,
+                    WorkItemType.APPLICATION,
+                    SECOND_ID,
+                    1L,
+                    1L,
+                    CASEWORKER_ID,
+                    OCCURRED_AT)));
     assertThat(result.items())
         .containsExactly(new AssignedWorkItems.AssignedItem(SECOND_ID, "LAA-SECOND"));
   }

@@ -12,7 +12,7 @@
 
 This ADR records the ADS implementation decision. Adoption beyond ADS and the wider retention
 policies are not implied by it. The implementation observations below refer to
-`feat/genesis-ids` at `52738129`, not a deployed service.
+`feat/genesis-ids`, rebased onto main `f952c6e5` on 2026-11-16, not a deployed service.
 
 ## Context
 
@@ -113,8 +113,9 @@ concerning its genesis, not that it includes every event concerning every linked
 ### Current implementation
 
 - `command.GenesisScoped` declares `Set<UUID> genesisIds()`, implemented by every `@Event`.
-  Its helpers de-duplicate IDs and reject nulls. Non-empty is a contract requirement; the
-  helpers do not themselves reject empty input.
+  Its helpers de-duplicate IDs, reject nulls and reject an empty combined set with an
+  `IllegalArgumentException`. An empty member collection is valid when further IDs
+  provide at least one genesis.
 - Prior Authority events name the parent application (`parentApplicationId`, or
   `applicationId`). Application notes, documents and decisions name the application.
   `WorkItemAssigned` and `WorkItemUnassigned` name the owning application's genesis,
@@ -133,8 +134,8 @@ concerning its genesis, not that it includes every event concerning every linked
     application work items; the parent for Prior Authority work items).
   - `PriorAuthorityDocumentTypeUpdatedEvent`: `parentApplicationId`.
 - `GenesisScopeArchitectureTest` (ArchUnit) fails the build if an `@Event` does not implement
-  `GenesisScoped`. It also checks a dissolved group's IDs and one missing-ID failure. It
-  does not test delivery into the planned lifecycle streams.
+  `GenesisScoped`. It also checks a dissolved group's IDs, a missing-ID failure and the
+  helpers' non-empty contract. It does not test delivery into the planned lifecycle streams.
 
 ### Planned use
 

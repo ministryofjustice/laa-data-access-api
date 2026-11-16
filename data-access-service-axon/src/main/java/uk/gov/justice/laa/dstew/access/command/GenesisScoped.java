@@ -7,9 +7,12 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * An event that relates to one or more root applications (its genesis). Every event implements
- * this, so a reader can find all events for an application without holding state, whichever
- * aggregate appended them. The IDs derive from the event's own fields.
+ * Identifies the independent data lifecycles a domain event concerns. ADS currently uses root
+ * application IDs as genesis IDs. Readers can index event pointers into read-only lifecycle streams
+ * without looking up current ownership or group membership.
+ *
+ * <p>The IDs derive from the event's own fields. Linking roots does not automatically include every
+ * linked root in subsequent events.
  */
 public interface GenesisScoped {
 
@@ -19,20 +22,25 @@ public interface GenesisScoped {
   /**
    * Collects IDs, dropping duplicates.
    *
+   * @throws IllegalArgumentException if no IDs are supplied
    * @throws NullPointerException if any ID is null
    */
   static Set<UUID> ids(UUID... ids) {
-    return Set.copyOf(new LinkedHashSet<>(Arrays.asList(ids)));
+    return ids(Arrays.asList(ids));
   }
 
   /**
    * Collects IDs from a list and further IDs, dropping duplicates.
    *
+   * @throws IllegalArgumentException if no IDs are supplied
    * @throws NullPointerException if any ID is null
    */
   static Set<UUID> ids(Collection<UUID> some, UUID... more) {
     Set<UUID> all = new LinkedHashSet<>(some);
     all.addAll(Arrays.asList(more));
+    if (all.isEmpty()) {
+      throw new IllegalArgumentException("At least one genesis ID is required");
+    }
     return Set.copyOf(all);
   }
 }

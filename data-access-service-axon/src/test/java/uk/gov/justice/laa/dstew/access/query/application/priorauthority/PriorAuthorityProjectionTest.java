@@ -76,10 +76,21 @@ class PriorAuthorityProjectionTest {
     when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(model));
     var assigned =
         new WorkItemAssigned(
-            priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, UUID.randomUUID(), assignedAt);
+            priorAuthorityId,
+            WorkItemType.PRIOR_AUTHORITY,
+            model.getApplicationId(),
+            1L,
+            1L,
+            UUID.randomUUID(),
+            assignedAt);
     var unassigned =
         new WorkItemUnassigned(
-            priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 1L, 2L, unassignedAt);
+            priorAuthorityId,
+            WorkItemType.PRIOR_AUTHORITY,
+            model.getApplicationId(),
+            1L,
+            2L,
+            unassignedAt);
 
     for (int replay = 0; replay < 2; replay++) {
       projection.on(assigned);
@@ -100,9 +111,16 @@ class PriorAuthorityProjectionTest {
 
     projection.on(
         new WorkItemAssigned(
-            applicationId, WorkItemType.APPLICATION, 1L, 1L, UUID.randomUUID(), Instant.now()));
+            applicationId,
+            WorkItemType.APPLICATION,
+            applicationId,
+            1L,
+            1L,
+            UUID.randomUUID(),
+            Instant.now()));
     projection.on(
-        new WorkItemUnassigned(applicationId, WorkItemType.APPLICATION, 1L, 2L, Instant.now()));
+        new WorkItemUnassigned(
+            applicationId, WorkItemType.APPLICATION, applicationId, 1L, 2L, Instant.now()));
 
     verifyNoInteractions(repository);
   }
@@ -116,6 +134,7 @@ class PriorAuthorityProjectionTest {
         new WorkItemAssigned(
             priorAuthorityId,
             WorkItemType.PRIOR_AUTHORITY,
+            UUID.randomUUID(),
             1L,
             1L,
             UUID.randomUUID(),

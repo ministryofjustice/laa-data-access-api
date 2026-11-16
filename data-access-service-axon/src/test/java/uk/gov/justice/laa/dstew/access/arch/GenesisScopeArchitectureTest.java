@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.arch;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
@@ -55,5 +56,26 @@ class GenesisScopeArchitectureTest {
             UUID.randomUUID(), null, UUID.randomUUID(), 1L, Instant.now());
 
     assertThatNullPointerException().isThrownBy(event::genesisIds);
+  }
+
+  @Test
+  void givenNoIds_whenCollected_thenFails() {
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> GenesisScoped.ids())
+        .withMessage("At least one genesis ID is required");
+  }
+
+  @Test
+  void givenEmptyCollectionWithoutFurtherIds_whenCollected_thenFails() {
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> GenesisScoped.ids(List.of()))
+        .withMessage("At least one genesis ID is required");
+  }
+
+  @Test
+  void givenEmptyCollectionWithFurtherId_whenCollected_thenIncludesThatId() {
+    UUID applicationId = UUID.randomUUID();
+
+    assertThat(GenesisScoped.ids(List.of(), applicationId)).containsExactly(applicationId);
   }
 }
