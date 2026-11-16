@@ -24,9 +24,8 @@ spec:
 - The monitoring namespace must have the label `component: monitoring`
 - Without this policy, Prometheus cannot scrape `/actuator/prometheus` and all Grafana dashboard panels will be blank
 
-For the smoke-test overlay only, the selector is restricted to that release's API pods.
-The disposable dependencies have a separate, run-scoped ingress policy permitting the
-same release's API to reach PostgreSQL, mock Entra and WireMock. See
+The smoke-test overlay does not create this policy or a dependency policy. Smoke tests
+rely on existing UAT namespace policies, including same-namespace ingress. See
 [Infrastructure Smoke Tests](infrastructure-smoke-tests.md).
 
 ## Verifying the policy
