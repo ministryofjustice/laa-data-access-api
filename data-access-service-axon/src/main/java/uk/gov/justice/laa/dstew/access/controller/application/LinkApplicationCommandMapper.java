@@ -27,13 +27,6 @@ public class LinkApplicationCommandMapper {
     this.clock = clock;
   }
 
-  /** Maps the source path identifier and target request identifier into a link command. */
-  @Deprecated
-  public LinkApplicationCommand toCommand(
-      UUID sourceApplicationId, ApplicationLinkRequest request) {
-    return toCommand(sourceApplicationId, request, null);
-  }
-
   /** Maps the source path identifier, target request identifier, and authenticated caller. */
   public LinkApplicationCommand toCommand(
       UUID sourceApplicationId, ApplicationLinkRequest request, AuthenticatedCaller caller) {
