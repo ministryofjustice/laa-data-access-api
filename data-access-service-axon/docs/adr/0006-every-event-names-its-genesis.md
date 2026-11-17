@@ -185,9 +185,10 @@ concerning its genesis, not that it includes every event concerning every linked
 
 ## Implementation status and follow-on work
 
-The event scopes above are intentional, not incomplete sharing between linked roots. Member
-add/remove events name the lead and member; lead-change events name the old and new lead.
-Other members do not receive a pointer merely because they belong to the group.
+The event scopes above are intentional, not incomplete sharing between linked roots. Changes
+to the group itself (membership, lead or dissolution) name every member at the time. Other
+events concerning one member, such as its notes or Prior Authorities, do not name the rest of
+the group merely because they are linked.
 
 The remaining work concerns the history reader and wider adoption, not a change to these scopes:
 
