@@ -29,10 +29,10 @@ public class ApplicationHistoryAssembler {
    * @param rows all rows for an application, in their requested order
    * @return immutable list of hydrated event results, same order as {@code rows}
    */
-  public List<ApplicationHistoryEventResult> assemble(List<ApplicationHistoryReadModel> rows) {
+  public List<ApplicationHistoryEventResult> assemble(List<ApplicationHistoryRow> rows) {
     var ids =
         rows.stream()
-            .map(ApplicationHistoryReadModel::getJustificationId)
+            .map(ApplicationHistoryRow::getJustificationId)
             .filter(Objects::nonNull)
             .collect(java.util.stream.Collectors.toSet());
     Map<UUID, String> justifications = ids.isEmpty() ? Map.of() : justificationStore.findAll(ids);
@@ -40,7 +40,7 @@ public class ApplicationHistoryAssembler {
   }
 
   private ApplicationHistoryEventResult toEvent(
-      ApplicationHistoryReadModel row, Map<UUID, String> justifications) {
+      ApplicationHistoryRow row, Map<UUID, String> justifications) {
     return new ApplicationHistoryEventResult(
         row.getApplicationId(),
         row.getEventType(),
@@ -50,8 +50,7 @@ public class ApplicationHistoryAssembler {
         row.getCaseworkerId());
   }
 
-  private String eventDescription(
-      ApplicationHistoryReadModel row, Map<UUID, String> justifications) {
+  private String eventDescription(ApplicationHistoryRow row, Map<UUID, String> justifications) {
     if (row.getJustificationId() != null) {
       String text = justifications.get(row.getJustificationId());
       if (text == null) {

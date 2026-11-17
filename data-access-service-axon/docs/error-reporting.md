@@ -42,7 +42,7 @@ Every path below funnels through this one method, with one documented exception
 | C | Unmapped `RuntimeException` reaching a controller | Sentry event | `ApplicationExceptionHandler.handleUnexpectedException` |
 | D | Exception from a `@LogMethodArguments`/`@LogMethodResponse` method | WARN or ERROR, by classification | `LoggingAspects.logMethodExceptionAdvice` |
 | E | Background (pooled-streaming) Axon projection failure | Sentry event, cooldown-limited | `ReportingErrorHandler.handleError` |
-| F | Data-integrity anomaly found during event replay (no throw) | Sentry event | `WorkListProjection`, `PriorAuthorityHistoryProjection` |
+| F | Data-integrity anomaly found while handling or reading events (no throw) | Sentry event | `WorkListProjection`, `ApplicationHistoryMapper` |
 | G | Scheduled job failure | Sentry event, not rethrown | `AssessmentReconciliation.run` |
 | H | `*DataStore` repository/deserialization failure | Sentry event, rethrown | `ApplicationDataStore.retrieve`, `PriorAuthorityDataStore.retrieve` |
 
@@ -407,7 +407,7 @@ observability failure from becoming a correctness/availability failure.
 `ReportingErrorHandler` only into `pooledStreamingProcessor(...)` (used by all current
 pooled-streaming beans — `applicationProjectionProcessor`, `workListProjectionProcessor`,
 `priorAuthorityProjectionProcessor`, `linkedApplicationGroupProjectionProcessor`,
-`linkedGroupWorkItemLifecycleProcessor`, `applicationHistoryProjectionProcessor`). The subscribing
+`linkedGroupWorkItemLifecycleProcessor`, `lifecycleStreamProcessor`). The subscribing
 beans (`applicationGroupRouteProcessor`, `workItemRouteProcessor`,
 `applicationSubmittedPublisherProcessor`) keep `PropagatingErrorHandler.instance()` directly — their
 failures propagate synchronously back through the originating command's call stack to the HTTP
@@ -452,28 +452,29 @@ on(WorkItemAssigned event, EventMessage message):
 Same shape in `on(WorkItemUnassigned event, EventMessage message)` ("Cannot unassign missing
 work-list item").
 
-**Flow (`PriorAuthorityHistoryProjection`):** when the prior-authority data referenced by an
-assignment/unassignment event can't be found:
+**Flow (`ApplicationHistoryMapper`):** when the prior-authority data referenced by an
+assignment/unassignment event can't be found while history is read:
 
 ```java
 errorReporter.report(
     "Prior authority data not found for PA assignment event",   // or "...unassignment event"
-    new ApplicationHistoryIntegrityException(null, event.workItemId(),
-        "no prior-authority data for version=" + event.itemVersion()));
-return;   // handler returns normally — event processing continues
+    new ApplicationHistoryIntegrityException(applicationId, workItemId,
+        "no prior-authority data for version=" + itemVersion));
+return;   // the entry is left out — the rest of the history is still returned
 ```
 
 **Why this is still routed through `ErrorReporter` rather than, say, `log.warn`:** this is an
 operator-actionable, unexpected condition (a real inconsistency between aggregates and read models)
 even though it doesn't throw — it needs the same visibility as any other unexpected failure, just
-without aborting replay of subsequent events.
+without failing the rest of the history.
 
 **Test coverage:** `WorkListProjectionTest` —
 `givenMissingWorkItem_whenAssigned_thenReportsAndDoesNotSave` /
 `givenMissingWorkItem_whenUnassigned_thenReportsAndDoesNotSave`, asserting
 `verify(errorReporter).report(eq("Cannot assign/unassign missing work-list item"), any())` and that
-`items.save(...)` is never called. `PriorAuthorityHistoryProjectionTest` has the analogous pair for
-the assignment/unassignment-without-data case.
+`items.save(...)` is never called. `ApplicationHistoryMapperTest` has the analogous pair for
+the assignment/unassignment-without-data case. Because history is read on demand, the mapper reports
+the anomaly on every read of the affected application's history.
 
 ---
 

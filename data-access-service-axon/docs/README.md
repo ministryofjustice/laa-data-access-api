@@ -52,7 +52,8 @@ experience should follow the learning path below before using the documents as a
 - `ApplicationGroupRouteProjection` maintains durable write-side linking routes.
 - `ApplicationSubmittedEventRouter` schedules live-only SNS publication after command commit.
 - `ApplicationDataStore` reads and appends immutable sensitive-data versions.
-- `ApplicationProjection` and `ApplicationHistoryProjection` build query-side views.
+- `ApplicationProjection` and the other projections build query-side views; application history is
+  read from the lifecycle stream when queried.
 
 The generated OpenAPI types are the public API contract. Commands and events are internal messages
 and should not be exposed directly by controllers.
