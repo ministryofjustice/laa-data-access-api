@@ -155,9 +155,10 @@ description. If a referenced version is absent (for example, after retention), i
 continue to fail the query. Caseworker attribution comes from event metadata when present, so
 historical events without authenticated-user metadata have no caseworker attribution.
 
-Prior Authority assignment events name the Prior Authority, not its application, so the mapper
-reads that version of the Prior Authority data to find both. If it is missing, the entry is left
-out and the inconsistency is reported on every read.
+Prior Authority assignment and unassignment entries take their Prior Authority type from the
+`PriorAuthoritySubmittedEvent` in the same stream; history reads no Prior Authority data. A Prior
+Authority can only be assigned once submitted, so an assignment with no submission in the stream
+fails the query with `ApplicationHistoryIntegrityException`.
 
 If the lifecycle stream names an event the store does not hold, the query fails with
 `ApplicationHistoryIntegrityException` rather than returning partial history. History is only as

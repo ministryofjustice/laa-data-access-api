@@ -2,9 +2,10 @@ package uk.gov.justice.laa.dstew.access.query.application.history;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
-import lombok.RequiredArgsConstructor;
 import org.axonframework.messaging.eventhandling.EventMessage;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
@@ -17,27 +18,20 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAdd
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberRemovedFromGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataId;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataRepository;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.config.interceptor.RequestMetadataDispatchInterceptor;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
-import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 
 /**
  * Maps the events in an application's lifecycle stream to history rows, in stream order. Events
- * that are not shown in history, or that concern only another application, give no row.
+ * that are not shown in history, or that concern only another application, give no row. Everything
+ * a row needs comes from the events in the stream.
  */
 @Component
-@RequiredArgsConstructor
 class ApplicationHistoryMapper {
-
-  private final PriorAuthorityDataRepository priorAuthorityDataRepository;
-  private final ErrorReporter errorReporter;
 
   /** Application and Prior Authority history rows for one application. */
   record Rows(
@@ -46,15 +40,35 @@ class ApplicationHistoryMapper {
   /**
    * Maps an application's events to its history rows.
    *
-   * @throws ApplicationHistoryIntegrityException if a Prior Authority decision is unsupported
+   * @throws ApplicationHistoryIntegrityException if a Prior Authority decision is unsupported, or a
+   *     Prior Authority is assigned or unassigned without having been submitted
    */
   Rows map(UUID applicationId, List<EventMessage> events) {
     var rows = new Rows(new ArrayList<>(), new ArrayList<>());
-    events.forEach(message -> add(applicationId, message, rows));
+    Map<UUID, String> submittedTypes = submittedTypes(applicationId, events);
+    events.forEach(message -> add(applicationId, message, rows, submittedTypes));
     return new Rows(List.copyOf(rows.application()), List.copyOf(rows.priorAuthority()));
   }
 
-  private void add(UUID id, EventMessage message, Rows rows) {
+  /**
+   * Prior Authority types by Prior Authority, as submitted; a work item exists only once submitted.
+   */
+  private static Map<UUID, String> submittedTypes(UUID id, List<EventMessage> events) {
+    Map<UUID, String> types = new HashMap<>();
+    events.stream()
+        .map(EventMessage::payload)
+        .forEach(
+            payload -> {
+              if (payload instanceof PriorAuthoritySubmittedEvent event
+                  && id.equals(event.applicationId())) {
+                types.put(event.priorAuthorityId(), event.priorAuthorityType());
+              }
+            });
+    return types;
+  }
+
+  private static void add(
+      UUID id, EventMessage message, Rows rows, Map<UUID, String> submittedTypes) {
     switch (message.payload()) {
       case ApplicationCreatedEvent event when id.equals(event.applicationId()) ->
           application(
@@ -193,9 +207,11 @@ class ApplicationHistoryMapper {
               id,
               event.workItemType(),
               event.workItemId(),
+              event.applicationId(),
               event.itemVersion(),
               "ASSIGN_APPLICATION_TO_CASEWORKER",
-              event.occurredAt());
+              event.occurredAt(),
+              submittedTypes);
       case WorkItemUnassigned event ->
           workItem(
               rows,
@@ -203,9 +219,11 @@ class ApplicationHistoryMapper {
               id,
               event.workItemType(),
               event.workItemId(),
+              event.applicationId(),
               event.itemVersion(),
               "UNASSIGN_APPLICATION_TO_CASEWORKER",
-              event.occurredAt());
+              event.occurredAt(),
+              submittedTypes);
       case PriorAuthoritySubmittedEvent event when id.equals(event.applicationId()) ->
           priorAuthority(
               rows,
@@ -232,44 +250,36 @@ class ApplicationHistoryMapper {
     }
   }
 
-  private void workItem(
+  private static void workItem(
       Rows rows,
       EventMessage message,
       UUID id,
       WorkItemType type,
       UUID workItemId,
+      UUID parentApplicationId,
       long itemVersion,
       String eventType,
-      Instant occurredAt) {
+      Instant occurredAt,
+      Map<UUID, String> submittedTypes) {
     if (!WorkItemType.PRIOR_AUTHORITY.equals(type)) {
       if (id.equals(workItemId)) {
         application(rows, message, id, eventType, null, null, occurredAt);
       }
       return;
     }
-    var priorAuthority =
-        priorAuthorityDataRepository.findById(new PriorAuthorityDataId(workItemId, itemVersion));
-    if (priorAuthority.isEmpty()) {
-      errorReporter.report(
-          "Prior authority data not found for PA "
-              + ("ASSIGN_APPLICATION_TO_CASEWORKER".equals(eventType)
-                  ? "assignment"
-                  : "unassignment")
-              + " event",
-          new ApplicationHistoryIntegrityException(
-              id, workItemId, "no prior-authority data for version=" + itemVersion));
+    if (!id.equals(parentApplicationId)) {
       return;
     }
-    if (!id.equals(priorAuthority.get().getApplicationId())) {
-      return;
+    if (!submittedTypes.containsKey(workItemId)) {
+      throw new ApplicationHistoryIntegrityException(
+          id, workItemId, eventType + " for a prior authority that was never submitted");
     }
-    PriorAuthorityType paType = priorAuthority.get().getPayload().content().priorAuthorityType();
     priorAuthority(
         rows,
         message,
         id,
         workItemId,
-        paType == null ? null : paType.name(),
+        submittedTypes.get(workItemId),
         eventType,
         itemVersion,
         occurredAt);
