@@ -99,7 +99,8 @@ events concerning its genesis. A linking event concerns both roots and therefore
 both streams. Adding a PA to one of those applications concerns only its parent's genesis,
 even while the applications are linked.
 
-Linking does not broaden the scope of subsequent events or copy earlier histories. An unlink
+Linking does not broaden the scope of subsequent events or copy earlier histories; only
+changes to the group itself name all its members. An unlink
 event appears in the streams it names without removing previously recorded pointers. Neither
 root closes and existing dependents do not transfer.
 
@@ -125,9 +126,13 @@ concerning its genesis, not that it includes every event concerning every linked
   | Event | Geneses named |
   |---|---|
   | Group created | Members and lead |
-  | Member added or removed | Lead and member |
+  | Member added or removed | Lead, member and the group's members at the time |
   | Group dissolved | Members, former lead and removed members |
-  | Lead changed | Previous and new lead |
+  | Lead changed | Previous and new lead, and the group's members at the time |
+
+  A change to the group's membership or lead concerns every member, so it appears in every
+  member's history (as since DSTEW-2685). Events stored before the group's members were recorded
+  name only the lead and member, or the two leads.
 
 - New fields where no genesis could be derived:
   - `WorkItemAssigned`, `WorkItemUnassigned`: `applicationId` (equals `workItemId` for

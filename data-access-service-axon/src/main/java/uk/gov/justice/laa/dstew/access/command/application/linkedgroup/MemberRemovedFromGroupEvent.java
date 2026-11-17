@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
@@ -38,8 +39,10 @@ public record MemberRemovedFromGroupEvent(
         justificationRefId);
   }
 
+  /** Names the group's members at the time, when recorded; older events name fewer. */
   @Override
   public Set<UUID> genesisIds() {
-    return GenesisScoped.ids(leadApplicationId, memberId);
+    return GenesisScoped.ids(
+        Objects.requireNonNullElse(memberApplicationIds, List.of()), leadApplicationId, memberId);
   }
 }

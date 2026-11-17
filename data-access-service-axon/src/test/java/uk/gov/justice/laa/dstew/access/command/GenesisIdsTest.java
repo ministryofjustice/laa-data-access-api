@@ -83,11 +83,29 @@ public class GenesisIdsTest {
             LEAD,
             MEMBER),
         scoped(new MemberAddedToGroupEvent(ID, LEAD, MEMBER, OCCURRED_AT), LEAD, MEMBER),
+        scoped(
+            new MemberAddedToGroupEvent(
+                ID, LEAD, MEMBER, OCCURRED_AT, List.of(LEAD, OTHER, MEMBER), null),
+            LEAD,
+            MEMBER,
+            OTHER),
         scoped(new MemberRemovedFromGroupEvent(ID, LEAD, MEMBER, 2L, OCCURRED_AT), LEAD, MEMBER),
+        scoped(
+            new MemberRemovedFromGroupEvent(
+                ID, LEAD, MEMBER, 2L, OCCURRED_AT, List.of(LEAD, OTHER), null),
+            LEAD,
+            MEMBER,
+            OTHER),
         scoped(
             new LinkedApplicationGroupLeadChangedEvent(ID, LEAD, OTHER, 2L, OCCURRED_AT),
             LEAD,
             OTHER),
+        scoped(
+            new LinkedApplicationGroupLeadChangedEvent(
+                ID, LEAD, OTHER, 2L, OCCURRED_AT, List.of(LEAD, OTHER, MEMBER), null),
+            LEAD,
+            OTHER,
+            MEMBER),
         scoped(
             new LinkedApplicationGroupDissolvedEvent(
                 ID, LEAD, MEMBER, List.of(LEAD), 2L, OCCURRED_AT),
