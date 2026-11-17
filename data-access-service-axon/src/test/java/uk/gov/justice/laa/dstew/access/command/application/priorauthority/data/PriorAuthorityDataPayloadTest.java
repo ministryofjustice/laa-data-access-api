@@ -127,9 +127,7 @@ class PriorAuthorityDataPayloadTest {
                     "Reasoned decision",
                     BigDecimal.valueOf(123.45),
                     GRANTED_AT,
-                    ExpertFeeInformation.builder()
-                        .newTimeRequested(new TimeRequested(3, 15))
-                        .build(),
+                    ExpertFeeInformation.builder().grantedTime(new TimeRequested(3, 15)).build(),
                     null,
                     null,
                     "{\"decision\":\"GRANTED\"}"));
@@ -138,11 +136,11 @@ class PriorAuthorityDataPayloadTest {
         objectMapper.readValue(
             objectMapper.writeValueAsString(payload), PriorAuthorityDataPayload.class);
 
-    assertThat(roundTripped.expert().getNewTimeRequested()).isEqualTo(new TimeRequested(3, 15));
+    assertThat(roundTripped.expert().getGrantedTime()).isEqualTo(new TimeRequested(3, 15));
   }
 
   @Test
-  void givenLegacyDecisionJson_whenDeserialised_thenNewTimeRequestedIsNull() {
+  void givenLegacyDecisionJson_whenDeserialised_thenGrantedTimeIsNull() {
     ObjectMapper objectMapper = new ObjectMapper();
     String legacyJson =
         """
@@ -159,7 +157,7 @@ class PriorAuthorityDataPayloadTest {
     PriorAuthorityDataPayload payload =
         objectMapper.readValue(legacyJson, PriorAuthorityDataPayload.class);
 
-    assertThat(payload.expert().getNewTimeRequested()).isNull();
+    assertThat(payload.expert().getGrantedTime()).isNull();
   }
 
   private static PriorAuthorityDataPayload undecidedPayload() {
@@ -180,7 +178,7 @@ class PriorAuthorityDataPayloadTest {
         ExpertFeeInformation.builder()
             .newFixedRateAmount(BigDecimal.valueOf(250.0))
             .newHourlyRateAmount(BigDecimal.valueOf(100.0))
-            .newTimeRequested(new TimeRequested(3, 15))
+            .grantedTime(new TimeRequested(3, 15))
             .build(),
         DisbursementInformation.builder().newAmount(BigDecimal.valueOf(45.0)).build(),
         ApportionmentInformation.builder().newClientShareAmount(BigDecimal.valueOf(15.0)).build(),

@@ -133,14 +133,14 @@ public final class PriorAuthorityDecider {
   /** Allows a time override only for EXPERT prior authorities billed HOURLY. */
   private static void validateTimeRequestedOverride(
       PriorAuthorityState state, MakePriorAuthorityDecisionCommand command) {
-    if (command.expertFee() == null || command.expertFee().getNewTimeRequested() == null) {
+    if (command.expertFee() == null || command.expertFee().getGrantedTime() == null) {
       return;
     }
     if (!PriorAuthorityType.EXPERT.name().equals(state.priorAuthorityType)
         || !BillingType.HOURLY.name().equals(state.billingType)) {
       throw new ValidationException(
           List.of(
-              "expert.newTimeRequested is only permitted for EXPERT prior authorities with HOURLY billing"));
+              "expert.grantedTime is only permitted for EXPERT prior authorities with HOURLY billing"));
     }
   }
 

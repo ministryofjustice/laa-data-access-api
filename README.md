@@ -113,15 +113,12 @@ Execute
 
 ### Run infrastructure smoke tests
 
-The Cucumber `@smoke` scenarios run against the Axon Docker image, a real Postgres
-database, mock OAuth2 and mock SDS. The same runner builds the image, starts the
-disposable stack, runs the scenarios and removes the stack and its database volume.
-See [`docs/infrastructure-smoke-tests.md`](docs/infrastructure-smoke-tests.md) for details.
+Infrastructure smoke tests run the built Docker image against a real Postgres database and
+verify the live HTTP API. See [`docs/infrastructure-smoke-tests.md`](docs/infrastructure-smoke-tests.md)
+for full details.
 
-In GitHub Actions, the **Smoke tests** workflow runs as a stage in the build pipelines.
-On PRs it runs after the build and integration tests. On pushes to `main` it runs after
-the release step. Image publishing and deployment wait for it, so a smoke failure blocks
-them.
+The script is useful for testing the application locally.
+The smoke tests will also run in CI eventually.
 
 ```bash
 ./scripts/run-infrastructure-smoke-tests.sh
@@ -216,7 +213,7 @@ optimistic concurrency control: use the `version` value from a prior `GET
 decision yet returns `version: 0`. Sending a `priorAuthorityVersion` that no longer matches the
 prior authority's current `version` returns `409 Conflict`.
 
-For an expert decision, the optional `newTimeRequested` value can be included alongside other
+For an expert decision, the optional `grantedTime` value can be included alongside other
 expert fee overrides:
 
 ```json
@@ -229,7 +226,7 @@ expert fee overrides:
   "priorAuthorityVersion": 0,
   "expert": {
     "newHourlyRateAmount": 95.00,
-    "newTimeRequested": {
+    "grantedTime": {
       "hours": 3,
       "minutes": 15
     }
@@ -242,7 +239,7 @@ expert fee overrides:
 - `hours` must be an integer greater than or equal to 0, and `minutes` must be an integer from 0 to
   59. Non-integer values are rejected with a `400 ProblemDetail`.
 - The provider's original `timeRequested` is retained. The override is returned in
-  `decisionDetails.expert.newTimeRequested`.
+  `decisionDetails.expert.grantedTime`.
 
 #### Getting tokens from local mock-oauth2-server
 

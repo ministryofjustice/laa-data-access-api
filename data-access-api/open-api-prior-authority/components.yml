@@ -59,7 +59,7 @@ components:
         newHourlyRateAmount:
           type: number
           description: New hourly rate amount if applicable
-        newTimeRequested:
+        grantedTime:
           $ref: "#/components/schemas/DecisionTimeRequested"
 
     PriorAuthorityResponse:
@@ -583,7 +583,7 @@ components:
         newHourlyRateAmount:
           type: number
           description: New hourly rate amount if applicable
-        newTimeRequested:
+        grantedTime:
           $ref: "#/components/schemas/TimeRequested"
 
     DisbursementInformation:
