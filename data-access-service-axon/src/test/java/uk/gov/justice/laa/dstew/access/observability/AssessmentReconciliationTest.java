@@ -21,21 +21,24 @@ import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import uk.gov.justice.laa.dstew.access.query.application.FindStalledAssessmentsQuery;
 import uk.gov.justice.laa.dstew.access.query.application.StalledAssessment;
 import uk.gov.justice.laa.dstew.access.query.application.StalledAssessments;
 
-@ExtendWith(OutputCaptureExtension.class)
+@ExtendWith({OutputCaptureExtension.class, MockitoExtension.class})
 class AssessmentReconciliationTest {
+
+  @Mock private ErrorReporter errorReporter;
 
   @Test
   void givenOldUnassessedApplications_whenReconciliationRuns_thenReportsIdentifiersAndAge(
       CapturedOutput output) {
     QueryGateway queryGateway = mock(QueryGateway.class);
     SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
-    ErrorReporter errorReporter = mock(ErrorReporter.class);
     Instant now = Instant.parse("2026-08-04T10:00:00Z");
     UUID applicationId = UUID.fromString("8c9e6c2e-4f1a-4e3a-9c2b-1a2b3c4d5e6f");
     StalledAssessment stalled =
@@ -70,7 +73,6 @@ class AssessmentReconciliationTest {
   void givenTheProjectionQueryFails_whenReconciliationRuns_thenReportsToSentryAndSwallows() {
     QueryGateway queryGateway = mock(QueryGateway.class);
     SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
-    ErrorReporter errorReporter = mock(ErrorReporter.class);
     IllegalStateException failure = new IllegalStateException("projection failed");
     when(queryGateway.query(any(FindStalledAssessmentsQuery.class), eq(StalledAssessments.class)))
         .thenReturn(CompletableFuture.failedFuture(failure));
