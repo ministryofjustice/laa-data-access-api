@@ -180,7 +180,7 @@ class PriorAuthorityDataPayloadTest {
             .grantedHourlyRateAmount(BigDecimal.valueOf(100.0))
             .grantedTime(new TimeRequested(3, 15))
             .build(),
-        DisbursementInformation.builder().newAmount(BigDecimal.valueOf(45.0)).build(),
+        DisbursementInformation.builder().grantedAmount(BigDecimal.valueOf(45.0)).build(),
         ApportionmentInformation.builder().newClientShareAmount(BigDecimal.valueOf(15.0)).build(),
         "{\"decision\":\"GRANTED\"}");
   }

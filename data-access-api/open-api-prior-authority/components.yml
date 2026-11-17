@@ -44,9 +44,9 @@ components:
       type: object
       description: Optional disbursement details for the decision
       properties:
-        newAmount:
+        grantedAmount:
           type: number
-          description: New amount if applicable
+          description: Granted disbursement amount
 
     ExpertMakePriorAuthorityDecisionRequest:
       type: object
@@ -584,6 +584,6 @@ components:
       type: object
       description: Disbursement information for a prior authority decision
       properties:
-        newAmount:
+        grantedAmount:
           type: number
-          description: New disbursement amount if applicable
+          description: Granted disbursement amount

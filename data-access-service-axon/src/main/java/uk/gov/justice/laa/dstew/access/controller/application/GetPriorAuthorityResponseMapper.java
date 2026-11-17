@@ -204,7 +204,7 @@ public class GetPriorAuthorityResponseMapper {
     if (details.disbursement() != null) {
       uk.gov.justice.laa.dstew.access.model.DisbursementInformation disbursementInfo =
           new uk.gov.justice.laa.dstew.access.model.DisbursementInformation();
-      disbursementInfo.setNewAmount(details.disbursement().getNewAmount());
+      disbursementInfo.setGrantedAmount(details.disbursement().getGrantedAmount());
       result.setDisbursement(disbursementInfo);
     }
     if (details.apportionment() != null) {

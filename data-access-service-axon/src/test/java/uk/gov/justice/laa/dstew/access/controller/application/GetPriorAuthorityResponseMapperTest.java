@@ -236,7 +236,7 @@ class GetPriorAuthorityResponseMapperTest {
                         .grantedHourlyRateAmount(BigDecimal.valueOf(175))
                         .grantedTime(new TimeRequested(3, 15))
                         .build(),
-                    DisbursementInformation.builder().newAmount(BigDecimal.valueOf(50)).build(),
+                    DisbursementInformation.builder().grantedAmount(BigDecimal.valueOf(50)).build(),
                     ApportionmentInformation.builder()
                         .newClientShareAmount(BigDecimal.valueOf(25))
                         .build(),
@@ -288,7 +288,7 @@ class GetPriorAuthorityResponseMapperTest {
         .isEqualTo(2);
     assertThat(response.getExpertDetails().getExpertCosts().getTimeRequested().getMinutes())
         .isEqualTo(30);
-    assertThat(response.getDecisionDetails().getDisbursement().getNewAmount())
+    assertThat(response.getDecisionDetails().getDisbursement().getGrantedAmount())
         .isEqualByComparingTo("50");
     assertThat(response.getDecisionDetails().getApportionment().getClientShareAmount())
         .isEqualByComparingTo("25");

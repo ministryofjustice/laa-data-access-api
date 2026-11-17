@@ -49,7 +49,7 @@ class MakePriorAuthorityDecisionCommandMapperTest {
                     .build())
             .disbursement(
                 DisbursementMakePriorAuthorityDecisionRequest.builder()
-                    .newAmount(BigDecimal.valueOf(300.00))
+                    .grantedAmount(BigDecimal.valueOf(300.00))
                     .build())
             .apportionment(
                 ApportionmentMakePriorAuthorityDecisionRequest.builder()
@@ -76,7 +76,7 @@ class MakePriorAuthorityDecisionCommandMapperTest {
         .isEqualByComparingTo(BigDecimal.valueOf(125.75));
     assertThat(command.expertFee().getGrantedTime()).isNull();
     assertThat(command.disbursementInformation()).isNotNull();
-    assertThat(command.disbursementInformation().getNewAmount())
+    assertThat(command.disbursementInformation().getGrantedAmount())
         .isEqualByComparingTo(BigDecimal.valueOf(300.00));
     assertThat(command.apportionmentInformation()).isNotNull();
     assertThat(command.apportionmentInformation().getNewClientShareAmount())
@@ -115,7 +115,7 @@ class MakePriorAuthorityDecisionCommandMapperTest {
     assertThat(command.expertFee().getGrantedHourlyRateAmount())
         .isEqualByComparingTo(BigDecimal.valueOf(125.75));
     assertThat(command.disbursementInformation()).isNotNull();
-    assertThat(command.disbursementInformation().getNewAmount()).isNull();
+    assertThat(command.disbursementInformation().getGrantedAmount()).isNull();
     assertThat(command.apportionmentInformation()).isNull();
     assertThat(command.serialisedRequest()).contains("\"grantedFixedRateAmount\":null");
     assertThat(command.serialisedRequest()).contains("\"grantedHourlyRateAmount\":125.75");
@@ -171,7 +171,7 @@ class MakePriorAuthorityDecisionCommandMapperTest {
     assertThat(command.expertFee().getGrantedFixedRateAmount())
         .isEqualByComparingTo(BigDecimal.ZERO);
     assertThat(command.expertFee().getGrantedHourlyRateAmount()).isNull();
-    assertThat(command.disbursementInformation().getNewAmount()).isNull();
+    assertThat(command.disbursementInformation().getGrantedAmount()).isNull();
     assertThat(command.apportionmentInformation().getNewClientShareAmount()).isNull();
     assertThat(command.decisionJustification()).isEqualTo("Refusal reason");
   }

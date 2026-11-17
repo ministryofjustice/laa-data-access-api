@@ -61,7 +61,7 @@ public class MakePriorAuthorityDecisionCommandMapper {
       DisbursementMakePriorAuthorityDecisionRequest value) {
     return value == null
         ? null
-        : DisbursementInformation.builder().newAmount(value.getNewAmount()).build();
+        : DisbursementInformation.builder().grantedAmount(value.getGrantedAmount()).build();
   }
 
   private ExpertFeeInformation expertFeeInformation(ExpertMakePriorAuthorityDecisionRequest value) {
