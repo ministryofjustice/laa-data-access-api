@@ -33,11 +33,4 @@ public class UpdatePriorAuthorityDocumentTypeUseCase {
             priorAuthorityId, documentId, documentType, serialisedRequest, updatedAt, caller));
     return new UpdatePriorAuthorityDocumentTypeResult(documentId, updatedAt);
   }
-
-  /** Temporary source-compatible overload for non-HTTP fixtures. */
-  @Deprecated(forRemoval = true)
-  public UpdatePriorAuthorityDocumentTypeResult execute(
-      UUID priorAuthorityId, UUID documentId, String documentType, String serialisedRequest) {
-    return execute(priorAuthorityId, documentId, documentType, serialisedRequest, null);
-  }
 }

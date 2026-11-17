@@ -16,9 +16,9 @@ class MakeApplicationDecisionCommandTest {
   private static final Instant OCCURRED_AT = Instant.parse("2026-09-16T10:00:00Z");
 
   @Test
-  @SuppressWarnings("removal")
-  void givenLegacyConstructorWithoutAutoGrantedFlag_whenCreated_thenSetsNullCaseworker() {
+  void givenCanonicalConstructor_whenCreated_thenPreservesDecisionFields() {
     UUID applicationId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
     MakeDecisionProceeding proceeding =
         new MakeDecisionProceeding(UUID.randomUUID(), "REFUSED", "reason", "justification");
     Map<String, Object> certificate = new HashMap<>();
@@ -27,6 +27,7 @@ class MakeApplicationDecisionCommandTest {
     MakeApplicationDecisionCommand command =
         new MakeApplicationDecisionCommand(
             applicationId,
+            caseworkerId,
             12L,
             "REFUSED",
             List.of(proceeding),
@@ -36,32 +37,14 @@ class MakeApplicationDecisionCommandTest {
             OCCURRED_AT);
 
     assertThat(command.applicationId()).isEqualTo(applicationId);
-    assertThat(command.caseworkerId()).isNull();
+    assertThat(command.caseworkerId()).isEqualTo(caseworkerId);
     assertThat(command.expectedApplicationVersion()).isEqualTo(12L);
+    assertThat(command.overallDecision()).isEqualTo("REFUSED");
+    assertThat(command.proceedings()).containsExactly(proceeding);
     assertThat(command.certificate()).containsEntry("reference", "CERT-123");
-  }
-
-  @Test
-  @SuppressWarnings("removal")
-  void givenLegacyConstructorWithIgnoredAutoGrantedFlag_whenCreated_thenSetsNullCaseworker() {
-    UUID applicationId = UUID.randomUUID();
-
-    MakeApplicationDecisionCommand command =
-        new MakeApplicationDecisionCommand(
-            applicationId,
-            5L,
-            "GRANTED",
-            true,
-            List.of(new MakeDecisionProceeding(UUID.randomUUID(), "GRANTED", "reason", "just")),
-            null,
-            "{}",
-            null,
-            OCCURRED_AT);
-
-    assertThat(command.applicationId()).isEqualTo(applicationId);
-    assertThat(command.caseworkerId()).isNull();
-    assertThat(command.expectedApplicationVersion()).isEqualTo(5L);
-    assertThat(command.certificate()).isNull();
+    assertThat(command.serialisedRequest()).isEqualTo("{}");
+    assertThat(command.eventDescription()).isEqualTo("decision");
+    assertThat(command.occurredAt()).isEqualTo(OCCURRED_AT);
   }
 
   @Test

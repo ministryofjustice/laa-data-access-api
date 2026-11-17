@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.junit.jupiter.api.Test;
@@ -34,10 +35,14 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 @ExtendWith(MockitoExtension.class)
 class PriorAuthorityDocumentUploadCommandHandlerTest {
+
+  private static final AuthenticatedCaller CALLER =
+      new AuthenticatedCaller(Optional.empty(), Set.of(), Set.of("1A001B"), Set.of());
 
   private static final Instant OCCURRED_AT = Instant.parse("2026-09-01T10:00:00Z");
 
@@ -68,7 +73,8 @@ class PriorAuthorityDocumentUploadCommandHandlerTest {
             OCCURRED_AT,
             filename,
             1024L,
-            "application/pdf");
+            "application/pdf",
+            CALLER);
 
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(existingDraft));
     when(priorAuthority.getApplicationId()).thenReturn(applicationId);
@@ -128,7 +134,8 @@ class PriorAuthorityDocumentUploadCommandHandlerTest {
             OCCURRED_AT,
             "file.pdf",
             1024L,
-            "application/pdf");
+            "application/pdf",
+            CALLER);
 
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(existingDraft));
     when(priorAuthority.getApplicationId()).thenReturn(applicationId);
@@ -161,7 +168,8 @@ class PriorAuthorityDocumentUploadCommandHandlerTest {
             OCCURRED_AT,
             "file.pdf",
             1024L,
-            "application/pdf");
+            "application/pdf",
+            CALLER);
 
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.empty());
     when(priorAuthority.getState()).thenReturn(draftState(priorAuthorityId, UUID.randomUUID()));
@@ -192,7 +200,8 @@ class PriorAuthorityDocumentUploadCommandHandlerTest {
             OCCURRED_AT,
             originalFilename,
             1024L,
-            "application/pdf");
+            "application/pdf",
+            CALLER);
     when(priorAuthority.getState()).thenReturn(draftState(priorAuthorityId, applicationId));
 
     assertThatThrownBy(
@@ -230,7 +239,8 @@ class PriorAuthorityDocumentUploadCommandHandlerTest {
             OCCURRED_AT,
             "file.pdf",
             1024L,
-            "application/pdf");
+            "application/pdf",
+            CALLER);
     when(priorAuthority.getState()).thenReturn(state);
 
     assertThatThrownBy(
@@ -260,7 +270,8 @@ class PriorAuthorityDocumentUploadCommandHandlerTest {
             OCCURRED_AT,
             "file.pdf",
             1024L,
-            "application/pdf");
+            "application/pdf",
+            CALLER);
     when(priorAuthority.getState()).thenReturn(state);
 
     assertThatThrownBy(
