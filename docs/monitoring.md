@@ -37,8 +37,6 @@ Provided by [datasource-micrometer-spring-boot](https://github.com/jdbc-observat
 jdbc:
   datasource-proxy:
     slow-query:
-      enable-logging: true
-      log-level: WARN
       threshold: 0  # seconds; overridden per environment
 
 management:
@@ -50,12 +48,14 @@ management:
 
 The `percentile-histogram` setting is critical — without it, `jdbc_query_seconds` is emitted as a summary (no `_bucket` metrics), and histogram-based dashboard panels will be blank.
 
+The repository does not enable SQL statement body logging in this datasource-proxy block. Keep it that way unless there is an explicit, time-bounded incident need and a separate risk review.
+
 Slow query thresholds are set per environment in Helm values:
 
 | Environment | Threshold |
 |---|---|
-| UAT | 0.3s |
-| Staging | 0.3s |
+| UAT | 1s |
+| Staging | 1s |
 | Production | 1s |
 
 ### SQL operation type tag

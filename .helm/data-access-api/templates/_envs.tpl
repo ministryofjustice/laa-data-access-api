@@ -58,6 +58,8 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
   value: {{ .Values.sentry.environment | quote }}
 - name: SENTRY_TRACES_SAMPLE_RATE
   value: {{ .Values.sentry.tracesSampleRate | quote }}
+- name: SENTRY_MINIMUM_BREADCRUMB_LEVEL
+  value: {{ .Values.sentry.minimumBreadcrumbLevel | quote }}
 {{- else }}
 - name: SENTRY_ENABLED
   value: "false"

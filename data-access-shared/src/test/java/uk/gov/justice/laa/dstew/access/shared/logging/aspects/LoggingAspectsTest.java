@@ -9,7 +9,16 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.Signature;
 import org.axonframework.modelling.repository.EntityNotFoundException;
@@ -25,7 +34,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import uk.gov.justice.laa.dstew.access.shared.logging.ClientFacingException;
 
-/** Verifies method logging content, truncation, and client-facing exception classification. */
+/** Verifies method logging sanitization and client-facing exception classification. */
 class LoggingAspectsTest {
 
   private final LoggingAspects aspects = new LoggingAspects();
@@ -80,7 +89,7 @@ class LoggingAspectsTest {
     aspects.logMethodArgumentsAdvice(joinPoint);
 
     assertInfoMessage(
-        "Method invoked: class=SomeController, method=someMethod, arguments=[first,42]");
+        "Method invoked: class=SomeController, method=someMethod, arguments=[String,42]");
   }
 
   @Test
@@ -109,26 +118,59 @@ class LoggingAspectsTest {
   void givenResponse_whenReturned_thenLogsResponse(String response) {
     aspects.logMethodResponseAdvice(joinPoint(), response);
 
+    String expected = response == null ? "null" : "String";
+
     assertInfoMessage(
-        "Method completed: class=SomeController, method=someMethod, response=" + response);
+        "Method completed: class=SomeController, method=someMethod, response=" + expected);
   }
 
-  @ParameterizedTest
-  @ValueSource(ints = {499, 500, 501})
-  void givenLongValue_whenLogged_thenTruncatesOnlyAboveLimit(int length) {
-    String value = "a".repeat(length);
+  @Test
+  void givenAllowlistedTypes_whenLogged_thenLogsValues() {
+    UUID uuid = UUID.fromString("8d0ecf4d-5377-4cc1-9036-e4c0cd73a1dc");
+    Instant instant = Instant.parse("2026-01-01T12:30:45Z");
+    OffsetDateTime offsetDateTime = OffsetDateTime.parse("2026-01-01T12:30:45+01:00");
+    ZonedDateTime zonedDateTime = ZonedDateTime.parse("2026-01-01T12:30:45+01:00[Europe/London]");
+
     JoinPoint joinPoint = joinPoint();
-    when(joinPoint.getArgs()).thenReturn(new Object[] {value});
+    when(joinPoint.getArgs())
+        .thenReturn(new Object[] {uuid, TestEnum.CASEWORKER, 7, true, instant, offsetDateTime});
 
     aspects.logMethodArgumentsAdvice(joinPoint);
-    aspects.logMethodResponseAdvice(joinPoint, value);
+    aspects.logMethodResponseAdvice(joinPoint, zonedDateTime);
 
-    String expected = length > 500 ? "a".repeat(500) + "... (truncated)" : value;
     assertThat(logEvents.list)
         .extracting(ILoggingEvent::getFormattedMessage)
         .containsExactly(
-            "Method invoked: class=SomeController, method=someMethod, arguments=[" + expected + "]",
-            "Method completed: class=SomeController, method=someMethod, response=" + expected);
+            "Method invoked: class=SomeController, method=someMethod, arguments=["
+                + uuid
+                + ",CASEWORKER,7,true,"
+                + instant
+                + ","
+                + offsetDateTime
+                + "]",
+            "Method completed: class=SomeController, method=someMethod, response=" + zonedDateTime);
+  }
+
+  @Test
+  void givenExcludedAndContainerTypes_whenLogged_thenLogsTypeOnlyOrTypeAndSize() {
+    JoinPoint joinPoint = joinPoint();
+    ArrayList<String> listValue = new ArrayList<>(List.of("a", "b", "c"));
+    LinkedHashMap<String, String> mapValue = new LinkedHashMap<>();
+    mapValue.put("key1", "value1");
+    mapValue.put("key2", "value2");
+    when(joinPoint.getArgs())
+        .thenReturn(
+            new Object[] {"secret", LocalDate.now(), LocalDateTime.now(), listValue, mapValue});
+
+    aspects.logMethodArgumentsAdvice(joinPoint);
+    aspects.logMethodResponseAdvice(joinPoint, new SampleDto());
+
+    assertThat(logEvents.list)
+        .extracting(ILoggingEvent::getFormattedMessage)
+        .containsExactly(
+            "Method invoked: class=SomeController, method=someMethod, arguments="
+                + "[String,LocalDate,LocalDateTime,ArrayList(size=3),LinkedHashMap(size=2)]",
+            "Method completed: class=SomeController, method=someMethod, response=SampleDto");
   }
 
   @Test
@@ -154,6 +196,12 @@ class LoggingAspectsTest {
               assertThat(event.getThrowableProxy()).isNull();
             });
   }
+
+  private enum TestEnum {
+    CASEWORKER
+  }
+
+  private static class SampleDto {}
 
   private void assertWarnMessage(Throwable exception) {
     assertThat(logEvents.list)

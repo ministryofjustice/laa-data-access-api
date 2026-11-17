@@ -47,6 +47,7 @@ sentry:
   enabled: true
   environment: production
   tracesSampleRate: 1
+  minimumBreadcrumbLevel: warn
 
 alerting:
   environment: production
