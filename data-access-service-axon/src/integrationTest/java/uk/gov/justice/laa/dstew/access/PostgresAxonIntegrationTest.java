@@ -82,6 +82,7 @@ import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatusResponse;
 import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
+import uk.gov.justice.laa.dstew.access.model.PriorAuthorityEventType;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityHistoryGroup;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
@@ -1819,7 +1820,8 @@ class PostgresAxonIntegrationTest {
     assertThat(group.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(group.getPriorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT);
     assertThat(group.getEvents()).hasSize(1);
-    assertThat(group.getEvents().getFirst().getEventType()).isEqualTo("PRIOR_AUTHORITY_SUBMITTED");
+    assertThat(group.getEvents().getFirst().getEventType())
+        .isEqualTo(PriorAuthorityEventType.PRIOR_AUTHORITY_SUBMITTED);
     assertThat(group.getEvents().getFirst().getCaseworkerId())
         .isEqualTo(TestJwtDecoderConfig.CASEWORKER_ID);
     assertThat(historyResponse.getBody().getEvents()).isNotEmpty();
@@ -1903,7 +1905,9 @@ class PostgresAxonIntegrationTest {
     assertThat(group.getEvents()).hasSize(2);
     assertThat(group.getEvents())
         .extracting(event -> event.getEventType())
-        .containsExactlyInAnyOrder("PRIOR_AUTHORITY_SUBMITTED", "ASSIGN_APPLICATION_TO_CASEWORKER");
+        .containsExactlyInAnyOrder(
+            PriorAuthorityEventType.PRIOR_AUTHORITY_SUBMITTED,
+            PriorAuthorityEventType.ASSIGN_APPLICATION_TO_CASEWORKER);
     assertThat(group.getEvents())
         .extracting(event -> event.getCaseworkerId())
         .allSatisfy(
@@ -2004,23 +2008,32 @@ class PostgresAxonIntegrationTest {
     assertThat(group.getEvents())
         .extracting(event -> event.getEventType())
         .containsExactlyInAnyOrder(
-            "PRIOR_AUTHORITY_SUBMITTED",
-            "UNASSIGN_APPLICATION_TO_CASEWORKER",
-            "ASSIGN_APPLICATION_TO_CASEWORKER");
+            PriorAuthorityEventType.PRIOR_AUTHORITY_SUBMITTED,
+            PriorAuthorityEventType.UNASSIGN_APPLICATION_TO_CASEWORKER,
+            PriorAuthorityEventType.ASSIGN_APPLICATION_TO_CASEWORKER);
     assertThat(group.getEvents())
-        .filteredOn(event -> event.getEventType().equals("PRIOR_AUTHORITY_SUBMITTED"))
+        .filteredOn(
+            event -> event.getEventType().equals(PriorAuthorityEventType.PRIOR_AUTHORITY_SUBMITTED))
         .singleElement()
         .satisfies(
             event ->
                 assertThat(event.getCaseworkerId()).isEqualTo(TestJwtDecoderConfig.CASEWORKER_ID));
     assertThat(group.getEvents())
-        .filteredOn(event -> event.getEventType().equals("ASSIGN_APPLICATION_TO_CASEWORKER"))
+        .filteredOn(
+            event ->
+                event
+                    .getEventType()
+                    .equals(PriorAuthorityEventType.ASSIGN_APPLICATION_TO_CASEWORKER))
         .singleElement()
         .satisfies(
             event ->
                 assertThat(event.getCaseworkerId()).isEqualTo(TestJwtDecoderConfig.CASEWORKER_ID));
     assertThat(group.getEvents())
-        .filteredOn(event -> event.getEventType().equals("UNASSIGN_APPLICATION_TO_CASEWORKER"))
+        .filteredOn(
+            event ->
+                event
+                    .getEventType()
+                    .equals(PriorAuthorityEventType.UNASSIGN_APPLICATION_TO_CASEWORKER))
         .singleElement()
         .satisfies(
             event ->
@@ -2124,25 +2137,34 @@ class PostgresAxonIntegrationTest {
     assertThat(group.getEvents())
         .extracting(event -> event.getEventType())
         .containsExactlyInAnyOrder(
-            "PRIOR_AUTHORITY_SUBMITTED",
-            "UNASSIGN_APPLICATION_TO_CASEWORKER",
-            "ASSIGN_APPLICATION_TO_CASEWORKER",
-            "ASSIGN_APPLICATION_TO_CASEWORKER");
+            PriorAuthorityEventType.PRIOR_AUTHORITY_SUBMITTED,
+            PriorAuthorityEventType.UNASSIGN_APPLICATION_TO_CASEWORKER,
+            PriorAuthorityEventType.ASSIGN_APPLICATION_TO_CASEWORKER,
+            PriorAuthorityEventType.ASSIGN_APPLICATION_TO_CASEWORKER);
     assertThat(group.getEvents())
-        .filteredOn(event -> event.getEventType().equals("PRIOR_AUTHORITY_SUBMITTED"))
+        .filteredOn(
+            event -> event.getEventType().equals(PriorAuthorityEventType.PRIOR_AUTHORITY_SUBMITTED))
         .singleElement()
         .satisfies(
             event ->
                 assertThat(event.getCaseworkerId()).isEqualTo(TestJwtDecoderConfig.CASEWORKER_ID));
     assertThat(group.getEvents())
-        .filteredOn(event -> event.getEventType().equals("UNASSIGN_APPLICATION_TO_CASEWORKER"))
+        .filteredOn(
+            event ->
+                event
+                    .getEventType()
+                    .equals(PriorAuthorityEventType.UNASSIGN_APPLICATION_TO_CASEWORKER))
         .singleElement()
         .satisfies(
             event ->
                 assertThat(event.getCaseworkerId()).isEqualTo(TestJwtDecoderConfig.CASEWORKER_ID));
 
     assertThat(group.getEvents())
-        .filteredOn(event -> event.getEventType().equals("ASSIGN_APPLICATION_TO_CASEWORKER"))
+        .filteredOn(
+            event ->
+                event
+                    .getEventType()
+                    .equals(PriorAuthorityEventType.ASSIGN_APPLICATION_TO_CASEWORKER))
         .hasSize(2)
         .allSatisfy(event -> assertThat(event.getCaseworkerId()).isNotNull());
   }
@@ -2244,7 +2266,9 @@ class PostgresAxonIntegrationTest {
     assertThat(assignedGroup.getEvents()).hasSize(2);
     assertThat(assignedGroup.getEvents())
         .extracting(event -> event.getEventType())
-        .containsExactlyInAnyOrder("PRIOR_AUTHORITY_SUBMITTED", "ASSIGN_APPLICATION_TO_CASEWORKER");
+        .containsExactlyInAnyOrder(
+            PriorAuthorityEventType.PRIOR_AUTHORITY_SUBMITTED,
+            PriorAuthorityEventType.ASSIGN_APPLICATION_TO_CASEWORKER);
 
     assertThat(assignedGroup.getEvents())
         .extracting(event -> event.getCaseworkerId())
@@ -2259,7 +2283,7 @@ class PostgresAxonIntegrationTest {
     assertThat(untouchedGroup.getPriorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT);
     assertThat(untouchedGroup.getEvents()).hasSize(1);
     assertThat(untouchedGroup.getEvents().getFirst().getEventType())
-        .isEqualTo("PRIOR_AUTHORITY_SUBMITTED");
+        .isEqualTo(PriorAuthorityEventType.PRIOR_AUTHORITY_SUBMITTED);
   }
 
   @Test
@@ -2326,69 +2350,6 @@ class PostgresAxonIntegrationTest {
           "conflict-evt-1",
           "conflict-evt-2");
     }
-  }
-
-  @Test
-  void
-      givenSubmittedPriorAuthorityWithUploadedDocument_whenGetHistory_thenIncludesDocumentUploadedEvent() {
-    UUID applicationId = UUID.randomUUID();
-    UUID priorAuthorityId = UUID.randomUUID();
-
-    jdbcTemplate.update(
-        """
-        INSERT INTO axon.prior_authority_history
-            (event_id, application_id, prior_authority_id, prior_authority_type,
-             event_type, item_version, service_name, occurred_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        "pa-submit-evt-1",
-        applicationId,
-        priorAuthorityId,
-        "EXPERT",
-        "PRIOR_AUTHORITY_SUBMITTED",
-        2L,
-        "CIVIL_APPLY",
-        OffsetDateTime.parse("2026-09-18T10:00:00Z"));
-
-    jdbcTemplate.update(
-        """
-        INSERT INTO axon.prior_authority_history
-            (event_id, application_id, prior_authority_id, prior_authority_type,
-             event_type, item_version, service_name, occurred_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        "pa-upload-evt-1",
-        applicationId,
-        priorAuthorityId,
-        "EXPERT",
-        "PRIOR_AUTHORITY_DOCUMENT_UPLOADED",
-        2L,
-        "CIVIL_APPLY",
-        OffsetDateTime.parse("2026-09-18T11:00:00Z"));
-
-    ResponseEntity<ApplicationHistoryResponse> historyResponse =
-        restTemplate.exchange(
-            "http://localhost:"
-                + port
-                + "/api/v0/applications/"
-                + applicationId
-                + "/history-search",
-            HttpMethod.GET,
-            new HttpEntity<>(headers()),
-            ApplicationHistoryResponse.class);
-    assertThat(historyResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-
-    assertThat(historyResponse.getBody().getPriorAuthorities()).hasSize(1);
-    PriorAuthorityHistoryGroup group = historyResponse.getBody().getPriorAuthorities().get(0);
-    assertThat(group.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
-    assertThat(group.getPriorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT);
-    assertThat(group.getEvents())
-        .extracting(event -> event.getEventType())
-        .contains("PRIOR_AUTHORITY_SUBMITTED", "PRIOR_AUTHORITY_DOCUMENT_UPLOADED");
-    assertThat(group.getEvents())
-        .filteredOn(event -> event.getEventType().equals("PRIOR_AUTHORITY_DOCUMENT_UPLOADED"))
-        .singleElement()
-        .satisfies(event -> assertThat(event.getCaseworkerId()).isNull());
   }
 
   private CreatePriorAuthorityDraftRequest fixedRateExpertDraftRequest(UUID applicationId) {

@@ -643,6 +643,16 @@ components:
           items:
             $ref: "#/components/schemas/PriorAuthorityEventResponse"
 
+    PriorAuthorityEventType:
+      type: string
+      description: Prior Authority history event types
+      enum:
+        - PRIOR_AUTHORITY_SUBMITTED
+        - PRIOR_AUTHORITY_MAKE_DECISION_GRANTED
+        - PRIOR_AUTHORITY_MAKE_DECISION_REFUSED
+        - ASSIGN_APPLICATION_TO_CASEWORKER
+        - UNASSIGN_APPLICATION_TO_CASEWORKER
+
     PriorAuthorityEventResponse:
       type: object
       required:
@@ -651,7 +661,7 @@ components:
         - createdBy
       properties:
         eventType:
-          type: string
+          $ref: "#/components/schemas/PriorAuthorityEventType"
         createdAt:
           type: string
           format: date-time
