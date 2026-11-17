@@ -106,6 +106,58 @@ class PriorAuthorityDecisionIntegrationTest extends BaseIntegrationTest {
   }
 
   @Test
+  void givenSubmittedPriorAuthority_whenRetrieved_thenReturnsVersionZero() {
+    var priorAuthorityId = submittedAndAssigned(disbursementDraft());
+
+    var priorAuthority = getPriorAuthority(priorAuthorityId);
+
+    assertThat(priorAuthority.getStatus()).isEqualTo(PriorAuthorityResponse.StatusEnum.SUBMITTED);
+    assertThat(priorAuthority.getVersion()).isZero();
+  }
+
+  @Test
+  void givenVersionFromGetResponse_whenUsedToMakeADecision_thenSucceedsAndVersionIncrements() {
+    var priorAuthorityId = submittedAndAssigned(disbursementDraft());
+    Long versionFromGetResponse = getPriorAuthority(priorAuthorityId).getVersion();
+    var request =
+        decisionRequest(
+                DecisionStatus.GRANTED, "Granted as per policy guidelines", BigDecimal.valueOf(150))
+            .priorAuthorityVersion(versionFromGetResponse);
+
+    assertThat(patchDecision(priorAuthorityId, request).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+
+    projectionAwaiter.awaitDecidedPriorAuthority(priorAuthorityId);
+    var decided = getPriorAuthority(priorAuthorityId);
+    assertThat(decided.getStatus()).isEqualTo(PriorAuthorityResponse.StatusEnum.DECIDED);
+    assertThat(decided.getVersion()).isEqualTo(versionFromGetResponse + 1);
+  }
+
+  @Test
+  void givenStaleVersionObtainedBeforeADecision_whenMakingADecision_thenReturnsConflict() {
+    var priorAuthorityId = submittedAndAssigned(disbursementDraft());
+    Long staleVersion = getPriorAuthority(priorAuthorityId).getVersion();
+    var firstDecision =
+        decisionRequest(
+                DecisionStatus.GRANTED, "Granted as per policy guidelines", BigDecimal.valueOf(150))
+            .priorAuthorityVersion(staleVersion);
+
+    assertThat(patchDecision(priorAuthorityId, firstDecision).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+    projectionAwaiter.awaitDecidedPriorAuthority(priorAuthorityId);
+
+    var staleDecision =
+        decisionRequest(
+                DecisionStatus.REFUSED,
+                "Second decision attempt using a stale version",
+                BigDecimal.ZERO)
+            .priorAuthorityVersion(staleVersion);
+
+    assertThat(patchDecision(priorAuthorityId, staleDecision).getStatusCode())
+        .isEqualTo(HttpStatus.CONFLICT);
+  }
+
+  @Test
   void givenHourlyExpert_whenDecisionWithTimeOverride_thenResponseShowsOverrideAndOriginal() {
     var priorAuthorityId = submittedAndAssigned(expertDraft(hourlyCosts()));
     var request =

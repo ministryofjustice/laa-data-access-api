@@ -24,7 +24,8 @@ components:
         priorAuthorityVersion:
           type: integer
           format: int64
-          description: Version of prior authority being decided, used for concurrency control
+          description: >-
+            Version of prior authority being decided, used for concurrency control. Set this to the version value from the corresponding GET prior authority response.
         expert:
           $ref: "#/components/schemas/ExpertMakePriorAuthorityDecisionRequest"
         disbursement:
@@ -66,6 +67,7 @@ components:
       required:
         - priorAuthorityId
         - applicationId
+        - version
         - assignmentVersion
       properties:
         priorAuthorityType:
@@ -121,6 +123,10 @@ components:
         assignedTo:
           type: string
           format: uuid
+        version:
+          type: integer
+          format: int64
+          description: Current prior authority version, used for concurrency control on commands
         assignmentVersion:
           type: integer
           format: int64
