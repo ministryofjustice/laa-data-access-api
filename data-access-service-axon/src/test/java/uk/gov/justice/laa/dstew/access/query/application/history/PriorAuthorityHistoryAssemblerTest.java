@@ -21,11 +21,13 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
+import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 
 @ExtendWith(MockitoExtension.class)
 class PriorAuthorityHistoryAssemblerTest {
 
   @Mock private PriorAuthorityDataRepository priorAuthorityDataRepository;
+  @Mock private ErrorReporter errorReporter;
 
   private PriorAuthorityHistoryAssembler assembler;
 
@@ -33,7 +35,7 @@ class PriorAuthorityHistoryAssemblerTest {
   void setUp() {
     assembler =
         new PriorAuthorityHistoryAssembler(
-            new PriorAuthorityDataStore(priorAuthorityDataRepository));
+            new PriorAuthorityDataStore(priorAuthorityDataRepository, errorReporter));
   }
 
   // --- grouping and ordering ---

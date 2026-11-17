@@ -4,7 +4,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContentParser;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetails;
@@ -17,22 +17,11 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
  * creation.
  */
 @Component
+@RequiredArgsConstructor
 public class ApplicationCreationDetailsFactory {
 
   private final ApplicationContentParser applicationContentParser;
   private final Clock clock;
-
-  /** Creates the factory using the system UTC clock. */
-  @Autowired
-  public ApplicationCreationDetailsFactory(ApplicationContentParser applicationContentParser) {
-    this(applicationContentParser, Clock.systemUTC());
-  }
-
-  ApplicationCreationDetailsFactory(
-      ApplicationContentParser applicationContentParser, Clock clock) {
-    this.applicationContentParser = applicationContentParser;
-    this.clock = clock;
-  }
 
   /** Parses the command payload into creation details. */
   public ApplicationCreationDetails prepare(CreateApplicationCommand command) {

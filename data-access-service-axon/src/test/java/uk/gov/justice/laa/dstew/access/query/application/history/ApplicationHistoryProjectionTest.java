@@ -44,6 +44,7 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.config.interceptor.RequestMetadataDispatchInterceptor;
+import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 
 @ExtendWith(MockitoExtension.class)
 class ApplicationHistoryProjectionTest {
@@ -67,6 +68,7 @@ class ApplicationHistoryProjectionTest {
   @Mock private PriorAuthorityHistoryReadRepository paRepository;
 
   @Mock private PriorAuthorityDataRepository priorAuthorityDataRepository;
+  @Mock private ErrorReporter errorReporter;
 
   private ApplicationHistoryProjection projection;
 
@@ -78,7 +80,7 @@ class ApplicationHistoryProjectionTest {
             new ApplicationHistoryAssembler(applicationDataStore, justificationStore),
             paRepository,
             new PriorAuthorityHistoryAssembler(
-                new PriorAuthorityDataStore(priorAuthorityDataRepository)));
+                new PriorAuthorityDataStore(priorAuthorityDataRepository, errorReporter)));
   }
 
   @Test

@@ -77,9 +77,9 @@ class PriorAuthorityDataStoreTest {
                     1L,
                     UUID.randomUUID(),
                     new PriorAuthorityDataPayload(
-                        UUID.randomUUID(), UUID.randomUUID(), null, "req", Instant.now()),
+                        UUID.randomUUID(), UUID.randomUUID(), null, "req", Instant.EPOCH),
                     "req",
-                    Instant.now()))
+                    Instant.EPOCH))
         .isInstanceOf(DataIntegrityViolationException.class)
         .hasMessageContaining("duplicate prior authority data version");
   }
@@ -95,7 +95,7 @@ class PriorAuthorityDataStoreTest {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityDataPayload expectedPayload =
-        new PriorAuthorityDataPayload(priorAuthorityId, applicationId, null, "req", Instant.now());
+        new PriorAuthorityDataPayload(priorAuthorityId, applicationId, null, "req", Instant.EPOCH);
     PriorAuthorityDataId id = new PriorAuthorityDataId(priorAuthorityId, 2L);
     when(repository.findById(id))
         .thenReturn(
@@ -136,7 +136,7 @@ class PriorAuthorityDataStoreTest {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityDataPayload payload =
-        new PriorAuthorityDataPayload(priorAuthorityId, applicationId, null, "req", Instant.now());
+        new PriorAuthorityDataPayload(priorAuthorityId, applicationId, null, "req", Instant.EPOCH);
     PriorAuthorityDataId id = new PriorAuthorityDataId(priorAuthorityId, 2L);
     when(repository.findById(id))
         .thenReturn(Optional.of(PriorAuthorityData.builder().id(id).payload(payload).build()));
