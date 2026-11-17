@@ -18,7 +18,7 @@ sequenceDiagram
     participant RouteProjection as ApplicationGroupRouteProjection<br/>(sync)
     participant AppProjection as ApplicationProjection<br/>(async)
     participant GroupProjection as LinkedApplicationGroupProjection<br/>(async)
-    participant HistoryProjection as ApplicationHistoryProjection<br/>(async)
+    participant LifecycleStream as LifecycleStreamProjection<br/>(async)
     participant ListProjection as ApplicationListIndexProjection<br/>(async)
 
     Client->>Controller: POST /api/v0/applications/{id}/unlink<br/>linkedGroupVersion (token)
@@ -54,8 +54,8 @@ sequenceDiagram
         EventStore-->>GroupProjection: MemberRemoved or Dissolved
         GroupProjection->>GroupProjection: update version or delete dissolved group row
     and
-        EventStore-->>HistoryProjection: MemberRemoved or Dissolved
-        HistoryProjection->>HistoryProjection: append left/dissolved history
+        EventStore-->>LifecycleStream: MemberRemoved or Dissolved
+        LifecycleStream->>LifecycleStream: add a pointer for every member
     and
         EventStore-->>ListProjection: MemberRemoved or Dissolved
         ListProjection->>ListProjection: clear index lead references

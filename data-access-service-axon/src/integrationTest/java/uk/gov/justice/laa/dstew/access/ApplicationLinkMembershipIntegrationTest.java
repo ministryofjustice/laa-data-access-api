@@ -66,6 +66,8 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
+import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
+import uk.gov.justice.laa.dstew.access.query.application.history.FindApplicationHistoryQuery;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
@@ -152,13 +154,8 @@ public class ApplicationLinkMembershipIntegrationTest {
     assertDescriptionOnHistory(newLeadId, "APPLICATION_GROUP_LEAD_CHANGED", null);
     assertDescriptionOnHistory(group.leadId(), "APPLICATION_GROUP_LEAD_CHANGED", null);
     assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_history WHERE event_type = ?"
-                    + " AND application_id IN (?, ?) AND justification_id IS NULL",
-                Long.class,
-                "APPLICATION_GROUP_LEAD_CHANGED",
-                newLeadId,
-                group.leadId()))
+            historyCount(newLeadId, "APPLICATION_GROUP_LEAD_CHANGED")
+                + historyCount(group.leadId(), "APPLICATION_GROUP_LEAD_CHANGED"))
         .isEqualTo(2);
 
     assertThat(
@@ -171,14 +168,8 @@ public class ApplicationLinkMembershipIntegrationTest {
     assertDescriptionOnHistory(group.leadId(), "APPLICATION_GROUP_LEFT", null);
     assertDescriptionOnHistory(newLeadId, "APPLICATION_GROUP_DISSOLVED", null);
     assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_history WHERE event_type IN (?, ?)"
-                    + " AND application_id IN (?, ?) AND justification_id IS NULL",
-                Long.class,
-                "APPLICATION_GROUP_LEFT",
-                "APPLICATION_GROUP_DISSOLVED",
-                newLeadId,
-                group.leadId()))
+            historyCount(group.leadId(), "APPLICATION_GROUP_LEFT")
+                + historyCount(newLeadId, "APPLICATION_GROUP_DISSOLVED"))
         .isEqualTo(2);
     assertThat(
             jdbcTemplate.queryForObject(
@@ -1422,11 +1413,13 @@ public class ApplicationLinkMembershipIntegrationTest {
   }
 
   private long historyCount(UUID applicationId, String eventType) {
-    return jdbcTemplate.queryForObject(
-        "SELECT COUNT(*) FROM axon.application_history WHERE application_id = ? AND event_type = ?",
-        Long.class,
-        applicationId,
-        eventType);
+    return queryGateway
+        .query(
+            new FindApplicationHistoryQuery(applicationId, List.of(eventType)),
+            ApplicationHistoryResult.class)
+        .join()
+        .applicationHistoryEvents()
+        .size();
   }
 
   private void awaitHistory(UUID applicationId, String eventType) {

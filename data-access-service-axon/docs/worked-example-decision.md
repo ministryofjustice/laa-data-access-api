@@ -15,7 +15,7 @@ into normal Axon command handling.
 | Sensitive-data store | `ApplicationDataStore` | Read the current immutable payload and append the next one |
 | Domain event | `ApplicationDecisionMadeEvent` | Record thin outcome and new version pointers |
 | Current projection | `ApplicationProjection` | Advance the query-side versions and modification time |
-| History projection | `ApplicationHistoryProjection` | Record audit history and hydrate descriptions when queried |
+| Application history | `ApplicationHistoryQueryHandler` | Read the lifecycle stream's events and hydrate descriptions when queried |
 
 The matching diagram is [Sensitive-data change and thin event](sequence-diagrams/04-sensitive-data-change.md).
 
@@ -118,7 +118,7 @@ is never applied. If transaction commit fails, the data insert and event are rol
 Content`. Tracking processors then consume the event independently:
 
 - `ApplicationProjection` updates the two version pointers and `modifiedAt`.
-- `ApplicationHistoryProjection` stores a thin public history row.
+- `LifecycleStreamProjection` records a pointer to the event in the application's lifecycle stream.
 
 When decision history is queried, the history assembler uses the event's data-version pointer to
 retrieve the stored event description and places it directly in the public history response. If
