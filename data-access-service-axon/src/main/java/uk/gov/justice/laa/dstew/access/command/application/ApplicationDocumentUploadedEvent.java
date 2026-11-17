@@ -72,4 +72,9 @@ public record ApplicationDocumentUploadedEvent(
   public Set<UUID> genesisIds() {
     return GenesisScoped.ids(applicationId);
   }
+
+  @Override
+  public Instant occurredAt() {
+    return uploadedAt;
+  }
 }

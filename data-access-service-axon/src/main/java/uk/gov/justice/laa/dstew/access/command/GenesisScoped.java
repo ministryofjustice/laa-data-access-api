@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashSet;
@@ -21,6 +22,9 @@ public interface GenesisScoped {
    * written before the event recorded its application; those are left out of lifecycle streams.
    */
   Set<UUID> genesisIds();
+
+  /** Returns when the event happened in the domain; lifecycle streams order by this. */
+  Instant occurredAt();
 
   /**
    * Collects IDs, dropping duplicates.
