@@ -53,7 +53,7 @@ class MakePriorAuthorityDecisionCommandMapperTest {
                     .build())
             .apportionment(
                 ApportionmentMakePriorAuthorityDecisionRequest.builder()
-                    .newClientShareAmount(BigDecimal.valueOf(200.00))
+                    .grantedClientShareAmount(BigDecimal.valueOf(200.00))
                     .build())
             .amountGranted(BigDecimal.valueOf(1200.50))
             .dateGranted(dateGranted)
@@ -79,7 +79,7 @@ class MakePriorAuthorityDecisionCommandMapperTest {
     assertThat(command.disbursementInformation().getGrantedAmount())
         .isEqualByComparingTo(BigDecimal.valueOf(300.00));
     assertThat(command.apportionmentInformation()).isNotNull();
-    assertThat(command.apportionmentInformation().getNewClientShareAmount())
+    assertThat(command.apportionmentInformation().getGrantedClientShareAmount())
         .isEqualByComparingTo(BigDecimal.valueOf(200.00));
     assertThat(command.dateGranted()).isEqualTo(dateGranted.toInstant());
     assertThat(command.serialisedRequest()).contains("\"decision\":\"GRANTED\"");
@@ -172,7 +172,7 @@ class MakePriorAuthorityDecisionCommandMapperTest {
         .isEqualByComparingTo(BigDecimal.ZERO);
     assertThat(command.expertFee().getGrantedHourlyRateAmount()).isNull();
     assertThat(command.disbursementInformation().getGrantedAmount()).isNull();
-    assertThat(command.apportionmentInformation().getNewClientShareAmount()).isNull();
+    assertThat(command.apportionmentInformation().getGrantedClientShareAmount()).isNull();
     assertThat(command.decisionJustification()).isEqualTo("Refusal reason");
   }
 

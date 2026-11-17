@@ -209,7 +209,7 @@ public class GetPriorAuthorityResponseMapper {
     }
     if (details.apportionment() != null) {
       Apportionment apportionmentInfo = new Apportionment();
-      apportionmentInfo.setClientShareAmount(details.apportionment().getNewClientShareAmount());
+      apportionmentInfo.setClientShareAmount(details.apportionment().getGrantedClientShareAmount());
       result.setApportionment(apportionmentInfo);
     }
     return result;

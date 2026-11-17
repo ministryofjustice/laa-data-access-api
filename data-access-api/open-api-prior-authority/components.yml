@@ -36,9 +36,9 @@ components:
       type: object
       description: Optional apportionment details for the decision
       properties:
-        newClientShareAmount:
+        grantedClientShareAmount:
           type: number
-          description: New client share amount if applicable
+          description: Granted client share amount
 
     DisbursementMakePriorAuthorityDecisionRequest:
       type: object

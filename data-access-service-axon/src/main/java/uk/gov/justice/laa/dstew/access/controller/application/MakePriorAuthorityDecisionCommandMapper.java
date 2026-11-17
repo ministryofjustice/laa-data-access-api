@@ -53,7 +53,7 @@ public class MakePriorAuthorityDecisionCommandMapper {
     return value == null
         ? null
         : ApportionmentInformation.builder()
-            .newClientShareAmount(value.getNewClientShareAmount())
+            .grantedClientShareAmount(value.getGrantedClientShareAmount())
             .build();
   }
 

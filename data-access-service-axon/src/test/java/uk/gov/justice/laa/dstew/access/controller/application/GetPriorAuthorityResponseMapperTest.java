@@ -238,7 +238,7 @@ class GetPriorAuthorityResponseMapperTest {
                         .build(),
                     DisbursementInformation.builder().grantedAmount(BigDecimal.valueOf(50)).build(),
                     ApportionmentInformation.builder()
-                        .newClientShareAmount(BigDecimal.valueOf(25))
+                        .grantedClientShareAmount(BigDecimal.valueOf(25))
                         .build(),
                     "{}"))
             .uploadedDocuments(
