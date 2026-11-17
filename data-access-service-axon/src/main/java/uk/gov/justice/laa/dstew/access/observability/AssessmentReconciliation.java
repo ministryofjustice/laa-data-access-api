@@ -9,7 +9,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -33,25 +32,11 @@ public class AssessmentReconciliation {
   private final AtomicLong fresh = new AtomicLong();
 
   /** Creates reconciliation with the configured age threshold. */
-  @Autowired
   public AssessmentReconciliation(
       QueryGateway queryGateway,
       MeterRegistry meterRegistry,
-      @Value("${application.assessment.reconciliation.threshold:15m}") Duration threshold,
-      ErrorReporter errorReporter) {
-    this(queryGateway, meterRegistry, Clock.systemUTC(), threshold, errorReporter);
-  }
-
-  AssessmentReconciliation(
-      QueryGateway queryGateway, MeterRegistry meterRegistry, Clock clock, Duration threshold) {
-    this(queryGateway, meterRegistry, clock, threshold, new ErrorReporter());
-  }
-
-  AssessmentReconciliation(
-      QueryGateway queryGateway,
-      MeterRegistry meterRegistry,
       Clock clock,
-      Duration threshold,
+      @Value("${application.assessment.reconciliation.threshold:15m}") Duration threshold,
       ErrorReporter errorReporter) {
     this.queryGateway = queryGateway;
     this.meterRegistry = meterRegistry;

@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Supplier;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.JacksonExceptionMessageBuilder;
 import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
@@ -12,26 +12,11 @@ import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
 /** Writes and retrieves immutable prior-authority data versions. */
 @Component
+@RequiredArgsConstructor
 public class PriorAuthorityDataStore {
 
   private final PriorAuthorityDataRepository repository;
   private final ErrorReporter errorReporter;
-
-  /**
-   * Convenience constructor retained for existing call sites/tests that do not need to verify
-   * Sentry reporting explicitly.
-   */
-  public PriorAuthorityDataStore(PriorAuthorityDataRepository repository) {
-    this(repository, new ErrorReporter());
-  }
-
-  /** Creates the store with its repository and error-reporting dependencies. */
-  @Autowired
-  public PriorAuthorityDataStore(
-      PriorAuthorityDataRepository repository, ErrorReporter errorReporter) {
-    this.repository = repository;
-    this.errorReporter = errorReporter;
-  }
 
   /**
    * Appends an immutable version of a prior-authority submission's sensitive data.

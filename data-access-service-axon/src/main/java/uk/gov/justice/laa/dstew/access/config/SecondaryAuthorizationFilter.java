@@ -12,9 +12,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -47,6 +47,7 @@ import uk.gov.justice.laa.dstew.access.security.SecurityHelper;
  *       {@link SecurityContextHolder}.
  * </ol>
  */
+@RequiredArgsConstructor
 public class SecondaryAuthorizationFilter extends OncePerRequestFilter {
 
   private static final Logger log = LoggerFactory.getLogger(SecondaryAuthorizationFilter.class);
@@ -58,22 +59,6 @@ public class SecondaryAuthorizationFilter extends OncePerRequestFilter {
 
   private final JwtDecoder secondaryAuthorizationJwtDecoder;
   private final ErrorReporter errorReporter;
-
-  /**
-   * Convenience constructor retained for existing call sites/tests that do not need to verify
-   * Sentry reporting explicitly. Production wiring uses {@link #SecondaryAuthorizationFilter(
-   * JwtDecoder, ErrorReporter)} via {@link SecondaryAuthorizationConfig}.
-   */
-  public SecondaryAuthorizationFilter(JwtDecoder secondaryAuthorizationJwtDecoder) {
-    this(secondaryAuthorizationJwtDecoder, new ErrorReporter());
-  }
-
-  @Autowired
-  public SecondaryAuthorizationFilter(
-      JwtDecoder secondaryAuthorizationJwtDecoder, ErrorReporter errorReporter) {
-    this.secondaryAuthorizationJwtDecoder = secondaryAuthorizationJwtDecoder;
-    this.errorReporter = errorReporter;
-  }
 
   @Override
   protected void doFilterInternal(
