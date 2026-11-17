@@ -18,8 +18,9 @@ public record WorkItemUnassigned(
     Instant occurredAt)
     implements WorkItemAssignmentChange, GenesisScoped {
 
+  /** Events stored before {@code applicationId} was recorded name no genesis. */
   @Override
   public Set<UUID> genesisIds() {
-    return GenesisScoped.ids(applicationId);
+    return applicationId == null ? Set.of() : GenesisScoped.ids(applicationId);
   }
 }

@@ -34,8 +34,11 @@ public record MemberAddedToGroupEvent(
         groupId, leadApplicationId, memberId, occurredAt, memberApplicationIds, justificationRefId);
   }
 
+  /** Events stored before {@code leadApplicationId} was recorded name only the member. */
   @Override
   public Set<UUID> genesisIds() {
-    return GenesisScoped.ids(leadApplicationId, memberId);
+    return leadApplicationId == null
+        ? GenesisScoped.ids(memberId)
+        : GenesisScoped.ids(leadApplicationId, memberId);
   }
 }

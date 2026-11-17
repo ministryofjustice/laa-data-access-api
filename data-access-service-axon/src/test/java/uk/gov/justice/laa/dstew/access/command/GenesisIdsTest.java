@@ -95,11 +95,25 @@ public class GenesisIdsTest {
             MEMBER));
   }
 
+  /** Legacy stored shapes that load without the application they concern. */
+  public static Stream<Arguments> legacyEvents() {
+    return Stream.of(
+        legacy(new WorkItemAssigned(ID, WorkItemType.APPLICATION, null, 1L, 1L, ID, OCCURRED_AT)),
+        legacy(new WorkItemUnassigned(ID, WorkItemType.APPLICATION, null, 1L, 1L, OCCURRED_AT)),
+        legacy(new PriorAuthorityDocumentTypeUpdatedEvent(ID, ID, "T", OCCURRED_AT, null)),
+        legacy(new MemberAddedToGroupEvent(ID, null, MEMBER, OCCURRED_AT), MEMBER));
+  }
+
   @ParameterizedTest(name = "{0}")
-  @MethodSource("events")
+  @MethodSource({"events", "legacyEvents"})
   void givenEvent_whenScoped_thenNamesItsRootApplications(
       String name, GenesisScoped event, List<UUID> expected) {
     assertThat(event.genesisIds()).containsExactlyInAnyOrderElementsOf(expected);
+  }
+
+  private static Arguments legacy(GenesisScoped event, UUID... expected) {
+    return Arguments.of(
+        "legacy " + event.getClass().getSimpleName(), event, Arrays.asList(expected));
   }
 
   private static Arguments scoped(GenesisScoped event, UUID... expected) {

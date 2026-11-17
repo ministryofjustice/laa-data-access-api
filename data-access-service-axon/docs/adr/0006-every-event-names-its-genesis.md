@@ -133,6 +133,9 @@ concerning its genesis, not that it includes every event concerning every linked
   - `WorkItemAssigned`, `WorkItemUnassigned`: `applicationId` (equals `workItemId` for
     application work items; the parent for Prior Authority work items).
   - `PriorAuthorityDocumentTypeUpdatedEvent`: `parentApplicationId`.
+- Legacy stored events load these fields as `null`. Those three events then name no genesis,
+  and a `MemberAddedToGroupEvent` stored before it recorded `leadApplicationId` names only its
+  member. Every other missing ID still fails.
 - `GenesisScopeArchitectureTest` (ArchUnit) fails the build if an `@Event` does not implement
   `GenesisScoped`. It also checks a dissolved group's IDs, a missing-ID failure and the
   helpers' non-empty contract. It does not test delivery into the planned lifecycle streams.
@@ -163,8 +166,8 @@ concerning its genesis, not that it includes every event concerning every linked
 ## Consequences
 
 - New `@Event` types must implement `GenesisScoped`; the build enforces this.
-- No upcasters: stored events load the new fields as `null`. Dev and staging require a data
-  reset before `genesisIds()` is used.
+- No upcasters and no data reset: legacy events missing these fields are left out of the
+  lifecycle streams of the applications they concern. There is no production data.
 - Genesis ID set order is not defined and is not event-history order.
 - Event pointers and identifiers are not automatically anonymous. Retention must account for
   content versions, documents, downstream copies and references held by other geneses.

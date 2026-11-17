@@ -16,7 +16,10 @@ import java.util.UUID;
  */
 public interface GenesisScoped {
 
-  /** Returns the root application IDs this event relates to; never empty. */
+  /**
+   * Returns the root application IDs this event relates to. Empty only for legacy stored events
+   * written before the event recorded its application; those are left out of lifecycle streams.
+   */
   Set<UUID> genesisIds();
 
   /**
