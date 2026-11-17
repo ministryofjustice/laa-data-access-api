@@ -12,6 +12,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.junit.jupiter.api.Test;
@@ -30,11 +32,15 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 import uk.gov.justice.laa.dstew.access.security.OfficeCodeWriteAccessPolicy;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 @ExtendWith(MockitoExtension.class)
 class CreatePriorAuthorityDraftCommandHandlerTest {
+
+  private static final AuthenticatedCaller CALLER =
+      new AuthenticatedCaller(Optional.empty(), Set.of(), Set.of("1A001B"), Set.of());
 
   private static final Instant OCCURRED_AT = Instant.parse("2026-09-01T10:00:00Z");
 
@@ -55,7 +61,14 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
             PriorAuthorityType.EXPERT, "Need urgent review", null, null, null);
     CreatePriorAuthorityDraftCommand command =
         new CreatePriorAuthorityDraftCommand(
-            priorAuthorityId, applicationId, content, "{}", 1, "PriorAuthority.json", OCCURRED_AT);
+            priorAuthorityId,
+            applicationId,
+            content,
+            "{}",
+            1,
+            "PriorAuthority.json",
+            OCCURRED_AT,
+            CALLER);
 
     when(application.isGranted()).thenReturn(true);
     when(application.getOfficeCode()).thenReturn("1A001B");
@@ -78,7 +91,7 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
     assertThat(payloadCaptor.getValue().serialisedRequest()).isEqualTo("{}");
     assertThat(payloadCaptor.getValue().submittedAt()).isEqualTo(OCCURRED_AT);
     assertThat(payloadCaptor.getValue().officeCode()).isEqualTo("1A001B");
-    verify(writeAccessPolicy).requireOfficeCodeWriteAccess(eq("1A001B"), isNull());
+    verify(writeAccessPolicy).requireOfficeCodeWriteAccess(eq("1A001B"), eq(CALLER));
     verify(eventAppender)
         .append(
             new PriorAuthorityDraftStartedEvent(
@@ -99,7 +112,14 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
             PriorAuthorityType.EXPERT, "Need urgent review", null, null, null);
     CreatePriorAuthorityDraftCommand command =
         new CreatePriorAuthorityDraftCommand(
-            priorAuthorityId, applicationId, content, "{}", 1, "PriorAuthority.json", OCCURRED_AT);
+            priorAuthorityId,
+            applicationId,
+            content,
+            "{}",
+            1,
+            "PriorAuthority.json",
+            OCCURRED_AT,
+            CALLER);
 
     when(application.isGranted()).thenReturn(false);
     when(draftStore.exists(priorAuthorityId)).thenReturn(false);
@@ -136,7 +156,14 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
             PriorAuthorityType.EXPERT, "Need urgent review", null, null, null);
     CreatePriorAuthorityDraftCommand command =
         new CreatePriorAuthorityDraftCommand(
-            priorAuthorityId, applicationId, content, "{}", 1, "PriorAuthority.json", OCCURRED_AT);
+            priorAuthorityId,
+            applicationId,
+            content,
+            "{}",
+            1,
+            "PriorAuthority.json",
+            OCCURRED_AT,
+            CALLER);
 
     when(application.isGranted()).thenReturn(true);
     when(draftStore.exists(priorAuthorityId)).thenReturn(false);
@@ -153,7 +180,7 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
             eq("{}"),
             eq(OCCURRED_AT));
     assertThat(payloadCaptor.getValue().officeCode()).isNull();
-    verify(writeAccessPolicy).requireOfficeCodeWriteAccess(isNull(), isNull());
+    verify(writeAccessPolicy).requireOfficeCodeWriteAccess(isNull(), eq(CALLER));
     verify(eventAppender)
         .append(
             new PriorAuthorityDraftStartedEvent(
@@ -173,7 +200,8 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
             "{}",
             1,
             "PriorAuthority.json",
-            OCCURRED_AT);
+            OCCURRED_AT,
+            CALLER);
 
     when(draftStore.exists(priorAuthorityId)).thenReturn(true);
 
@@ -207,7 +235,8 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
             "{}",
             1,
             "PriorAuthority.json",
-            OCCURRED_AT);
+            OCCURRED_AT,
+            CALLER);
 
     when(draftStore.exists(priorAuthorityId)).thenReturn(false);
     when(dataStore.exists(priorAuthorityId)).thenReturn(true);
@@ -241,7 +270,8 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
             "{}",
             1,
             "PriorAuthority.json",
-            OCCURRED_AT);
+            OCCURRED_AT,
+            CALLER);
 
     when(application.isGranted()).thenReturn(true);
     when(application.getOfficeCode()).thenReturn("1A001B");
@@ -249,7 +279,7 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
     when(dataStore.exists(priorAuthorityId)).thenReturn(false);
     doThrow(new AccessDeniedException("Caller is not authorised to write this resource"))
         .when(writeAccessPolicy)
-        .requireOfficeCodeWriteAccess(eq("1A001B"), isNull());
+        .requireOfficeCodeWriteAccess(eq("1A001B"), eq(CALLER));
 
     assertThatThrownBy(
             () ->

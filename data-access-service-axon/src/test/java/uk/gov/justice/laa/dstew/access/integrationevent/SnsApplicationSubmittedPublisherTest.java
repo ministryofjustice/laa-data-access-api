@@ -1,8 +1,11 @@
 package uk.gov.justice.laa.dstew.access.integrationevent;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -10,9 +13,37 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import software.amazon.awssdk.services.sns.SnsClient;
 import software.amazon.awssdk.services.sns.model.PublishRequest;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
 class SnsApplicationSubmittedPublisherTest {
+
+  @Test
+  void givenSerialisationFailure_whenPublished_thenPreservesCauseAndDoesNotCallSns() {
+    SnsClient snsClient = mock(SnsClient.class);
+    ObjectMapper objectMapper = mock(ObjectMapper.class);
+    ApplicationSubmittedEvent event =
+        new ApplicationSubmittedEvent(
+            "ApplicationSubmitted",
+            1,
+            UUID.fromString("b6e6f0b2-0000-4000-8000-000000000001"),
+            Instant.parse("2026-08-03T09:30:00Z"),
+            "laa-data-access-api",
+            "corr-2096",
+            new ApplicationSubmittedData(
+                UUID.fromString("8c9e6c2e-4f1a-4e3a-9c2b-1a2b3c4d5e6f"), "LAA-2096", 3L));
+    JacksonException failure = new JacksonException("Serialisation failed") {};
+    when(objectMapper.writeValueAsString(event)).thenThrow(failure);
+    SnsApplicationSubmittedPublisher publisher =
+        new SnsApplicationSubmittedPublisher(
+            snsClient, objectMapper, "arn:aws:sns:eu-west-2:000000000000:data-access-events");
+
+    assertThatThrownBy(() -> publisher.publish(event))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Unable to serialise ApplicationSubmittedEvent")
+        .hasCause(failure);
+    verifyNoInteractions(snsClient);
+  }
 
   @Test
   void givenVersionOneEvent_whenPublished_thenSendsThinBodyAndFilterAttributes() throws Exception {

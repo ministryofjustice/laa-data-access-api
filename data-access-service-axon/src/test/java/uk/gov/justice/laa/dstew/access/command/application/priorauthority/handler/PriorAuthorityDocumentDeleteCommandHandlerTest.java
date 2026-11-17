@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.junit.jupiter.api.Test;
@@ -33,10 +34,14 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityCont
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 @ExtendWith(MockitoExtension.class)
 class PriorAuthorityDocumentDeleteCommandHandlerTest {
+
+  private static final AuthenticatedCaller CALLER =
+      new AuthenticatedCaller(Optional.empty(), Set.of(), Set.of("1A001B"), Set.of());
 
   private static final Instant OCCURRED_AT = Instant.parse("2026-09-01T10:00:00Z");
 
@@ -65,7 +70,7 @@ class PriorAuthorityDocumentDeleteCommandHandlerTest {
             null,
             Map.of(documentId, "remove.pdf", remainingDocumentId, "keep.pdf"));
     PriorAuthorityDocumentDeleteCommand command =
-        new PriorAuthorityDocumentDeleteCommand(priorAuthorityId, documentId, OCCURRED_AT);
+        new PriorAuthorityDocumentDeleteCommand(priorAuthorityId, documentId, OCCURRED_AT, CALLER);
 
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(existingDraft));
     when(priorAuthority.getApplicationId()).thenReturn(applicationId);
@@ -110,7 +115,7 @@ class PriorAuthorityDocumentDeleteCommandHandlerTest {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
     PriorAuthorityDocumentDeleteCommand command =
-        new PriorAuthorityDocumentDeleteCommand(priorAuthorityId, documentId, OCCURRED_AT);
+        new PriorAuthorityDocumentDeleteCommand(priorAuthorityId, documentId, OCCURRED_AT, CALLER);
 
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.empty());
     when(priorAuthority.getState()).thenReturn(draftState(priorAuthorityId, UUID.randomUUID()));
@@ -137,7 +142,7 @@ class PriorAuthorityDocumentDeleteCommandHandlerTest {
         new PriorAuthorityDataPayload(
             priorAuthorityId, applicationId, existingContent, "old", OCCURRED_AT);
     PriorAuthorityDocumentDeleteCommand command =
-        new PriorAuthorityDocumentDeleteCommand(priorAuthorityId, documentId, OCCURRED_AT);
+        new PriorAuthorityDocumentDeleteCommand(priorAuthorityId, documentId, OCCURRED_AT, CALLER);
 
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(existingDraft));
     when(priorAuthority.getState()).thenReturn(draftState(priorAuthorityId, applicationId));
@@ -165,7 +170,8 @@ class PriorAuthorityDocumentDeleteCommandHandlerTest {
             priorAuthorityId, applicationId, "EXPERT", 1, 1L, null, OCCURRED_AT, null));
     when(priorAuthority.getState()).thenReturn(state);
     PriorAuthorityDocumentDeleteCommand command =
-        new PriorAuthorityDocumentDeleteCommand(priorAuthorityId, UUID.randomUUID(), OCCURRED_AT);
+        new PriorAuthorityDocumentDeleteCommand(
+            priorAuthorityId, UUID.randomUUID(), OCCURRED_AT, CALLER);
 
     assertThatThrownBy(
             () ->
@@ -201,7 +207,7 @@ class PriorAuthorityDocumentDeleteCommandHandlerTest {
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(draft));
     when(priorAuthority.getState()).thenReturn(state);
     PriorAuthorityDocumentDeleteCommand command =
-        new PriorAuthorityDocumentDeleteCommand(priorAuthorityId, documentId, OCCURRED_AT);
+        new PriorAuthorityDocumentDeleteCommand(priorAuthorityId, documentId, OCCURRED_AT, CALLER);
 
     assertThatThrownBy(
             () ->

@@ -11,11 +11,4 @@ import uk.gov.justice.laa.dstew.access.security.CallerCommand;
 @Command(routingKey = "priorAuthorityId")
 public record SubmitPriorAuthorityDraftCommand(
     @TargetEntityId UUID priorAuthorityId, Instant occurredAt, AuthenticatedCaller caller)
-    implements CallerCommand {
-
-  /** Temporary source-compatible constructor for non-HTTP command fixtures. */
-  @Deprecated(forRemoval = true)
-  public SubmitPriorAuthorityDraftCommand(UUID priorAuthorityId, Instant occurredAt) {
-    this(priorAuthorityId, occurredAt, null);
-  }
-}
+    implements CallerCommand {}
