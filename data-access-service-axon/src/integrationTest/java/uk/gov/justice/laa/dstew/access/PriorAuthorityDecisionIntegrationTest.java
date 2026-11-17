@@ -1,16 +1,20 @@
 package uk.gov.justice.laa.dstew.access;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
@@ -18,6 +22,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.BillingType;
@@ -30,6 +35,8 @@ import uk.gov.justice.laa.dstew.access.model.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.model.ExpertDetails;
 import uk.gov.justice.laa.dstew.access.model.ExpertMakePriorAuthorityDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MakePriorAuthorityDecisionRequest;
+import uk.gov.justice.laa.dstew.access.model.PriorAuthorityEventResponse;
+import uk.gov.justice.laa.dstew.access.model.PriorAuthorityEventType;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse.DecisionEnum;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
@@ -81,6 +88,32 @@ class PriorAuthorityDecisionIntegrationTest extends BaseIntegrationTest {
 
     assertDecisionPersisted(
         priorAuthorityId, DecisionEnum.REFUSED, "Insufficient justification provided");
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "GRANTED, 150, PRIOR_AUTHORITY_MAKE_DECISION_GRANTED",
+    "REFUSED, 0, PRIOR_AUTHORITY_MAKE_DECISION_REFUSED"
+  })
+  void givenDecidedPriorAuthority_whenGetHistory_thenIncludesDecisionEventType(
+      DecisionStatus decision, BigDecimal amountGranted, PriorAuthorityEventType expected) {
+    var draft = disbursementDraft();
+    var priorAuthorityId = submittedAndAssigned(draft);
+    var request = decisionRequest(decision, "Decision justification", amountGranted);
+
+    assertThat(patchDecision(priorAuthorityId, request).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+
+    await()
+        .atMost(10, TimeUnit.SECONDS)
+        .pollInterval(50, TimeUnit.MILLISECONDS)
+        .untilAsserted(
+            () ->
+                assertThat(priorAuthorityHistoryEventTypes(draft.getApplicationId()))
+                    .containsExactly(
+                        PriorAuthorityEventType.PRIOR_AUTHORITY_SUBMITTED,
+                        PriorAuthorityEventType.ASSIGN_APPLICATION_TO_CASEWORKER,
+                        expected));
   }
 
   @Test
@@ -243,6 +276,21 @@ class PriorAuthorityDecisionIntegrationTest extends BaseIntegrationTest {
             String.class);
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     return objectMapper.readValue(response.getBody(), PriorAuthorityResponse.class);
+  }
+
+  private List<PriorAuthorityEventType> priorAuthorityHistoryEventTypes(UUID applicationId) {
+    var response =
+        restTemplate.exchange(
+            url("/api/v0/applications/" + applicationId + "/history-search"),
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            String.class);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    var history = objectMapper.readValue(response.getBody(), ApplicationHistoryResponse.class);
+    assertThat(history.getPriorAuthorities()).hasSize(1);
+    return history.getPriorAuthorities().getFirst().getEvents().stream()
+        .map(PriorAuthorityEventResponse::getEventType)
+        .toList();
   }
 
   private UUID submittedAndAssigned(CreatePriorAuthorityDraftRequest draft) {
