@@ -52,12 +52,12 @@ components:
       type: object
       description: Optional expert details for the decision
       properties:
-        newFixedRateAmount:
+        grantedFixedRateAmount:
           type: number
-          description: New fixed rate amount if applicable
-        newHourlyRateAmount:
+          description: Granted fixed rate amount (alternative to hourly rate)
+        grantedHourlyRateAmount:
           type: number
-          description: New hourly rate amount if applicable
+          description: Granted hourly rate amount (alternative to fixed rate)
         grantedTime:
           $ref: "#/components/schemas/DecisionTimeRequested"
 
@@ -571,12 +571,12 @@ components:
       type: object
       description: Expert fee information for a prior authority decision
       properties:
-        newFixedRateAmount:
+        grantedFixedRateAmount:
           type: number
-          description: New fixed rate amount if applicable
-        newHourlyRateAmount:
+          description: Granted fixed rate amount if applicable
+        grantedHourlyRateAmount:
           type: number
-          description: New hourly rate amount if applicable
+          description: Granted hourly rate amount if applicable
         grantedTime:
           $ref: "#/components/schemas/TimeRequested"
 

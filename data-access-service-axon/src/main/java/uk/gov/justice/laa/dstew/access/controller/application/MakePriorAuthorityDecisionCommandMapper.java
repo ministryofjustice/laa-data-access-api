@@ -68,8 +68,8 @@ public class MakePriorAuthorityDecisionCommandMapper {
     return value == null
         ? null
         : ExpertFeeInformation.builder()
-            .newFixedRateAmount(value.getNewFixedRateAmount())
-            .newHourlyRateAmount(value.getNewHourlyRateAmount())
+            .grantedFixedRateAmount(value.getGrantedFixedRateAmount())
+            .grantedHourlyRateAmount(value.getGrantedHourlyRateAmount())
             .grantedTime(toTimeRequested(value.getGrantedTime()))
             .build();
   }

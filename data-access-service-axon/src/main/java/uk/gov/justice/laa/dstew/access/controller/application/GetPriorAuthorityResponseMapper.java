@@ -196,8 +196,8 @@ public class GetPriorAuthorityResponseMapper {
     if (details.expert() != null) {
       uk.gov.justice.laa.dstew.access.model.ExpertFeeInformation expertInfo =
           new uk.gov.justice.laa.dstew.access.model.ExpertFeeInformation();
-      expertInfo.setNewFixedRateAmount(details.expert().getNewFixedRateAmount());
-      expertInfo.setNewHourlyRateAmount(details.expert().getNewHourlyRateAmount());
+      expertInfo.setGrantedFixedRateAmount(details.expert().getGrantedFixedRateAmount());
+      expertInfo.setGrantedHourlyRateAmount(details.expert().getGrantedHourlyRateAmount());
       expertInfo.setGrantedTime(toTimeRequested(details.expert().getGrantedTime()));
       result.setExpert(expertInfo);
     }

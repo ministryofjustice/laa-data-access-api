@@ -148,7 +148,7 @@ class PriorAuthorityDataPayloadTest {
           "decisionDetails": {
             "decision": "GRANTED",
             "expert": {
-              "newHourlyRateAmount": 100.0
+              "grantedHourlyRateAmount": 100.0
             }
           }
         }
@@ -176,8 +176,8 @@ class PriorAuthorityDataPayloadTest {
         BigDecimal.valueOf(123.45),
         GRANTED_AT,
         ExpertFeeInformation.builder()
-            .newFixedRateAmount(BigDecimal.valueOf(250.0))
-            .newHourlyRateAmount(BigDecimal.valueOf(100.0))
+            .grantedFixedRateAmount(BigDecimal.valueOf(250.0))
+            .grantedHourlyRateAmount(BigDecimal.valueOf(100.0))
             .grantedTime(new TimeRequested(3, 15))
             .build(),
         DisbursementInformation.builder().newAmount(BigDecimal.valueOf(45.0)).build(),

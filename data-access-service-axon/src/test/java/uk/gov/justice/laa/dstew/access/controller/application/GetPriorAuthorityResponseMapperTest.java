@@ -232,8 +232,8 @@ class GetPriorAuthorityResponseMapperTest {
                     BigDecimal.valueOf(99.99),
                     decisionDate,
                     ExpertFeeInformation.builder()
-                        .newFixedRateAmount(BigDecimal.valueOf(250))
-                        .newHourlyRateAmount(BigDecimal.valueOf(175))
+                        .grantedFixedRateAmount(BigDecimal.valueOf(250))
+                        .grantedHourlyRateAmount(BigDecimal.valueOf(175))
                         .grantedTime(new TimeRequested(3, 15))
                         .build(),
                     DisbursementInformation.builder().newAmount(BigDecimal.valueOf(50)).build(),
@@ -277,9 +277,9 @@ class GetPriorAuthorityResponseMapperTest {
     assertThat(response.getDecisionDetails().getAmountGranted()).isEqualByComparingTo("99.99");
     assertThat(response.getDecisionDetails().getDateGranted())
         .isEqualTo(decisionDate.atOffset(ZoneOffset.UTC));
-    assertThat(response.getDecisionDetails().getExpert().getNewFixedRateAmount())
+    assertThat(response.getDecisionDetails().getExpert().getGrantedFixedRateAmount())
         .isEqualByComparingTo("250");
-    assertThat(response.getDecisionDetails().getExpert().getNewHourlyRateAmount())
+    assertThat(response.getDecisionDetails().getExpert().getGrantedHourlyRateAmount())
         .isEqualByComparingTo("175");
     assertThat(response.getDecisionDetails().getExpert().getGrantedTime().getHours()).isEqualTo(3);
     assertThat(response.getDecisionDetails().getExpert().getGrantedTime().getMinutes())
@@ -307,7 +307,7 @@ class GetPriorAuthorityResponseMapperTest {
                     "Decision recorded",
                     null,
                     null,
-                    ExpertFeeInformation.builder().newHourlyRateAmount(BigDecimal.TEN).build(),
+                    ExpertFeeInformation.builder().grantedHourlyRateAmount(BigDecimal.TEN).build(),
                     null,
                     null,
                     "{}"))
