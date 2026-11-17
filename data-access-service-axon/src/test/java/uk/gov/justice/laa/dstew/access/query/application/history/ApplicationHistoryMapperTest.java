@@ -2,30 +2,18 @@ package uk.gov.justice.laa.dstew.access.query.application.history;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import org.assertj.core.groups.Tuple;
 import org.axonframework.messaging.core.MessageType;
 import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.GenericEventMessage;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
@@ -41,21 +29,13 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAdd
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberRemovedFromGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityData;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataId;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataRepository;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.config.interceptor.RequestMetadataDispatchInterceptor;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
-import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 
-@ExtendWith(MockitoExtension.class)
 class ApplicationHistoryMapperTest {
 
   private static final Instant OCCURRED_AT = Instant.parse("2026-07-15T08:00:00Z");
@@ -70,15 +50,7 @@ class ApplicationHistoryMapperTest {
   private static final UUID CASEWORKER = UUID.nameUUIDFromBytes("entra-object-id".getBytes());
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
-  @Mock private PriorAuthorityDataRepository priorAuthorityDataRepository;
-  @Mock private ErrorReporter errorReporter;
-
-  private ApplicationHistoryMapper mapper;
-
-  @BeforeEach
-  void setUp() {
-    mapper = new ApplicationHistoryMapper(priorAuthorityDataRepository, errorReporter);
-  }
+  private final ApplicationHistoryMapper mapper = new ApplicationHistoryMapper();
 
   @Test
   void givenApplicationCreated_whenMapped_thenGivesRowWithDataVersionAndMetadata() {
@@ -344,7 +316,6 @@ class ApplicationHistoryMapperTest {
             Tuple.tuple("ASSIGN_APPLICATION_TO_CASEWORKER", CASEWORKER, null),
             Tuple.tuple("UNASSIGN_APPLICATION_TO_CASEWORKER", CASEWORKER, null));
     assertThat(rows.priorAuthority()).isEmpty();
-    verifyNoInteractions(priorAuthorityDataRepository);
   }
 
   @Test
@@ -363,11 +334,10 @@ class ApplicationHistoryMapperTest {
   }
 
   @Test
-  void givenPriorAuthorityWorkItemEvents_whenMapped_thenGivesPriorAuthorityRows() {
-    when(priorAuthorityDataRepository.findById(new PriorAuthorityDataId(PRIOR_AUTHORITY, 2L)))
-        .thenReturn(Optional.of(paData(APPLICATION, PriorAuthorityType.EXPERT)));
+  void givenPriorAuthorityWorkItemEvents_whenMapped_thenGivesRowsWithTheSubmittedType() {
     var events =
         List.of(
+            message(paSubmitted("EXPERT"), "pa-submitted"),
             message(
                 new WorkItemAssigned(
                     PRIOR_AUTHORITY,
@@ -404,6 +374,16 @@ class ApplicationHistoryMapperTest {
             PriorAuthorityHistoryRow::getOccurredAt)
         .containsExactly(
             Tuple.tuple(
+                "pa-submitted",
+                APPLICATION,
+                PRIOR_AUTHORITY,
+                "EXPERT",
+                "PRIOR_AUTHORITY_SUBMITTED",
+                2L,
+                "CIVIL_APPLY",
+                CASEWORKER,
+                OCCURRED_AT),
+            Tuple.tuple(
                 "pa-assigned",
                 APPLICATION,
                 PRIOR_AUTHORITY,
@@ -423,68 +403,57 @@ class ApplicationHistoryMapperTest {
                 "CIVIL_APPLY",
                 CASEWORKER,
                 OCCURRED_AT));
-    verify(errorReporter, never()).report(any(), any());
   }
 
   @Test
-  void givenPriorAuthorityWorkItemWithNoType_whenMapped_thenGivesRowWithNullType() {
-    when(priorAuthorityDataRepository.findById(new PriorAuthorityDataId(PRIOR_AUTHORITY, 1L)))
-        .thenReturn(Optional.of(paData(APPLICATION, null)));
+  void givenPriorAuthoritySubmittedWithNoType_whenWorkItemMapped_thenGivesRowWithNullType() {
+    var events =
+        List.of(message(paSubmitted(null), "pa-submitted"), message(paAssigned(), "pa-assigned"));
 
-    var rows = mapper.map(APPLICATION, List.of(message(paAssigned(), "pa-assigned")));
+    var rows = mapper.map(APPLICATION, events);
 
     assertThat(rows.priorAuthority())
-        .singleElement()
         .extracting(PriorAuthorityHistoryRow::getPriorAuthorityType)
-        .isNull();
+        .containsExactly(null, null);
   }
 
   @Test
   void givenPriorAuthorityWorkItemForAnotherApplication_whenMapped_thenGivesNoRow() {
-    when(priorAuthorityDataRepository.findById(new PriorAuthorityDataId(PRIOR_AUTHORITY, 1L)))
-        .thenReturn(Optional.of(paData(OTHER, PriorAuthorityType.EXPERT)));
-
-    var rows = mapper.map(APPLICATION, List.of(message(paAssigned(), "pa-assigned")));
-
-    assertThat(rows.application()).isEmpty();
-    assertThat(rows.priorAuthority()).isEmpty();
-    verify(errorReporter, never()).report(any(), any());
-  }
-
-  @Test
-  void givenPriorAuthorityWorkItemAssignedButNoDataFound_whenMapped_thenReportsAndGivesNoRow() {
-    when(priorAuthorityDataRepository.findById(new PriorAuthorityDataId(PRIOR_AUTHORITY, 1L)))
-        .thenReturn(Optional.empty());
-
-    var rows = mapper.map(APPLICATION, List.of(message(paAssigned(), "pa-assigned")));
-
-    assertThat(rows.application()).isEmpty();
-    assertThat(rows.priorAuthority()).isEmpty();
-    verify(errorReporter)
-        .report(
-            eq("Prior authority data not found for PA assignment event"),
-            argThat(
-                exception ->
-                    exception instanceof ApplicationHistoryIntegrityException integrity
-                        && APPLICATION.equals(integrity.getApplicationId())
-                        && PRIOR_AUTHORITY.equals(integrity.getPriorAuthorityId())));
-  }
-
-  @Test
-  void givenPriorAuthorityWorkItemUnassignedButNoDataFound_whenMapped_thenReportsAndGivesNoRow() {
-    when(priorAuthorityDataRepository.findById(new PriorAuthorityDataId(PRIOR_AUTHORITY, 1L)))
-        .thenReturn(Optional.empty());
     var event =
-        new WorkItemUnassigned(
-            PRIOR_AUTHORITY, WorkItemType.PRIOR_AUTHORITY, APPLICATION, 1L, 2L, OCCURRED_AT);
+        new WorkItemAssigned(
+            PRIOR_AUTHORITY,
+            WorkItemType.PRIOR_AUTHORITY,
+            OTHER,
+            1L,
+            1L,
+            UUID.randomUUID(),
+            OCCURRED_AT);
 
-    var rows = mapper.map(APPLICATION, List.of(message(event, "pa-unassigned")));
+    var rows = mapper.map(APPLICATION, List.of(message(event, "pa-assigned")));
 
+    assertThat(rows.application()).isEmpty();
     assertThat(rows.priorAuthority()).isEmpty();
-    verify(errorReporter)
-        .report(
-            eq("Prior authority data not found for PA unassignment event"),
-            any(ApplicationHistoryIntegrityException.class));
+  }
+
+  @Test
+  void givenPriorAuthorityWorkItemButNoSubmission_whenMapped_thenThrowsIntegrityException() {
+    var events =
+        List.of(
+            message(
+                new PriorAuthoritySubmittedEvent(
+                    PRIOR_AUTHORITY, OTHER, "EXPERT", 1, 2L, 0L, OCCURRED_AT, null),
+                "other-submitted"),
+            message(paAssigned(), "pa-assigned"));
+
+    assertThatThrownBy(() -> mapper.map(APPLICATION, events))
+        .isInstanceOfSatisfying(
+            ApplicationHistoryIntegrityException.class,
+            exception -> {
+              assertThat(exception.getApplicationId()).isEqualTo(APPLICATION);
+              assertThat(exception.getPriorAuthorityId()).isEqualTo(PRIOR_AUTHORITY);
+            })
+        .hasMessageContaining("ASSIGN_APPLICATION_TO_CASEWORKER")
+        .hasMessageContaining("never submitted");
   }
 
   @Test
@@ -748,16 +717,9 @@ class ApplicationHistoryMapperTest {
         PRIOR_AUTHORITY, APPLICATION, "EXPERT", 3L, decision, "Reasons", null, null, OCCURRED_AT);
   }
 
-  private static PriorAuthorityData paData(UUID applicationId, PriorAuthorityType type) {
-    var content = new PriorAuthorityContent(type, null, null, null, null);
-    var payload =
-        new PriorAuthorityDataPayload(PRIOR_AUTHORITY, applicationId, content, null, OCCURRED_AT);
-    return PriorAuthorityData.builder()
-        .applicationId(applicationId)
-        .payload(payload)
-        .payloadHash("hash")
-        .createdAt(OCCURRED_AT)
-        .build();
+  private static PriorAuthoritySubmittedEvent paSubmitted(String type) {
+    return new PriorAuthoritySubmittedEvent(
+        PRIOR_AUTHORITY, APPLICATION, type, 1, 2L, 0L, OCCURRED_AT, null);
   }
 
   private static EventMessage message(Object payload, String identifier) {
