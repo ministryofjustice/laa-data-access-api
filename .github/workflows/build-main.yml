@@ -247,7 +247,7 @@ jobs:
 
   deploy-matrix-rc-feature:
     runs-on: ubuntu-latest
-    needs: [ release, prepare-feature-environments, ecr-publish-service-image ]
+    needs: [ release, prepare-feature-environments, ecr-publish-service-image, smoke-tests ]
     environment: uat
     strategy:
       fail-fast: false
