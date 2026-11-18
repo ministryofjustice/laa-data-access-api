@@ -199,7 +199,7 @@ The remaining work concerns wider adoption, not a change to these scopes:
 
 | Topic | Evidence in this branch | Follow-on work |
 |---|---|---|
-| Application history delivery | `LifecycleStreamProjection` records the pointers; `ApplicationHistoryQueryHandler` reads them and maps the events to history. The history projections and their tables are removed. | Other sources contributing pointers, and history views beyond the application's own entries. |
+| Application history delivery | `LifecycleStreamProjection` records the pointers; `ApplicationHistoryQueryHandler` reads them and maps the events to history. The history projections are removed; their tables stay until every running pod reads history from the stream, then a later migration drops them. | Other sources contributing pointers, and history views beyond the application's own entries. |
 | Wider identity model | `GenesisScoped` uses `Set<UUID>` and derives IDs from root application fields. | Person/account geneses, non-UUID external identities and a broader case-file mapping are not implemented here. Agree their issuing and mapping contracts before adoption across systems. |
 
 Retaining both IDs on link does not establish shared retention, and a lifecycle stream does

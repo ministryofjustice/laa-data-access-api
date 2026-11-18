@@ -159,15 +159,17 @@ class EventProcessorRecoveryInMemoryTest {
                           assertThat(document.getFileName()).isEqualTo("client-report.pdf");
                         }));
 
-    final int pointers =
-        await()
-            .atMost(Duration.ofSeconds(5))
-            .until(
-                () ->
-                    lifecycleStreamRepository
+    // Draft created, document uploaded, submitted and marked manual: the stream must hold all
+    // four before the baseline is taken, as it is projected independently of the application.
+    final int pointers = 4;
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .until(
+            () ->
+                lifecycleStreamRepository
                         .findAllByGenesisIdOrderByOccurredAtAscIdAsc(applicationId)
-                        .size(),
-                count -> count > 0);
+                        .size()
+                    == pointers);
     var processors =
         List.of(
             processor("application-projection"),
