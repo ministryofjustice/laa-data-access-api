@@ -10,24 +10,23 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(SerenityJUnit5Extension.class)
 public class DraftApplicationJourneySteps {
 
+  @Given("existing draft application")
+  public void existingDraftApplication() {
+    System.out.println("Given existing draft application");
+  }
 
-    @Given("existing draft application")
-    public void existingDraftApplication() {
-        System.out.println("Given existing draft application");
-    }
+  @And("I upload supporting document to the application")
+  public void iUploadSupportingDocumentToTheApplication() {
+    System.out.println("And I upload supporting document to the application");
+  }
 
-    @And("I upload supporting document to the application")
-    public void iUploadSupportingDocumentToTheApplication() {
-        System.out.println("And I upload supporting document to the application");
-    }
+  @When("I submit the draft application")
+  public void iSubmitTheDraftApplication() {
+    System.out.println("When I submit the draft application");
+  }
 
-    @When("I submit the draft application")
-    public void iSubmitTheDraftApplication() {
-        System.out.println("When I submit the draft application");
-    }
-
-    @Then("the application is submitted")
-    public void theApplicationIsSubmitted() {
-        System.out.println("Then the application is submitted");
-    }
+  @Then("the application is submitted")
+  public void theApplicationIsSubmitted() {
+    System.out.println("Then the application is submitted");
+  }
 }
