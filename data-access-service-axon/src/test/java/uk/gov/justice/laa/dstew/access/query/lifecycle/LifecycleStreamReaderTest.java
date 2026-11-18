@@ -14,15 +14,19 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import java.lang.reflect.Type;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.axonframework.eventsourcing.eventstore.jpa.AggregateEventEntry;
 import org.axonframework.messaging.core.MessageType;
 import org.axonframework.messaging.core.annotation.AnnotationMessageTypeResolver;
 import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.GenericEventMessage;
+import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.axonframework.messaging.eventhandling.conversion.EventConverter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -163,6 +167,22 @@ class LifecycleStreamReaderTest {
     assertThat(types)
         .containsEntry(NOTE_TYPE, NoteCreatedEvent.class)
         .containsEntry(UPDATED_TYPE, ApplicationUpdatedEvent.class);
+  }
+
+  @Test
+  void givenCommandPackage_whenScanned_thenFindsEveryEventTheStreamRecords() {
+    Set<Class<?>> recorded =
+        Arrays.stream(LifecycleStreamProjection.class.getDeclaredMethods())
+            .filter(method -> method.isAnnotationPresent(EventHandler.class))
+            .map(method -> method.getParameterTypes()[0])
+            .collect(Collectors.toSet());
+
+    var types =
+        LifecycleStreamReader.eventTypesIn(
+            LifecycleStreamReader.EVENTS_PACKAGE, new AnnotationMessageTypeResolver());
+
+    assertThat(recorded).isNotEmpty();
+    assertThat(types.values()).containsAll(recorded);
   }
 
   @Test
