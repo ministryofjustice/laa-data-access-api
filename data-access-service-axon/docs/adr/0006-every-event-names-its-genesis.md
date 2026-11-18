@@ -141,8 +141,13 @@ concerning its genesis, not that it includes every event concerning every linked
 - Legacy stored events load these fields as `null`. Those three events then name no genesis,
   and a `MemberAddedToGroupEvent` stored before it recorded `leadApplicationId` names only its
   member. Every other missing ID still fails.
-- `GenesisScopeArchitectureTest` (ArchUnit) fails the build if an `@Event` does not implement
-  `GenesisScoped`. It also checks a dissolved group's IDs, a missing-ID failure and the
+  `LegacyGenesisPayloadCompatibilityTest` deserializes the exact pre-change JSON of the three
+  events through the configured Axon Jackson converter and folds it like the current shape;
+  `LegacyGenesisPayloadReplayIntegrationTest` sources aggregates from PostgreSQL rows rewritten
+  to that shape and decides commands against them.
+- `GenesisScopeArchitectureTest` (ArchUnit) fails the build if an `@Event`, or any `*Event` in a
+  `command` package, does not implement `GenesisScoped`; the latter must also be annotated
+  `@Event`. It also checks a dissolved group's IDs, a missing-ID failure and the
   helpers' non-empty contract. It does not test delivery into the planned lifecycle streams.
 
 ### Planned use

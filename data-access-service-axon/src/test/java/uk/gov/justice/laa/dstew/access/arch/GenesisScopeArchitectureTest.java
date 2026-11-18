@@ -36,6 +36,26 @@ class GenesisScopeArchitectureTest {
         .check(classes);
   }
 
+  /** Catches an event declared without {@code @Event}, which the rule above cannot see. */
+  @Test
+  void everyEventTypeInCommandPackagesIsAnnotatedAndGenesisScoped() {
+    classes()
+        .that()
+        .resideInAPackage("..command..")
+        .and()
+        .haveSimpleNameEndingWith("Event")
+        .and()
+        .areNotInterfaces()
+        .should()
+        .beAnnotatedWith(Event.class)
+        .andShould()
+        .implement(GenesisScoped.class)
+        .because(
+            "history finds an application's events by their genesis IDs and resolves their"
+                + " stored type names through @Event")
+        .check(classes);
+  }
+
   @Test
   void givenDissolvedGroup_whenScoped_thenIncludesEveryAffectedApplicationOnce() {
     UUID lead = UUID.randomUUID();

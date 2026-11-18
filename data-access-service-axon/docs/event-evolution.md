@@ -84,10 +84,27 @@ Previously persisted events are not retagged by changing the Java annotation, an
 already lost content cannot be reconstructed from this thin event. Any historical
 store remediation needs a separate decision; do not rewrite persisted metadata here.
 
+The record is annotated with plain `@Event` (no namespace, name or version), so tooling that
+resolves stored type names through `@Event` classes can resolve it. Axon's default
+`AnnotationMessageTypeResolver` still yields the fully qualified class name and version `0.0.1`,
+exactly as for the previously unannotated class, so stored `payload_type` values are unchanged.
+`LegacyGenesisPayloadCompatibilityTest` and `LegacyGenesisPayloadReplayIntegrationTest` assert
+this, and `GenesisScopeArchitectureTest` requires `@Event` on every `*Event` in `command` packages.
+
 `PriorAuthorityAggregateTest` covers the old JSON and a following document-type event.
 The PostgreSQL draft integration tests force both competing commands to read stale
 state before writing, assert one rolled-back/retried attempt, and check that both
 accepted changes and both owner-stream events survive without sensitive event fields.
+
+### Genesis IDs (ADR 0006)
+
+`WorkItemAssigned` and `WorkItemUnassigned` add `applicationId`;
+`PriorAuthorityDocumentTypeUpdatedEvent` adds `parentApplicationId`. Events stored before the
+change deserialize with `null`, name no genesis and fold exactly as before, so no reset or
+upcaster is needed. `LegacyGenesisPayloadCompatibilityTest` reads the exact old JSON through the
+Axon `EventConverter` built by the application's Jackson auto-configuration.
+`LegacyGenesisPayloadReplayIntegrationTest` strips the field from rows written to PostgreSQL by
+the running service, then loads the aggregates and checks their assignment decisions.
 
 ## New event type
 
