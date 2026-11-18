@@ -1,4 +1,6 @@
-FROM amazoncorretto:25-alpine
+FROM ghcr.io/ministryofjustice/laa-base-container-images/java:25-corretto-alpine
+
+USER root
 
 WORKDIR /data-access-service-axon
 VOLUME /tmp
