@@ -4,6 +4,7 @@ import static uk.gov.justice.laa.dstew.access.pact.PactApplicationFixtures.submi
 import static uk.gov.justice.laa.dstew.access.pact.PactApplicationFixtures.submittedApplication001;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import org.axonframework.common.configuration.AxonConfiguration;
 import org.axonframework.messaging.eventhandling.processing.streaming.StreamingEventProcessor;
@@ -43,13 +44,6 @@ class ProviderStates {
     log.info("State: {}", PactStates.APPLICATIONS_EXIST);
     applications.ensureReadyForManualAssessment(submittedApplication001());
     applications.awaitListed(PactIds.APPLICATION_001);
-  }
-
-  /** Application 001 with client Alice Anderson. */
-  void clientIndividualExistsForApplication001() {
-    log.info("State: {}", PactStates.CLIENT_INDIVIDUAL_EXISTS_FOR_APPLICATION_001);
-    applications.ensureSubmitted(submittedApplication001());
-    applications.awaitClientIndividual(PactIds.APPLICATION_001);
   }
 
   /** Nothing to set up: the consumer supplies an ID the database has never seen. */
@@ -106,6 +100,32 @@ class ProviderStates {
   }
 
   /**
+   * A draft created fresh for this one interaction, so submitting it or uploading to it cannot
+   * affect any other interaction in the run. Returns the generated {@code applicationId} for
+   * injection.
+   */
+  Map<String, Object> newApplicationDraftExists() {
+    log.info("State: {}", PactStates.NEW_APPLICATION_DRAFT_EXISTS);
+    UUID applicationId = applications.newDraft();
+    return Map.of("applicationId", applicationId.toString());
+  }
+
+  /**
+   * Two submitted applications created fresh for this one interaction, neither in a linked group,
+   * so linking them cannot affect any other interaction in the run. Returns {@code applicationId},
+   * for the request path, and {@code leadApplicationId}, for the request body, as injected values.
+   * Linking two standalone applications makes the target the lead of the new group.
+   */
+  Map<String, Object> newUnlinkedApplicationsExist() {
+    log.info("State: {}", PactStates.NEW_UNLINKED_APPLICATIONS_EXIST);
+    UUID applicationId = applications.newSubmitted();
+    UUID leadApplicationId = applications.newSubmitted();
+    return Map.of(
+        "applicationId", applicationId.toString(),
+        "leadApplicationId", leadApplicationId.toString());
+  }
+
+  /**
    * Pauses the application projection so a create cannot observe its read model within the
    * configured wait and returns 202 instead of 201. {@link #applicationReadModelCaughtUp()} must
    * run afterwards.
@@ -125,12 +145,24 @@ class ProviderStates {
 
   // ─── Work list ───────────────────────────────────────────────────────────────
 
-  /** One assigned application, one unassigned application and one submitted prior authority. */
+  /**
+   * One assigned application, one unassigned application, one pending application and one submitted
+   * prior authority.
+   */
   void workListItemsExist() {
     log.info("State: {}", PactStates.WORK_LIST_ITEMS_EXIST);
     applicationAssignedExists();
     applicationUnassignedExists();
+    applicationPendingOnWorkListExists();
     priorAuthoritySubmittedExists();
+  }
+
+  /** Application 010: submitted, auto-grant still pending, visible on the work list as PENDING. */
+  void applicationPendingOnWorkListExists() {
+    ApplicationCreateRequest request =
+        application(PactIds.APPLICATION_PENDING_WORK_LIST, "0010", "Pip", "Pending");
+    applications.ensureSubmitted(request);
+    applications.awaitWorkListItem(request.getId(), Objects::nonNull);
   }
 
   // ─── Prior authorities ───────────────────────────────────────────────────────

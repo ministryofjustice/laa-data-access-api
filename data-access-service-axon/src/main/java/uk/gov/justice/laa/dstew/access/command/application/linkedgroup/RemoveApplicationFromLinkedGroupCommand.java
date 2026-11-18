@@ -12,7 +12,14 @@ public record RemoveApplicationFromLinkedGroupCommand(
     @TargetEntityId UUID groupId,
     UUID applicationId,
     long expectedGroupVersion,
-    Instant occurredAt) {
+    Instant occurredAt,
+    String justification) {
+
+  /** Creates a command without justification. */
+  public RemoveApplicationFromLinkedGroupCommand(
+      UUID groupId, UUID applicationId, long expectedGroupVersion, Instant occurredAt) {
+    this(groupId, applicationId, expectedGroupVersion, occurredAt, null);
+  }
 
   /** Validates the routed group identity and application identifier. */
   public RemoveApplicationFromLinkedGroupCommand {

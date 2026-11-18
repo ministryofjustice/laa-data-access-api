@@ -27,6 +27,7 @@ public final class PriorAuthorityEvolve {
     state.priorAuthorityId = event.priorAuthorityId();
     state.applicationId = event.applicationId();
     state.priorAuthorityType = event.priorAuthorityType();
+    state.billingType = event.billingType();
     state.schemaVersion = event.schemaVersion();
     state.dataVersion = event.dataVersion();
     state.submitted = true;

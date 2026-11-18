@@ -1,9 +1,9 @@
 package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationLinkConflictException;
@@ -38,20 +38,13 @@ public final class LinkedApplicationGroupDecider {
               + state.leadApplicationId);
     }
 
-    var currentMemberIds = new HashSet<>(state.memberApplicationIds);
-    if (currentMemberIds.containsAll(command.memberApplicationIds())) {
+    if (state.memberApplicationIds.contains(command.joiningApplicationId())) {
       return Optional.empty();
     }
 
-    var missingMemberId =
-        command.memberApplicationIds().stream()
-            .filter(memberApplicationId -> !currentMemberIds.contains(memberApplicationId))
-            .findFirst()
-            .orElseThrow();
-
     throw new ApplicationLinkConflictException(
         "Requested application "
-            + missingMemberId
+            + command.joiningApplicationId()
             + " is not part of the established linked application group");
   }
 
@@ -74,7 +67,13 @@ public final class LinkedApplicationGroupDecider {
 
     return Optional.of(
         new MemberAddedToGroupEvent(
-            state.groupId, state.leadApplicationId, command.applicationId(), command.occurredAt()));
+            state.groupId,
+            state.leadApplicationId,
+            command.applicationId(),
+            command.occurredAt(),
+            Stream.concat(state.memberApplicationIds.stream(), Stream.of(command.applicationId()))
+                .toList(),
+            null));
   }
 
   /** Changes the group's lead using its current aggregate version. */
@@ -107,7 +106,9 @@ public final class LinkedApplicationGroupDecider {
             state.leadApplicationId,
             command.newLeadApplicationId(),
             state.groupVersion + 1,
-            command.occurredAt()));
+            command.occurredAt(),
+            List.copyOf(state.memberApplicationIds),
+            null));
   }
 
   /** Removes a non-lead member, dissolving a two-member group. */
@@ -155,7 +156,9 @@ public final class LinkedApplicationGroupDecider {
             state.leadApplicationId,
             command.applicationId(),
             nextVersion,
-            command.occurredAt()));
+            command.occurredAt(),
+            List.copyOf(state.memberApplicationIds),
+            null));
   }
 
   /** Validates that an application may create a Prior Authority against the current group state. */
@@ -171,6 +174,20 @@ public final class LinkedApplicationGroupDecider {
           List.of(
               "Prior Authority applications can only be created against a lead or standalone"
                   + " application"));
+    }
+  }
+
+  /**
+   * Validates that {@code applicationId} is still a member of an established, undissolved group.
+   */
+  public static void validateMember(LinkedApplicationGroupState state, UUID applicationId) {
+    if (state.getGroupId() == null
+        || state.isDissolved()
+        || !state.memberIdsOrEmpty().contains(applicationId)) {
+      throw new ApplicationLinkConflictException(
+          "Linked group membership of application "
+              + applicationId
+              + " changed; retry the request");
     }
   }
 

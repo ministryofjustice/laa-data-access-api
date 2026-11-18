@@ -3,14 +3,14 @@ package uk.gov.justice.laa.dstew.access.command.application.data;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
 
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
@@ -23,9 +23,9 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
+import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 
 class ApplicationDataStoreTest {
 
@@ -139,12 +139,14 @@ class ApplicationDataStoreTest {
   }
 
   private ApplicationDataRepository repository;
+  private ErrorReporter errorReporter;
   private ApplicationDataStore store;
 
   @BeforeEach
   void setUp() {
     repository = mock(ApplicationDataRepository.class);
-    store = new ApplicationDataStore(repository);
+    errorReporter = mock(ErrorReporter.class);
+    store = new ApplicationDataStore(repository, errorReporter);
   }
 
   @Test
@@ -254,7 +256,7 @@ class ApplicationDataStoreTest {
 
   @Test
   void
-      givenWrappedJacksonFailure_whenPayloadsRetrieved_thenLogsIdentifiersAndRethrowsOriginalException() {
+      givenWrappedJacksonFailure_whenPayloadsRetrieved_thenReportsIdentifiersAndRethrowsOriginalException() {
     ApplicationDataId dataId = new ApplicationDataId(UUID.randomUUID(), 4L);
     UnrecognizedPropertyException jacksonException =
         UnrecognizedPropertyException.from(
@@ -265,31 +267,45 @@ class ApplicationDataStoreTest {
     jacksonException.prependPath(ApplicationDataPayload.class, "proceedings");
     RuntimeException failure = new RuntimeException("Could not deserialize JSON", jacksonException);
     when(repository.findAllById(List.of(dataId))).thenThrow(failure);
-    Logger logger = (Logger) LoggerFactory.getLogger(ApplicationDataStore.class);
-    ListAppender<ILoggingEvent> logEvents = new ListAppender<>();
-    logEvents.start();
-    logger.addAppender(logEvents);
 
-    try {
-      assertThatThrownBy(() -> store.getAll(List.of(dataId))).isSameAs(failure);
+    assertThatThrownBy(() -> store.getAll(List.of(dataId))).isSameAs(failure);
 
-      assertThat(logEvents.list)
-          .singleElement()
-          .satisfies(
-              event -> {
-                assertThat(event.getLevel().toString()).isEqualTo("ERROR");
-                assertThat(event.getFormattedMessage())
-                    .contains("application_data JSON deserialization failed")
-                    .contains(dataId.toString())
-                    .contains("emergencyLevelOfService")
-                    .contains("proceedings.emergencyLevelOfService");
-                assertThat(event.getThrowableProxy().getClassName())
-                    .isEqualTo(RuntimeException.class.getName());
-              });
-    } finally {
-      logger.detachAppender(logEvents);
-      logEvents.stop();
-    }
+    verify(errorReporter)
+        .report(
+            argThat(
+                message ->
+                    message.contains("application_data JSON deserialization failed")
+                        && message.contains(dataId.toString())
+                        && message.contains("emergencyLevelOfService")
+                        && message.contains("proceedings.emergencyLevelOfService")),
+            same(failure));
+  }
+
+  @Test
+  void givenUnwrappedRepositoryFailure_whenPayloadsRetrieved_thenReportsIdentifiersAndRethrows() {
+    ApplicationDataId dataId = new ApplicationDataId(UUID.randomUUID(), 4L);
+    RuntimeException failure = new RuntimeException("Connection reset");
+    when(repository.findAllById(List.of(dataId))).thenThrow(failure);
+
+    assertThatThrownBy(() -> store.getAll(List.of(dataId))).isSameAs(failure);
+
+    verify(errorReporter)
+        .report(
+            argThat(
+                message ->
+                    message.contains("application_data load failed")
+                        && message.contains(dataId.toString())),
+            same(failure));
+  }
+
+  @Test
+  void givenRequestedVersions_whenRetrievedSuccessfully_thenDoesNotReportToSentry() {
+    ApplicationDataId dataId = new ApplicationDataId(UUID.randomUUID(), 4L);
+    when(repository.findAllById(List.of(dataId))).thenReturn(List.of());
+
+    store.getAll(List.of(dataId));
+
+    verifyNoInteractions(errorReporter);
   }
 
   @Test

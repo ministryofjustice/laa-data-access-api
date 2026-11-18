@@ -6,13 +6,16 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,15 +27,20 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
-import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
+import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.query.ProjectionReadinessGateway;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthoritySubmittedByPriorAuthorityIdQuery;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 @ExtendWith(MockitoExtension.class)
 class SubmitPriorAuthorityDraftUseCaseTest {
 
+  private static final AuthenticatedCaller CALLER =
+      new AuthenticatedCaller(Optional.empty(), Set.of(), Set.of("1A001B"), Set.of());
+
   @Mock private RetryingCommandDispatcher dispatcher;
-  @Mock private SubscriptionProjectionGateway projectionGateway;
+  @Mock private ProjectionReadinessGateway projectionGateway;
   @Mock private PriorAuthorityDraftStore draftStore;
 
   @InjectMocks private SubmitPriorAuthorityDraftUseCase useCase;
@@ -103,15 +111,14 @@ class SubmitPriorAuthorityDraftUseCaseTest {
   }
 
   @Test
-  void givenNoDraftExists_whenSubmit_thenSkipsValidationAndStillDispatchesSubmitCommand() {
+  void givenNoDraftExists_whenSubmit_thenThrowsNotFoundBeforeDispatch() {
     SubmitPriorAuthorityDraftCommand command = stubCommand();
     when(draftStore.find(command.priorAuthorityId())).thenReturn(Optional.empty());
-    when(projectionGateway.awaitProjection(any(), any())).thenReturn(true);
 
-    boolean result = useCase.submit(command);
-
-    assertThat(result).isTrue();
-    verify(dispatcher, never()).dispatch(any(ValidateApplicationGrantedCommand.class));
+    assertThatThrownBy(() -> useCase.submit(command))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("Prior Authority draft not found: " + command.priorAuthorityId());
+    verifyNoInteractions(dispatcher, projectionGateway);
   }
 
   @Test
@@ -130,7 +137,11 @@ class SubmitPriorAuthorityDraftUseCaseTest {
   }
 
   private SubmitPriorAuthorityDraftCommand stubCommand() {
-    return new SubmitPriorAuthorityDraftCommand(UUID.randomUUID(), Instant.now());
+    UUID priorAuthorityId = UUID.randomUUID();
+    lenient()
+        .when(draftStore.find(priorAuthorityId))
+        .thenReturn(Optional.of(stubDraftPayload(priorAuthorityId, UUID.randomUUID())));
+    return new SubmitPriorAuthorityDraftCommand(priorAuthorityId, Instant.now(), CALLER);
   }
 
   private static PriorAuthorityDataPayload stubDraftPayload(

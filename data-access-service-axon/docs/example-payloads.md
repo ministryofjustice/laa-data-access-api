@@ -439,51 +439,6 @@ Example response (verified against a running instance):
 }
 ```
 
-## Individuals
-
-### Get individuals (filtered and paginated)
-
-`GET /api/v0/individuals`
-
-```bash
-curl -s "http://localhost:8082/api/v0/individuals?applicationId=8c9e6c2e-4f1a-4e3a-9c2b-1a2b3c4d5e6f&individualType=CLIENT&include=CLIENT_DETAILS&page=1&pageSize=20" \
-  -H "X-Service-Name: CIVIL_DECIDE"
-```
-
-Example response (verified against a running instance):
-
-```json
-{
-  "paging": {
-    "page": 1,
-    "pageSize": 20,
-    "itemsReturned": 1,
-    "totalRecords": 1
-  },
-  "individuals": [
-    {
-      "clientId": "91b81b99-f890-4c10-ac68-14310df7caaf",
-      "lastNameAtBirth": null,
-      "previousApplicationId": null,
-      "relationshipToInvolvedChildren": null,
-      "correspondenceAddressType": null,
-      "appliedPreviously": null,
-      "firstName": "Jane",
-      "lastName": "Doe",
-      "dateOfBirth": "1990-04-12",
-      "correspondenceAddress": null,
-      "details": {
-        "nationalInsuranceNumber": "AB123456C"
-      },
-      "type": "CLIENT"
-    }
-  ]
-}
-```
-
-`include=CLIENT_DETAILS` is required to populate the free-form `details` object; omit it to receive
-only the core individual fields.
-
 ## Common notes
 
 - All application-command and most query endpoints require the `X-Service-Name` header, one of
@@ -493,4 +448,4 @@ only the core individual fields.
 - UUIDs above are illustrative; substitute real IDs returned from `createApplication`,
   `getApplications`, etc.
 - Error responses (`400`, `401`, `403`, `404`, `500`) are documented per-endpoint in
-  `data-access-api/open-api-applications/resources.yml` and `open-api-individuals/resources.yml`.
+  `data-access-api/open-api-applications/resources.yml`.

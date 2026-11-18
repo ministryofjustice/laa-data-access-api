@@ -1,11 +1,12 @@
 package uk.gov.justice.laa.dstew.access.query.worklist;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Stream;
-import lombok.extern.slf4j.Slf4j;
 import org.axonframework.messaging.core.annotation.Namespace;
+import org.axonframework.messaging.core.annotation.SequencingPolicy;
 import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
@@ -15,9 +16,15 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDissolvedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberRemovedFromGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
@@ -26,24 +33,36 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationRead
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
+import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 
-/** Replayable projection of active work; it is never consulted to route a command. */
+/**
+ * Replayable projection of active work; it is never consulted to route a command.
+ *
+ * <p>Events are handled in one sequence so linked-group membership is applied in order with the
+ * readiness events that create application rows.
+ */
 @Component
+@SequencingPolicy
 @Namespace("work-list-projection")
-@Slf4j
 public class WorkListProjection {
   private final WorkListItemReadRepository items;
+  private final WorkListGroupMemberReadRepository groupMembers;
   private final ApplicationDataStore applicationDataStore;
   private final PriorAuthorityDataStore priorAuthorityDataStore;
+  private final ErrorReporter errorReporter;
 
   /** Creates a projection backed by its read repository and event data stores. */
   public WorkListProjection(
       WorkListItemReadRepository items,
+      WorkListGroupMemberReadRepository groupMembers,
       ApplicationDataStore applicationDataStore,
-      PriorAuthorityDataStore priorAuthorityDataStore) {
+      PriorAuthorityDataStore priorAuthorityDataStore,
+      ErrorReporter errorReporter) {
     this.items = items;
+    this.groupMembers = groupMembers;
     this.applicationDataStore = applicationDataStore;
     this.priorAuthorityDataStore = priorAuthorityDataStore;
+    this.errorReporter = errorReporter;
   }
 
   /** Returns a database-filtered page of active work, oldest submission first. */
@@ -62,31 +81,53 @@ public class WorkListProjection {
         page.getContent(), page.getTotalElements(), query.page(), query.pageSize());
   }
 
-  /** A manual-assessment outcome activates one application work item. */
+  /** Creates an application work item as soon as the application is submitted. */
   @EventHandler
-  public void on(ApplicationReadyForManualAssessmentEvent event, EventMessage message) {
-    ApplicationDataPayload data =
-        applicationDataStore.get(event.applicationId(), event.applicationDataVersion());
+  public void on(ApplicationCreatedEvent event, EventMessage message) {
     WorkListItemReadModel item =
         new WorkListItemReadModel(
             WorkItemType.APPLICATION,
             event.applicationId(),
             null,
             event.occurredAt(),
-            event.applicationVersion(),
+            0L,
             message.identifier().hashCode());
+    item.setAutoGranted(AutoGrantedState.PENDING);
+    item.setApplicationStatus(event.status());
+    ApplicationDataPayload data =
+        applicationDataStore.get(event.applicationId(), event.applicationDataVersion());
     populateApplicationFields(item, data);
+    items.save(item);
+  }
+
+  /** A manual-assessment outcome updates an existing application work item. */
+  @EventHandler
+  public void on(ApplicationReadyForManualAssessmentEvent event, EventMessage message) {
+    WorkListItemReadModel item =
+        items
+            .findById(event.applicationId())
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "Missing application work-list item for " + event.applicationId()));
+    ApplicationDataPayload data =
+        applicationDataStore.get(event.applicationId(), event.applicationDataVersion());
+    populateApplicationFields(item, data);
+    item.setReadyAt(event.occurredAt());
+    item.setAutoGranted(AutoGrantedState.MANUAL);
     item.setApplicationStatus("APPLICATION_SUBMITTED");
+    item.setItemVersion(event.applicationVersion());
+    item.setUpdatedAt(event.occurredAt());
+    item.setProjectionPosition(message.identifier().hashCode());
+    groupMembers
+        .findById(event.applicationId())
+        .ifPresent(member -> item.useLinkedGroupBoundary(member.getGroupId()));
     items.save(item);
   }
 
   /** PA submission directly activates one PA work item under its parent application. */
   @EventHandler
   public void on(PriorAuthoritySubmittedEvent event, EventMessage message) {
-    ApplicationDataPayload parentData =
-        applicationDataStore.get(event.applicationId(), event.applicationDataVersion());
-    PriorAuthorityDataPayload priorAuthorityData =
-        priorAuthorityDataStore.get(event.priorAuthorityId(), event.dataVersion());
     WorkListItemReadModel item =
         new WorkListItemReadModel(
             WorkItemType.PRIOR_AUTHORITY,
@@ -95,7 +136,12 @@ public class WorkListProjection {
             event.occurredAt(),
             event.dataVersion(),
             message.identifier().hashCode());
+    item.setReadyAt(event.occurredAt());
+    ApplicationDataPayload parentData =
+        applicationDataStore.get(event.applicationId(), event.applicationDataVersion());
     populateApplicationFields(item, parentData);
+    PriorAuthorityDataPayload priorAuthorityData =
+        priorAuthorityDataStore.get(event.priorAuthorityId(), event.dataVersion());
     String priorAuthorityType = priorAuthorityData.content().priorAuthorityType().name();
     item.setPriorAuthorityType(priorAuthorityType);
     item.setExpertType(
@@ -133,10 +179,11 @@ public class WorkListProjection {
               items.save(item);
             },
             () ->
-                log.warn(
-                    "Cannot assign missing work-list item: id={}, type={}",
-                    event.workItemId(),
-                    event.workItemType()));
+                errorReporter.report(
+                    "Cannot assign missing work-list item",
+                    new IllegalStateException(
+                        "Missing work-list item for assignment: id=%s, type=%s"
+                            .formatted(event.workItemId(), event.workItemType()))));
   }
 
   /** Applies a generic direct unassignment to the event's immutable work-item identity. */
@@ -155,16 +202,73 @@ public class WorkListProjection {
               items.save(item);
             },
             () ->
-                log.warn(
-                    "Cannot unassign missing work-list item: id={}, type={}",
-                    event.workItemId(),
-                    event.workItemType()));
+                errorReporter.report(
+                    "Cannot unassign missing work-list item",
+                    new IllegalStateException(
+                        "Missing work-list item for unassignment: id=%s, type=%s"
+                            .formatted(event.workItemId(), event.workItemType()))));
+  }
+
+  /** Makes every member of a newly established linked group share the group boundary. */
+  @EventHandler
+  public void on(LinkedApplicationGroupCreatedEvent event, EventMessage message) {
+    event.memberApplicationIds().forEach(memberId -> joinGroup(memberId, event.groupId(), message));
+  }
+
+  /** Makes an application joining a linked group share the group boundary. */
+  @EventHandler
+  public void on(MemberAddedToGroupEvent event, EventMessage message) {
+    joinGroup(event.memberId(), event.groupId(), message);
+  }
+
+  /** Returns an application leaving a linked group to its own direct boundary. */
+  @EventHandler
+  public void on(MemberRemovedFromGroupEvent event, EventMessage message) {
+    leaveGroup(event.memberId(), message);
+  }
+
+  /** Returns every remaining member of a dissolved group to its own direct boundary. */
+  @EventHandler
+  public void on(LinkedApplicationGroupDissolvedEvent event, EventMessage message) {
+    var memberIds = new LinkedHashSet<UUID>(event.memberApplicationIds());
+    memberIds.add(event.removedApplicationId());
+    groupMembers.findAllByGroupId(event.groupId()).stream()
+        .map(WorkListGroupMemberReadModel::getApplicationId)
+        .forEach(memberIds::add);
+    memberIds.forEach(memberId -> leaveGroup(memberId, message));
   }
 
   /** Deletes all disposable rows before event-stream replay. */
   @ResetHandler
   public void reset() {
     items.deleteAllInBatch();
+    groupMembers.deleteAllInBatch();
+  }
+
+  private void joinGroup(UUID applicationId, UUID groupId, EventMessage message) {
+    groupMembers.save(new WorkListGroupMemberReadModel(applicationId, groupId));
+    items
+        .findById(applicationId)
+        .filter(item -> item.getItemType() == WorkItemType.APPLICATION)
+        .ifPresent(
+            item -> {
+              item.useLinkedGroupBoundary(groupId);
+              item.setProjectionPosition(message.identifier().hashCode());
+              items.save(item);
+            });
+  }
+
+  private void leaveGroup(UUID applicationId, EventMessage message) {
+    groupMembers.deleteById(applicationId);
+    items
+        .findById(applicationId)
+        .filter(item -> item.getItemType() == WorkItemType.APPLICATION)
+        .ifPresent(
+            item -> {
+              item.useDirectBoundary();
+              item.setProjectionPosition(message.identifier().hashCode());
+              items.save(item);
+            });
   }
 
   private void requireMatchingType(

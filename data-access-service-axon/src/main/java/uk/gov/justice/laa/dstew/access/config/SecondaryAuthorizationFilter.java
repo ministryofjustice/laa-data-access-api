@@ -14,6 +14,7 @@ import java.util.Optional;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -23,6 +24,7 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.filter.OncePerRequestFilter;
+import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 import uk.gov.justice.laa.dstew.access.security.SecurityHelper;
 
 /**
@@ -55,9 +57,22 @@ public class SecondaryAuthorizationFilter extends OncePerRequestFilter {
   private static final String AUTHORITY_PREFIX = "APPROLE_";
 
   private final JwtDecoder secondaryAuthorizationJwtDecoder;
+  private final ErrorReporter errorReporter;
 
+  /**
+   * Convenience constructor retained for existing call sites/tests that do not need to verify
+   * Sentry reporting explicitly. Production wiring uses {@link #SecondaryAuthorizationFilter(
+   * JwtDecoder, ErrorReporter)} via {@link SecondaryAuthorizationConfig}.
+   */
   public SecondaryAuthorizationFilter(JwtDecoder secondaryAuthorizationJwtDecoder) {
+    this(secondaryAuthorizationJwtDecoder, new ErrorReporter());
+  }
+
+  @Autowired
+  public SecondaryAuthorizationFilter(
+      JwtDecoder secondaryAuthorizationJwtDecoder, ErrorReporter errorReporter) {
     this.secondaryAuthorizationJwtDecoder = secondaryAuthorizationJwtDecoder;
+    this.errorReporter = errorReporter;
   }
 
   @Override
@@ -104,17 +119,23 @@ public class SecondaryAuthorizationFilter extends OncePerRequestFilter {
       return;
     }
 
-    Set<GrantedAuthority> mergedAuthorities = new HashSet<>(existingAuth.getAuthorities());
-    appRoles.forEach(
-        role -> mergedAuthorities.add(new SimpleGrantedAuthority(AUTHORITY_PREFIX + role)));
+    try {
+      Set<GrantedAuthority> mergedAuthorities = new HashSet<>(existingAuth.getAuthorities());
+      appRoles.forEach(
+          role -> mergedAuthorities.add(new SimpleGrantedAuthority(AUTHORITY_PREFIX + role)));
 
-    JwtAuthenticationToken merged =
-        new JwtAuthenticationToken(
-            mergeEntitlementClaims(oboAuthentication.getToken(), appRoles, laaAccounts),
-            mergedAuthorities,
-            existingAuth.getName());
-    merged.setDetails(existingAuth.getDetails());
-    SecurityContextHolder.getContext().setAuthentication(merged);
+      JwtAuthenticationToken merged =
+          new JwtAuthenticationToken(
+              mergeEntitlementClaims(oboAuthentication.getToken(), appRoles, laaAccounts),
+              mergedAuthorities,
+              existingAuth.getName());
+      merged.setDetails(existingAuth.getDetails());
+      SecurityContextHolder.getContext().setAuthentication(merged);
+    } catch (RuntimeException exception) {
+      errorReporter.report("Failed to merge X-Authorization entitlement claims", exception);
+      response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+      return;
+    }
 
     chain.doFilter(request, response);
   }

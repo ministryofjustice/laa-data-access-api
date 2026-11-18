@@ -113,12 +113,16 @@ Execute
 
 ### Run infrastructure smoke tests
 
-Infrastructure smoke tests run the built Docker image against a real Postgres database and
-verify the live HTTP API. See [`docs/infrastructure-smoke-tests.md`](docs/infrastructure-smoke-tests.md)
-for full details.
+The Cucumber `@smoke` scenarios run against the Axon Docker image, a real Postgres
+database, mock OAuth2 and mock SDS. The local runner builds the image, starts a
+disposable Compose stack, runs the scenarios and removes the stack and its database volume.
+See [`docs/infrastructure-smoke-tests.md`](docs/infrastructure-smoke-tests.md) for details.
 
-The script is useful for testing the application locally.
-The smoke tests will also run in CI eventually.
+In GitHub Actions, the **Smoke tests** workflow runs as a stage in the build pipelines.
+On PRs and pushes to `main`, it runs after the candidate image is published and the
+application vulnerability scan succeeds. It tests that image in a per-run Kubernetes
+stack in UAT. Subsequent application deployments wait for smoke success; image
+publishing does not.
 
 ```bash
 ./scripts/run-infrastructure-smoke-tests.sh
@@ -183,6 +187,7 @@ curl -X POST "http://localhost:8080/api/v0/prior-authorities/{priorAuthorityId}/
 
 - `gateway_evidence`
 - `merits_report`
+- `means_report`
 - `statement_of_case`
 - `court_application`
 - `court_order`
@@ -202,6 +207,43 @@ conflict, and `411` when the request has no content length.
 
 You can also use the Swagger UI to execute endpoints, which is described below in the
 [API documentation](#api-documentation) section.
+
+#### Making a Prior Authority decision
+
+Submit a decision with `PATCH
+/api/v0/prior-authorities/{priorAuthorityId}/decision`. `priorAuthorityVersion` is required for
+optimistic concurrency control: use the `version` value from a prior `GET
+/api/v0/prior-authorities/{priorAuthorityId}` response. A submitted prior authority with no
+decision yet returns `version: 0`. Sending a `priorAuthorityVersion` that no longer matches the
+prior authority's current `version` returns `409 Conflict`.
+
+For an expert decision, the optional `grantedTime` value can be included alongside other
+expert fee overrides:
+
+```json
+{
+  "decision": "GRANTED",
+  "decisionJustification": "Granted",
+  "amountGranted": 200,
+  "dateGranted": "2026-11-06T10:00:00Z",
+  "eventHistory": {},
+  "priorAuthorityVersion": 0,
+  "expert": {
+    "newHourlyRateAmount": 95.00,
+    "grantedTime": {
+      "hours": 3,
+      "minutes": 15
+    }
+  }
+}
+```
+
+- The time override is optional and is permitted only for EXPERT prior authorities with HOURLY
+  billing; otherwise the request returns `400`.
+- `hours` must be an integer greater than or equal to 0, and `minutes` must be an integer from 0 to
+  59. Non-integer values are rejected with a `400 ProblemDetail`.
+- The provider's original `timeRequested` is retained. The override is returned in
+  `decisionDetails.expert.grantedTime`.
 
 #### Getting tokens from local mock-oauth2-server
 
@@ -565,25 +607,6 @@ The following actuator endpoints have been configured:
 - http://localhost:8080/actuator
 - http://localhost:8080/actuator/health
 - http://localhost:8080/actuator/info
-
-### Run the data generator
-
-UAT, PR, and feature deployments no longer automatically deploy `data-access-mass-generator`.
-This can be added back once an Axon-compatible deployment flow is ready.
-
-To start the pod, run the following command:
-
-```bash
-export KUBE_NAMESPACE=<uat namespace>
-export RELEASE_NAME=<release name for the pod - you can find this in the deployment action>
-
-./scripts/run-mass-generator-pod.sh <-- this will scale up the generator pod. When it is available it will connect to its shell
-
-(in the shell run) java -jar mass-generator.jar <number of applications>
-```
-
-Once the command is complete, exit the shell and the pod will be scaled back to 0.
-You can check the database to see the generated data or use swagger to execute endpoints.
 
 ### Generate and restore Axon mass data
 

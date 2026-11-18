@@ -24,7 +24,8 @@ components:
         priorAuthorityVersion:
           type: integer
           format: int64
-          description: Version of prior authority being decided, used for concurrency control
+          description: >-
+            Version of prior authority being decided, used for concurrency control. Set this to the version value from the corresponding GET prior authority response.
         expert:
           $ref: "#/components/schemas/ExpertMakePriorAuthorityDecisionRequest"
         disbursement:
@@ -58,12 +59,16 @@ components:
         newHourlyRateAmount:
           type: number
           description: New hourly rate amount if applicable
+        grantedTime:
+          $ref: "#/components/schemas/DecisionTimeRequested"
 
     PriorAuthorityResponse:
       type: object
       required:
         - priorAuthorityId
         - applicationId
+        - version
+        - assignmentVersion
       properties:
         priorAuthorityType:
           type: string
@@ -89,20 +94,24 @@ components:
           type: string
         decisionDetails:
           description: Full decision details including granted amounts and fee information
-          $ref: "#/components/schemas/PriorAuthorityDecisionDetails"
+          allOf:
+            - $ref: "#/components/schemas/PriorAuthorityDecisionDetails"
         uploadedDocuments:
           type: array
           items:
             $ref: "#/components/schemas/UploadedDocument"
         expertDetails:
           description: Optional expert details (present when priorAuthorityType is EXPERT)
-          $ref: "#/components/schemas/ExpertDetails"
+          allOf:
+            - $ref: "#/components/schemas/ExpertDetails"
         counselDetails:
           description: Optional counsel details (present when priorAuthorityType is COUNSEL)
-          $ref: "#/components/schemas/CounselDetails"
+          allOf:
+            - $ref: "#/components/schemas/CounselDetails"
         disbursementDetails:
           description: Optional disbursement details (present when priorAuthorityType is DISBURSEMENT)
-          $ref: "#/components/schemas/DisbursementDetails"
+          allOf:
+            - $ref: "#/components/schemas/DisbursementDetails"
         status:
           type: string
           description: Lifecycle status of the prior authority request
@@ -114,6 +123,17 @@ components:
         assignedTo:
           type: string
           format: uuid
+        version:
+          type: integer
+          format: int64
+          description: Current prior authority version, used for concurrency control on commands
+        assignmentVersion:
+          type: integer
+          format: int64
+          description: >-
+            Current assignment version of the prior authority. It increases by one on every
+            assignment change and is not affected by decisions. Send it as
+            expectedAssignmentVersion when assigning the prior authority.
         officeCode:
           type: string
 
@@ -264,6 +284,21 @@ components:
           exclusiveMinimum: true
 
     SubmitTimeRequested:
+      type: object
+      additionalProperties: false
+      required:
+        - hours
+        - minutes
+      properties:
+        hours:
+          type: integer
+          minimum: 0
+        minutes:
+          type: integer
+          minimum: 0
+          maximum: 59
+
+    DecisionTimeRequested:
       type: object
       additionalProperties: false
       required:
@@ -527,13 +562,16 @@ components:
           description: Date granted if decision is GRANTED
         expert:
           description: Expert fee details if applicable
-          $ref: "#/components/schemas/ExpertFeeInformation"
+          allOf:
+            - $ref: "#/components/schemas/ExpertFeeInformation"
         disbursement:
           description: Disbursement details if applicable
-          $ref: "#/components/schemas/DisbursementInformation"
+          allOf:
+            - $ref: "#/components/schemas/DisbursementInformation"
         apportionment:
           description: Apportionment details if applicable
-          $ref: "#/components/schemas/Apportionment"
+          allOf:
+            - $ref: "#/components/schemas/Apportionment"
 
     ExpertFeeInformation:
       type: object
@@ -545,6 +583,8 @@ components:
         newHourlyRateAmount:
           type: number
           description: New hourly rate amount if applicable
+        grantedTime:
+          $ref: "#/components/schemas/TimeRequested"
 
     DisbursementInformation:
       type: object

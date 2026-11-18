@@ -22,11 +22,15 @@ public final class CreateApplicationDraftCommand implements Callable<Integer> {
       description = "Provider office code to use for every created application.")
   private String officeCode;
 
+  @CommandLine.Mixin private OpponentOptions opponents;
+
   @Override
   public Integer call() {
     if (count < 1) {
       throw new CommandLine.ParameterException(new CommandLine(this), "--count must be positive");
     }
-    return applications.root().print(applications.creationWorkflow(officeCode).createDrafts(count));
+    return applications
+        .root()
+        .print(applications.creationWorkflow(officeCode, opponents).createDrafts(count));
   }
 }

@@ -3,10 +3,27 @@ package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
+import uk.gov.justice.laa.dstew.access.security.CallerCommand;
 
 /** Requests that an application be removed from its linked group. */
 public record UnlinkApplicationCommand(
-    UUID applicationId, ExpectedLinkedGroup expectedGroup, Instant occurredAt) {
+    UUID applicationId,
+    ExpectedLinkedGroup expectedGroup,
+    Instant occurredAt,
+    @Nullable AuthenticatedCaller caller,
+    @Nullable String justification)
+    implements CallerCommand {
+
+  /** Creates a command without justification. */
+  public UnlinkApplicationCommand(
+      UUID applicationId,
+      ExpectedLinkedGroup expectedGroup,
+      Instant occurredAt,
+      AuthenticatedCaller caller) {
+    this(applicationId, expectedGroup, occurredAt, caller, null);
+  }
 
   /** Validates the application and expected linked group. */
   public UnlinkApplicationCommand {

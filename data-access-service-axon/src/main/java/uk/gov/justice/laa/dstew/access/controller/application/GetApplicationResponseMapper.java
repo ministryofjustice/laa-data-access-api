@@ -76,6 +76,7 @@ public class GetApplicationResponseMapper {
             ? DecisionStatusResponse.PENDING
             : DecisionStatusResponse.valueOf(application.getDecisionStatus()));
     response.setVersion(application.getApplicationVersion());
+    response.setAssignmentVersion(application.getAssignmentVersion());
     response.setLinkedGroupVersion(LinkedGroupVersionTokens.encode(linkedGroup));
     response.setProvider(toProvider(application));
     response.setClient(toClient(application.getClient()));

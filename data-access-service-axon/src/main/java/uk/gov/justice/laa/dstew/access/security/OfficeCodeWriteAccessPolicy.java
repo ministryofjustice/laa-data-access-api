@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.security;
 import static uk.gov.justice.laa.dstew.access.security.SecurityHelper.ACCESS_AS_PROVIDER;
 import static uk.gov.justice.laa.dstew.access.security.SecurityHelper.ACCESS_AS_USER;
 
+import java.util.Collection;
 import java.util.Objects;
 import java.util.Set;
 import org.springframework.security.access.AccessDeniedException;
@@ -12,8 +13,22 @@ import org.springframework.stereotype.Component;
 @Component
 public class OfficeCodeWriteAccessPolicy {
 
+  /** Requires the supplied caller to be able to write every protected resource. */
+  public void requireWriteAccess(
+      Collection<ProtectedResource> protectedResources, AuthenticatedCaller caller) {
+    Objects.requireNonNull(protectedResources, "protectedResources must not be null");
+    if (protectedResources.isEmpty()) {
+      throw new IllegalStateException("Write access resolution must return at least one resource");
+    }
+    protectedResources.forEach(
+        protectedResource -> {
+          Objects.requireNonNull(protectedResource, "protectedResource must not be null");
+          requireOfficeCodeWriteAccess(protectedResource.officeCode(), caller);
+        });
+  }
+
   /** Requires the supplied caller to be able to write a resource with the supplied office code. */
-  public void requireWriteAccess(String resourceOfficeCode, AuthenticatedCaller caller) {
+  public void requireOfficeCodeWriteAccess(String resourceOfficeCode, AuthenticatedCaller caller) {
     Objects.requireNonNull(caller, "caller must not be null");
     Set<String> scopes = caller.delegatedScopes();
     if (scopes.contains(ACCESS_AS_PROVIDER)) {

@@ -11,6 +11,11 @@ aggregates.
 The value Axon uses to route a command to an event stream. Commands mark it with
 `@TargetAggregateIdentifier`; aggregates mark their field with `@AggregateIdentifier`.
 
+## Active work item
+
+An application with `autoGranted == MANUAL` and no overall decision. Only active work items give or
+receive a linked group's assignment.
+
 ## Application version
 
 The public optimistic-lock version of an application. A decision request supplies the version it
@@ -55,6 +60,11 @@ and perform no external I/O.
 ## Event stream
 
 The ordered events for one aggregate identifier. Axon's sequence number records their order.
+
+## Group assignment
+
+The assignment derived from a linked group's active members: one caseworker shared by all active
+members, unassigned when they are all unassigned, or none when there are no active members.
 
 ## Hydration
 

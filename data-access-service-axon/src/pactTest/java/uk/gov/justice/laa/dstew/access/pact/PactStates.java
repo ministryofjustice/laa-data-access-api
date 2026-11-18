@@ -11,8 +11,6 @@ final class PactStates {
 
   // Applications
   static final String APPLICATIONS_EXIST = "applications exist";
-  static final String CLIENT_INDIVIDUAL_EXISTS_FOR_APPLICATION_001 =
-      "a client individual exists for application 00000000-0000-0000-0000-000000000001";
   static final String NO_MATCHING_SCA_APPLICATION_EXISTS =
       "that no matching special children act application already exists";
   static final String APPLICATION_SUBMITTED_EXISTS =
@@ -33,6 +31,13 @@ final class PactStates {
   static final String NO_APPLICATION_WITH_ID =
       "no application exists with id 00000000-0000-0000-0000-00000000dead";
   static final String APPLICATION_READ_MODEL_LAGGING = "the application read model is lagging";
+  // Fresh draft per interaction, identifier injected: for requests that submit a draft or upload
+  // to it.
+  static final String NEW_APPLICATION_DRAFT_EXISTS = "a new application draft exists";
+  // Two fresh submitted applications per interaction, neither in a linked group, identifiers
+  // injected: for requests that link them.
+  static final String NEW_UNLINKED_APPLICATIONS_EXIST =
+      "two new submitted applications exist without a linked group";
 
   // Work list
   static final String WORK_LIST_ITEMS_EXIST = "work list items exist";

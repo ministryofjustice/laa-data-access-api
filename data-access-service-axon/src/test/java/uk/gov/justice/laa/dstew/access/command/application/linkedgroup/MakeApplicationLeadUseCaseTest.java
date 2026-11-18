@@ -14,7 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class MakeApplicationLeadUseCaseTest {
 
-  @Mock private MakeApplicationLeadCommandHandler commandHandler;
+  @Mock private MakeApplicationLeadCoordinator coordinator;
 
   @InjectMocks private MakeApplicationLeadUseCase useCase;
 
@@ -24,11 +24,12 @@ class MakeApplicationLeadUseCaseTest {
         new MakeApplicationLeadCommand(
             UUID.randomUUID(),
             new ExpectedLinkedGroup(UUID.randomUUID(), 3),
-            Instant.parse("2026-09-14T15:00:00Z"));
+            Instant.parse("2026-09-14T15:00:00Z"),
+            null);
 
     useCase.execute(command);
 
-    verify(commandHandler).handle(command);
-    verifyNoMoreInteractions(commandHandler);
+    verify(coordinator).handle(command);
+    verifyNoMoreInteractions(coordinator);
   }
 }

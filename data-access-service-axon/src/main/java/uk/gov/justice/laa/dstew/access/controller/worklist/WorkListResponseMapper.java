@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.AutoGranted;
 import uk.gov.justice.laa.dstew.access.model.PagingResponse;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.model.WorkListItem;
@@ -41,6 +42,8 @@ public class WorkListResponseMapper {
     response.setAssignmentBoundaryType(
         WorkListItem.AssignmentBoundaryTypeEnum.valueOf(item.getAssignmentBoundaryType()));
     response.setSubmittedAt(item.getSubmittedAt().atOffset(ZoneOffset.UTC));
+    response.setAutoGranted(
+        item.getAutoGranted() == null ? null : AutoGranted.valueOf(item.getAutoGranted().name()));
     response.setLaaReference(item.getLaaReference());
     response.setUsedDelegatedFunctions(item.getUsedDelegatedFunctions());
     boolean priorAuthority = item.getItemType() == WorkItemType.PRIOR_AUTHORITY;

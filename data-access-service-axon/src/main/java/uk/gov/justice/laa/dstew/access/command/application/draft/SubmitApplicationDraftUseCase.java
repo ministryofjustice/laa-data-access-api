@@ -2,9 +2,8 @@ package uk.gov.justice.laa.dstew.access.command.application.draft;
 
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
-import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
-import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
+import uk.gov.justice.laa.dstew.access.query.ProjectionReadinessGateway;
+import uk.gov.justice.laa.dstew.access.query.application.ApplicationSubmissionProjectedQuery;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 
 /**
@@ -15,10 +14,10 @@ import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 public class SubmitApplicationDraftUseCase {
 
   private final RetryingCommandDispatcher dispatcher;
-  private final SubscriptionProjectionGateway projectionGateway;
+  private final ProjectionReadinessGateway projectionGateway;
 
   public SubmitApplicationDraftUseCase(
-      RetryingCommandDispatcher dispatcher, SubscriptionProjectionGateway projectionGateway) {
+      RetryingCommandDispatcher dispatcher, ProjectionReadinessGateway projectionGateway) {
     this.dispatcher = dispatcher;
     this.projectionGateway = projectionGateway;
   }
@@ -32,8 +31,7 @@ public class SubmitApplicationDraftUseCase {
   @AllowApiCaseworker
   public boolean submit(SubmitApplicationDraftCommand command) {
     return projectionGateway.awaitProjection(
-        new FindApplicationByIdQuery(command.applicationId()),
-        ApplicationReadModel.class,
+        new ApplicationSubmissionProjectedQuery(command.applicationId()),
         () -> dispatcher.dispatch(command));
   }
 }

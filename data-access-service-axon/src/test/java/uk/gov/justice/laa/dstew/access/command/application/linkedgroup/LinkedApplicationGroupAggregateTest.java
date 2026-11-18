@@ -1,35 +1,37 @@
 package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+import static uk.gov.justice.laa.dstew.access.command.application.ApplicationStateEvents.notReady;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import org.axonframework.eventsourcing.configuration.EventSourcedEntityModule;
-import org.axonframework.eventsourcing.configuration.EventSourcingConfigurer;
+import java.util.stream.Stream;
 import org.axonframework.test.fixture.AxonTestFixture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationLinkConflictException;
 import uk.gov.justice.laa.dstew.access.exception.LinkedApplicationGroupVersionConflictException;
+import uk.gov.justice.laa.dstew.access.testutils.LinkedGroupTestFixture;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 class LinkedApplicationGroupAggregateTest {
 
+  private LinkedGroupJustificationStore justificationStore;
   private AxonTestFixture fixture;
 
   @BeforeEach
   void setUp() {
-    fixture =
-        AxonTestFixture.with(
-            EventSourcingConfigurer.create()
-                .registerEntity(
-                    EventSourcedEntityModule.autodetected(
-                        UUID.class, LinkedApplicationGroupAggregate.class)));
+    justificationStore = mock(LinkedGroupJustificationStore.class);
+    fixture = LinkedGroupTestFixture.linkedGroupFixture(justificationStore);
   }
 
   @Test
@@ -42,11 +44,14 @@ class LinkedApplicationGroupAggregateTest {
 
     fixture
         .given()
-        .noPriorActivity()
+        .events(
+            Stream.of(notReady(leadApplicationId), notReady(sourceApplicationId))
+                .flatMap(List::stream)
+                .toArray())
         .when()
         .command(
             new EstablishLinkedApplicationGroupCommand(
-                groupId, leadApplicationId, members, occurredAt))
+                groupId, leadApplicationId, sourceApplicationId, occurredAt))
         .then()
         .events(
             new LinkedApplicationGroupCreatedEvent(
@@ -69,12 +74,10 @@ class LinkedApplicationGroupAggregateTest {
         .when()
         .command(
             new EstablishLinkedApplicationGroupCommand(
-                groupId,
-                leadApplicationId,
-                List.of(sourceApplicationId, leadApplicationId),
-                occurredAt))
+                groupId, leadApplicationId, sourceApplicationId, occurredAt, "No-op"))
         .then()
         .noEvents();
+    verifyNoInteractions(justificationStore);
   }
 
   @Test
@@ -94,7 +97,7 @@ class LinkedApplicationGroupAggregateTest {
         .when()
         .command(
             new EstablishLinkedApplicationGroupCommand(
-                groupId, leadId, List.of(leadId, sourceApplicationId), occurredAt))
+                groupId, leadId, sourceApplicationId, occurredAt))
         .then()
         .noEvents();
   }
@@ -116,10 +119,7 @@ class LinkedApplicationGroupAggregateTest {
         .when()
         .command(
             new EstablishLinkedApplicationGroupCommand(
-                groupId,
-                differentLeadId,
-                List.of(differentLeadId, sourceApplicationId),
-                occurredAt))
+                groupId, differentLeadId, sourceApplicationId, occurredAt))
         .then()
         .exception(ApplicationLinkConflictException.class)
         .noEvents();
@@ -142,25 +142,23 @@ class LinkedApplicationGroupAggregateTest {
         .events(existing)
         .when()
         .command(
-            new EstablishLinkedApplicationGroupCommand(
-                groupId, leadId, List.of(leadId, sourceApplicationId, newMemberId), occurredAt))
+            new EstablishLinkedApplicationGroupCommand(groupId, leadId, newMemberId, occurredAt))
         .then()
         .exception(ApplicationLinkConflictException.class)
         .noEvents();
   }
 
-  @ParameterizedTest(name = "{0}")
-  @MethodSource("invalidEstablishMemberLists")
-  void givenInvalidEstablishMemberList_whenEstablish_thenRejectsWithIllegalArgument(
-      String scenario, UUID leadApplicationId, List<UUID> memberApplicationIds) {
+  @Test
+  void givenJoiningEqualsLead_whenEstablish_thenRejectsWithIllegalArgument() {
+    UUID leadApplicationId = UUID.randomUUID();
+
     assertThatThrownBy(
             () ->
                 new EstablishLinkedApplicationGroupCommand(
                     UUID.randomUUID(),
                     leadApplicationId,
-                    memberApplicationIds,
+                    leadApplicationId,
                     Instant.parse("2026-07-15T08:00:00Z")))
-        .as(scenario)
         .isInstanceOf(IllegalArgumentException.class);
   }
 
@@ -175,12 +173,46 @@ class LinkedApplicationGroupAggregateTest {
     fixture
         .given()
         .events(
+            Stream.of(
+                    List.<Object>of(
+                        new LinkedApplicationGroupCreatedEvent(
+                            groupId, leadId, List.of(leadId, existingMemberId), occurredAt)),
+                    notReady(leadId),
+                    notReady(existingMemberId),
+                    notReady(newMemberId))
+                .flatMap(List::stream)
+                .toArray())
+        .when()
+        .command(new AddApplicationToLinkedGroupCommand(groupId, newMemberId, 0, occurredAt))
+        .then()
+        .events(
+            new MemberAddedToGroupEvent(
+                groupId,
+                leadId,
+                newMemberId,
+                occurredAt,
+                List.of(leadId, existingMemberId, newMemberId),
+                null));
+  }
+
+  @Test
+  void givenMemberWithNoEventStream_whenAddApplication_thenRejectsWithIllegalState() {
+    UUID groupId = UUID.randomUUID();
+    UUID leadId = UUID.randomUUID();
+    UUID existingMemberId = UUID.randomUUID();
+    UUID newMemberId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
+
+    fixture
+        .given()
+        .events(
             new LinkedApplicationGroupCreatedEvent(
                 groupId, leadId, List.of(leadId, existingMemberId), occurredAt))
         .when()
         .command(new AddApplicationToLinkedGroupCommand(groupId, newMemberId, 0, occurredAt))
         .then()
-        .events(new MemberAddedToGroupEvent(groupId, leadId, newMemberId, occurredAt));
+        .exception(IllegalStateException.class)
+        .noEvents();
   }
 
   @Test
@@ -196,9 +228,12 @@ class LinkedApplicationGroupAggregateTest {
             new LinkedApplicationGroupCreatedEvent(
                 groupId, leadId, List.of(leadId, existingMemberId), occurredAt))
         .when()
-        .command(new AddApplicationToLinkedGroupCommand(groupId, existingMemberId, 1, occurredAt))
+        .command(
+            new AddApplicationToLinkedGroupCommand(
+                groupId, existingMemberId, 1, occurredAt, "No-op"))
         .then()
         .noEvents();
+    verifyNoInteractions(justificationStore);
   }
 
   @Test
@@ -274,27 +309,34 @@ class LinkedApplicationGroupAggregateTest {
         .noEvents();
   }
 
-  @Test
-  void givenAssociate_whenChangeLead_thenEmitsLeadChangedEvent() {
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(strings = "Lead reason")
+  void givenAssociate_whenChangeLead_thenEmitsLeadChangedEventReferencingStoredJustification(
+      String justification) {
     UUID groupId = UUID.randomUUID();
     UUID leadId = UUID.randomUUID();
     UUID associateId = UUID.randomUUID();
     List<UUID> members = List.of(leadId, associateId);
     Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
+    UUID justificationId = justification == null ? null : UUID.randomUUID();
+    when(justificationStore.save(groupId, justification, occurredAt)).thenReturn(justificationId);
 
     fixture
         .given()
         .events(new LinkedApplicationGroupCreatedEvent(groupId, leadId, members, occurredAt))
         .when()
-        .command(new ChangeLinkedGroupLeadCommand(groupId, associateId, 0, occurredAt))
+        .command(
+            new ChangeLinkedGroupLeadCommand(groupId, associateId, 0, occurredAt, justification))
         .then()
         .events(
             new LinkedApplicationGroupLeadChangedEvent(
-                groupId, leadId, associateId, 1, occurredAt));
+                groupId, leadId, associateId, 1, occurredAt, members, justificationId));
+    verify(justificationStore).save(groupId, justification, occurredAt);
   }
 
   @Test
-  void givenCurrentLead_whenChangeLead_thenNoEvents() {
+  void givenCurrentLead_whenChangeLead_thenNoEventsAndNoStoredJustification() {
     UUID groupId = UUID.randomUUID();
     UUID leadId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
@@ -305,9 +347,10 @@ class LinkedApplicationGroupAggregateTest {
             new LinkedApplicationGroupCreatedEvent(
                 groupId, leadId, List.of(leadId, UUID.randomUUID()), occurredAt))
         .when()
-        .command(new ChangeLinkedGroupLeadCommand(groupId, leadId, 42, occurredAt))
+        .command(new ChangeLinkedGroupLeadCommand(groupId, leadId, 42, occurredAt, "No-op"))
         .then()
         .noEvents();
+    verifyNoInteractions(justificationStore);
   }
 
   @Test
@@ -326,7 +369,15 @@ class LinkedApplicationGroupAggregateTest {
         .when()
         .command(new RemoveApplicationFromLinkedGroupCommand(groupId, removedId, 0, occurredAt))
         .then()
-        .events(new MemberRemovedFromGroupEvent(groupId, leadId, removedId, 1, occurredAt));
+        .events(
+            new MemberRemovedFromGroupEvent(
+                groupId,
+                leadId,
+                removedId,
+                1,
+                occurredAt,
+                List.of(leadId, removedId, remainingId),
+                null));
   }
 
   @Test
@@ -404,7 +455,15 @@ class LinkedApplicationGroupAggregateTest {
         .command(
             new RemoveApplicationFromLinkedGroupCommand(groupId, previousLeadId, 2, occurredAt))
         .then()
-        .events(new MemberRemovedFromGroupEvent(groupId, newLeadId, previousLeadId, 3, occurredAt));
+        .events(
+            new MemberRemovedFromGroupEvent(
+                groupId,
+                newLeadId,
+                previousLeadId,
+                3,
+                occurredAt,
+                List.of(previousLeadId, newLeadId, associateId),
+                null));
   }
 
   @Test
@@ -545,7 +604,13 @@ class LinkedApplicationGroupAggregateTest {
         .then()
         .events(
             new LinkedApplicationGroupLeadChangedEvent(
-                groupId, leadId, associateId, 2, occurredAt));
+                groupId,
+                leadId,
+                associateId,
+                2,
+                occurredAt,
+                List.of(leadId, associateId, newMemberId),
+                null));
   }
 
   @Test
@@ -612,18 +677,6 @@ class LinkedApplicationGroupAggregateTest {
         .command(new ValidatePriorAuthorityGroupEligibilityCommand(groupId, newLeadApplicationId))
         .then()
         .noEvents();
-  }
-
-  private static List<Arguments> invalidEstablishMemberLists() {
-    UUID leadApplicationId = UUID.randomUUID();
-    UUID otherMemberId = UUID.randomUUID();
-    return List.of(
-        Arguments.of("empty member list", leadApplicationId, List.of()),
-        Arguments.of("missing lead application", leadApplicationId, List.of(otherMemberId)),
-        Arguments.of(
-            "duplicate member ids",
-            leadApplicationId,
-            List.of(leadApplicationId, otherMemberId, otherMemberId)));
   }
 
   @AfterEach

@@ -67,6 +67,11 @@ application:
     reconciliation:
       threshold: ${ASSESSMENT_RECONCILIATION_THRESHOLD:15m}
       interval: ${ASSESSMENT_RECONCILIATION_INTERVAL:5m}
+  error-reporting:
+    # Suppresses repeat Sentry alerts for the same pooled-streaming processor/exception-type pair
+    # within this window, so a persistently failing projection that Axon keeps retrying doesn't
+    # spam Sentry with one alert per retry. See ReportingErrorHandler.
+    axon-projection-cooldown: ${AXON_ERROR_REPORTING_COOLDOWN:5m}
 
 laa:
   springboot:
@@ -90,10 +95,6 @@ laa:
               {
                 "method": ["GET"],
                 "uri": "/api/v*/work-list"
-              },
-              {
-                "method": ["GET"],
-                "uri": "/api/v*/individuals"
               },
               {
                 "method": ["GET"],
@@ -223,4 +224,4 @@ app:
       client-id: ${AUTH_CLIENT_ID}
       client-secret: ${AUTH_CLIENT_SECRET}
       scope: ${AUTH_SCOPE}
-      token-uri: https://login.microsoftonline.com/${AUTH_TENANT_ID}/oauth2/v2.0/token
+      token-uri: ${SDS_API_TOKEN_URI:https://login.microsoftonline.com/${AUTH_TENANT_ID}/oauth2/v2.0/token}

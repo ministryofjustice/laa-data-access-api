@@ -4,6 +4,8 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
+import uk.gov.justice.laa.dstew.access.security.CallerCommand;
 
 /** Command for explicitly linking one application to another. */
 public record LinkApplicationCommand(
@@ -11,7 +13,28 @@ public record LinkApplicationCommand(
     UUID targetApplicationId,
     LinkType linkType,
     @Nullable ExpectedLinkedGroup expectedTargetGroup,
-    Instant occurredAt) {
+    Instant occurredAt,
+    @Nullable AuthenticatedCaller caller,
+    @Nullable String justification)
+    implements CallerCommand {
+
+  /** Creates a command without justification. */
+  public LinkApplicationCommand(
+      UUID sourceApplicationId,
+      UUID targetApplicationId,
+      LinkType linkType,
+      ExpectedLinkedGroup expectedTargetGroup,
+      Instant occurredAt,
+      AuthenticatedCaller caller) {
+    this(
+        sourceApplicationId,
+        targetApplicationId,
+        linkType,
+        expectedTargetGroup,
+        occurredAt,
+        caller,
+        null);
+  }
 
   /** Enforces the command invariants owned below the controller seam. */
   public LinkApplicationCommand {

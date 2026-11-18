@@ -61,8 +61,12 @@ Tracking event processors update database projections asynchronously. Queries re
 projections rather than loading aggregates. The application and history projections contain thin
 state and hydrate sensitive fields from `application_data` when required.
 
-Application creation opens a subscription query before dispatching the command. This prevents the
-controller from missing a fast projection update. It returns:
+Endpoints that need read-your-writes, such as application creation, dispatch the command and then
+use `ProjectionReadinessGateway` to poll a Boolean readiness query (for example
+`ApplicationSubmissionProjectedQuery`) against the shared read model with a capped backoff. Polling is used instead of subscription queries because, without Axon Server,
+subscription updates are in-memory: with multiple replicas the instance that owns the processor
+segment is often not the one handling the request. Each wait is recorded on the `projection.await`
+timer, tagged by query and `ready`/`timeout` outcome. It returns:
 
 - `201 Created` when the projection becomes readable within the configured timeout;
 - `202 Accepted` with the same `Location` when projection processing takes longer.

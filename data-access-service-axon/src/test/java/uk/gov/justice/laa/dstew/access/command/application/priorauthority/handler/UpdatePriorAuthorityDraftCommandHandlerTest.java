@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.junit.jupiter.api.Test;
@@ -26,9 +27,13 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 
 @ExtendWith(MockitoExtension.class)
 class UpdatePriorAuthorityDraftCommandHandlerTest {
+
+  private static final AuthenticatedCaller CALLER =
+      new AuthenticatedCaller(Optional.empty(), Set.of(), Set.of("1A001B"), Set.of());
 
   private static final Instant OCCURRED_AT = Instant.parse("2026-09-01T10:00:00Z");
 
@@ -59,7 +64,7 @@ class UpdatePriorAuthorityDraftCommandHandlerTest {
         new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Updated", null, null, null);
     final UpdatePriorAuthorityDraftCommand command =
         new UpdatePriorAuthorityDraftCommand(
-            priorAuthorityId, updatedContent, "new", 2, "PriorAuthority.json", OCCURRED_AT);
+            priorAuthorityId, updatedContent, "new", 2, "PriorAuthority.json", OCCURRED_AT, CALLER);
 
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(existingDraft));
     when(priorAuthority.getPriorAuthorityType()).thenReturn(PriorAuthorityType.EXPERT.name());
@@ -94,7 +99,8 @@ class UpdatePriorAuthorityDraftCommandHandlerTest {
             "new",
             2,
             "PriorAuthority.json",
-            OCCURRED_AT);
+            OCCURRED_AT,
+            CALLER);
 
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.empty());
 

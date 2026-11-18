@@ -12,7 +12,14 @@ public record ChangeLinkedGroupLeadCommand(
     @TargetEntityId UUID groupId,
     UUID newLeadApplicationId,
     long expectedGroupVersion,
-    Instant occurredAt) {
+    Instant occurredAt,
+    String justification) {
+
+  /** Creates a command without justification. */
+  public ChangeLinkedGroupLeadCommand(
+      UUID groupId, UUID newLeadApplicationId, long expectedGroupVersion, Instant occurredAt) {
+    this(groupId, newLeadApplicationId, expectedGroupVersion, occurredAt, null);
+  }
 
   /** Validates the routed group identity and new lead. */
   public ChangeLinkedGroupLeadCommand {

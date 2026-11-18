@@ -17,10 +17,9 @@ rebuilt without changing aggregate event streams or immutable application-data v
 `application-projection` owns the event-derived `application_current_state.submitted_at`.
 `application-list-index-projection` owns the lead-proceeding name/code columns and the
 event-derived `application_list_index.submitted_at` used for submitted-date sorting.
-`work-list-projection` owns `work_list_item`, including `submitted_at`, which records when an
-application became ready or a prior authority was submitted (named `submittedAt` to match consumer
-expectations, even though it is readiness/PA-submission time, not the true application submission
-time recorded elsewhere).
+`work-list-projection` owns `work_list_item`, including `submitted_at`, which records an
+application's true creation/submission time. `ready_at` records when an application became ready
+for manual assessment. For Prior Authorities, both timestamps record the submission time.
 
 Migration V25 adds event-derived `submitted_at` to `application_current_state` and code columns to
 `application_list_index` and `work_list_item`. Existing rows are not backfilled by the migration;
@@ -29,11 +28,31 @@ fields must not be relied on until the application and list-index processors hav
 their event times and codes have been checked against the creation events and event-versioned
 proceedings.
 
+Migration V32 adds `assignment_version` to `application_current_state` and
+`prior_authority_current_state`. The value is set from the absolute `assignmentVersion` carried by
+`WorkItemAssigned` and `WorkItemUnassigned`, making event replay idempotent. Notes and decisions do
+not change the value.
+
 Tracking processors maintain tokens and run independently of the command thread. A failure stops
 token progress past the failing event, allowing recovery without silently skipping it. The
 application command handler dispatches linked-group commands after locking the relevant routes;
 the subscribing route projection updates those routes in the same transaction, as described in
 [Linked applications](linked-applications.md).
+
+## Prior-authority assignment
+
+`prior-authority-projection` owns `prior_authority_current_state`, including the caseworker ID
+returned as `assignedTo` by `GET /prior-authorities/{id}`. `WorkItemAssigned` sets the caseworker ID
+and assignment version; `WorkItemUnassigned` clears the caseworker ID and sets the new assignment
+version. The detail response retains the last assignee after a decision removes the work-list row.
+
+Migration V33 adds the nullable `caseworker_id` column. It does not backfill existing assignments.
+After deploying the migration and projection change, an operator must reset and replay
+`prior-authority-projection` through the approved Axon processor lifecycle. Preserve the event store,
+prior-authority data versions, and draft storage. Wait for catch-up and compare detail `assignedTo`
+and `assignmentVersion` with the latest assignment events before treating historical rows as rebuilt.
+The detail and work-list processors run independently, so their responses can still differ briefly
+while either processor catches up.
 
 ## Current application projection
 

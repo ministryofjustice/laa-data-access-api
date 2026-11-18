@@ -2,7 +2,7 @@
 
 ## Overview
 
-The pipeline is defined in `.github/workflows/build-test-deploy.yml` and uses GitHub Actions with Helm to build, test, and deploy the application. Two Docker images are produced per commit: one for `data-access-service-axon` and one for `data-access-mass-generator`. Both are pushed to AWS ECR tagged with the Git commit SHA.
+The pipeline is defined in `.github/workflows/build-test-deploy.yml` and uses GitHub Actions with Helm to build, test, and deploy the application. A Docker image for `data-access-service-axon` is produced per commit and pushed to AWS ECR tagged with the Git commit SHA.
 
 There is no tag-based RC promotion flow. Feature preset deployments are driven directly from `main` after UAT smoke tests succeed.
 
@@ -29,8 +29,7 @@ A `concurrency` group keyed to `workflow + ref` ensures that a new run cancels a
 build-test
   ├── vulnerability-scan-app
   ├── vulnerability-scan-docker
-  ├── build-push-docker
-  └── build-push-mass-generator-docker
+  └── build-push-docker
         └── deploy-ephemeral        ← ephemeral PR environment (UAT namespace)
               └── ephemeral-smoke-test
 ```
@@ -43,8 +42,7 @@ build-test
 build-test
   ├── vulnerability-scan-app
   ├── vulnerability-scan-docker
-  ├── build-push-docker
-  └── build-push-mass-generator-docker
+  └── build-push-docker
         └── deploy-uat   (UAT namespace, `main` release)
               ├── deploy-shared-mock-oauth2  ← shared mock-oauth2 for all PRs
               └── uat-smoke-test
@@ -85,7 +83,7 @@ selection is independent and remains as documented in each environment section b
 - **Database:** ephemeral Bitnami PostgreSQL deployed alongside the application, cleaned up with it
 - **Hostname pattern:** `<release-name>-<namespace>.cloud-platform.service.justice.gov.uk`
 - **Autoscaling:** disabled (single replica)
-- **Lifecycle:** created when a PR is opened or updated; torn down when the PR is closed or merged (the `delete-preview-release.yml` workflow uninstalls the Helm release, the PostgreSQL release, its PVC, and the mass-generator release)
+- **Lifecycle:** created when a PR is opened or updated; torn down when the PR is closed or merged (the `delete-preview-release.yml` workflow uninstalls the Helm release, the PostgreSQL release, and its PVC)
 - **Smoke tests:** run against the ephemeral deployment via in-cluster port-forwards to both the app and its ephemeral PostgreSQL
 
 ### 2. UAT
@@ -134,7 +132,6 @@ selection is independent and remains as documented in each environment section b
 - **Replicas:** 2 (autoscaling 2–8)
 - **External ingress:** disabled — internal ingress only (`internal.cloud-platform.service.justice.gov.uk`)
 - **Sentry environment:** `production`
-- **Mass generator:** disabled in production values
 
 ---
 
@@ -337,7 +334,6 @@ Cleaned up automatically when a PR is closed or merged by `delete-preview-releas
 helm uninstall <release-name> --namespace <namespace>
 helm uninstall <release-name>-postgresql --namespace <namespace>
 kubectl delete pvc -l app.kubernetes.io/instance=<release-name>-postgresql --namespace <namespace>
-helm uninstall <release-name>-mass-generator --namespace <namespace>
 ```
 
 ### RC feature environments

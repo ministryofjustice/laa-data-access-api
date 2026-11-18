@@ -27,6 +27,7 @@ public class AssessmentReconciliation {
   private final MeterRegistry meterRegistry;
   private final Clock clock;
   private final Duration threshold;
+  private final ErrorReporter errorReporter;
   private final AtomicLong stalledCount = new AtomicLong();
   private final AtomicLong oldestAgeSeconds = new AtomicLong();
   private final AtomicLong fresh = new AtomicLong();
@@ -36,16 +37,27 @@ public class AssessmentReconciliation {
   public AssessmentReconciliation(
       QueryGateway queryGateway,
       MeterRegistry meterRegistry,
-      @Value("${application.assessment.reconciliation.threshold:15m}") Duration threshold) {
-    this(queryGateway, meterRegistry, Clock.systemUTC(), threshold);
+      @Value("${application.assessment.reconciliation.threshold:15m}") Duration threshold,
+      ErrorReporter errorReporter) {
+    this(queryGateway, meterRegistry, Clock.systemUTC(), threshold, errorReporter);
   }
 
   AssessmentReconciliation(
       QueryGateway queryGateway, MeterRegistry meterRegistry, Clock clock, Duration threshold) {
+    this(queryGateway, meterRegistry, clock, threshold, new ErrorReporter());
+  }
+
+  AssessmentReconciliation(
+      QueryGateway queryGateway,
+      MeterRegistry meterRegistry,
+      Clock clock,
+      Duration threshold,
+      ErrorReporter errorReporter) {
     this.queryGateway = queryGateway;
     this.meterRegistry = meterRegistry;
     this.clock = clock;
     this.threshold = threshold;
+    this.errorReporter = errorReporter;
     Gauge.builder("application.assessment.stalled", stalledCount, AtomicLong::get)
         .description("Applications awaiting automatic assessment beyond the threshold")
         .register(meterRegistry);
@@ -60,6 +72,11 @@ public class AssessmentReconciliation {
 
   /**
    * Runs the read-only reconciliation query and emits operational identifiers for investigation.
+   *
+   * <p>Reconciliation failures are reported to Sentry and swallowed here, rather than rethrown:
+   * Spring's default {@code @Scheduled} error handling already logs any exception that escapes this
+   * method, and we cannot intercept or suppress that framework-level logging. Rethrowing would
+   * therefore cause the same failure to be reported twice.
    */
   @Scheduled(
       fixedDelayString = "${application.assessment.reconciliation.interval:5m}",
@@ -88,8 +105,7 @@ public class AssessmentReconciliation {
       meterRegistry
           .counter("application.assessment.reconciliation", "outcome", "failure")
           .increment();
-      LOG.error("Automatic-assessment reconciliation failed", exception);
-      throw exception;
+      errorReporter.report("Automatic-assessment reconciliation failed", exception);
     }
   }
 

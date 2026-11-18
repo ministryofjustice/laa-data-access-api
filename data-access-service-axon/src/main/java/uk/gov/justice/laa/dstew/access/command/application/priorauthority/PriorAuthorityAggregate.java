@@ -8,6 +8,7 @@ import org.axonframework.extension.spring.stereotype.EventSourced;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
+import uk.gov.justice.laa.dstew.access.security.OfficeCodeOwned;
 
 /**
  * Event-sourced consistency boundary for a PriorAuthority submission.
@@ -20,7 +21,7 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
  */
 @EventSourced(tagKey = "PriorAuthorityAggregate", idType = UUID.class)
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
-public class PriorAuthorityAggregate {
+public class PriorAuthorityAggregate implements OfficeCodeOwned {
 
   private UUID priorAuthorityId;
   private final PriorAuthorityState state = new PriorAuthorityState();

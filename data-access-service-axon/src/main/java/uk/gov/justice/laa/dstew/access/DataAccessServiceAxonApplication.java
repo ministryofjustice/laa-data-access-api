@@ -4,12 +4,18 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration;
 import org.springframework.boot.persistence.autoconfigure.EntityScan;
+import org.springframework.core.Ordered;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 /** Starts the standalone Axon-based data access proof of concept. */
 @ExcludeFromGeneratedCodeCoverage
 @SpringBootApplication(exclude = FlywayAutoConfiguration.class)
 @EnableScheduling
+// Transaction advice must wrap WriteAccessAspect (which has LOWEST_PRECEDENCE).
+// This makes write-access resolution, including pessimistic lock queries, run inside
+// the command handler transaction rather than relying on Spring's equal-order tie-break.
+@EnableTransactionManagement(order = Ordered.HIGHEST_PRECEDENCE)
 @EntityScan(
     basePackages = {
       "uk.gov.justice.laa.dstew.access",

@@ -7,9 +7,10 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class LinkApplicationUseCase {
-  private final LinkApplicationCommandHandler commandHandler;
+  private final LinkApplicationCoordinator coordinator;
 
+  /** Executes the explicit application-link command. */
   public void execute(LinkApplicationCommand command) {
-    commandHandler.handle(command);
+    coordinator.handle(command);
   }
 }

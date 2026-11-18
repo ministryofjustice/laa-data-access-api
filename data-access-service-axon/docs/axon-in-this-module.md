@@ -111,12 +111,37 @@ sendAndWait completed
   does not mean: every query projection is already current
 ```
 
-Application creation uses a subscription query to wait briefly for its projection. It returns
+Application creation polls its projection through `ProjectionReadinessGateway` to wait briefly
+for it to become readable. It returns
 `202 Accepted` if the durable write succeeds but the projection is not visible within the timeout.
 
 Application creation does not dispatch linked-group commands. Explicit link requests use durable
 route rows, maintained by `ApplicationGroupRouteProjection`, so the command handler can validate
 and lock source/target membership before dispatching a linked-group command.
+
+## Multi-aggregate linked-group commands
+
+Linking, group assignment and readiness can change several application streams in one request. The
+coordinator secures the request where required, locks the relevant `application_group_route` rows
+through `ApplicationGroupRouteResolver`, then routes one command. The handler receives its primary
+aggregate with `@InjectEntity`; it loads any other group or application aggregates through
+`StateManager` and `LinkedGroupMembers` in the same `ProcessingContext`. A pure decider makes the
+assignment decision, and the handler appends the group and application events in one append.
+
+The route locks remain necessary even though the handler reads aggregate state: an application
+loaded only to read its assignment is not protected by an append to that application's stream.
+Locks serialize membership and assignment writers while the handler uses that state. The resolver
+checks membership again after locking and returns 409 if it changed; it does not acquire more rows
+in a second pass. Do not lock `work_item_route` before appending to an application, because a
+decision appends to the application stream before its route row is removed.
+
+`AxonArchitectureTest` limits `StateManager` dependencies to `LinkedGroupMembers` and the
+establish, add, group-assignment and readiness handlers that load additional state. It also limits
+route `…ForUpdate` calls to `ApplicationGroupRouteResolver` and the route projection, and only lets
+`*Coordinator` classes send commands that rely on route locks.
+
+The readiness coordinator retries the complete lock-and-dispatch attempt in a fresh transaction.
+This reacquires the locks after a failed attempt instead of reusing locks from a failed transaction.
 
 ## Command state versus query state
 

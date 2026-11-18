@@ -102,6 +102,9 @@ case "${ENV}" in
   smoke)
     TOKEN_URL="${OAUTH_TOKEN_URL:-http://localhost:9998/entra/token}"
     ENV_LABEL="smoke test"
+    # mock-oauth2-server derives the JWT issuer from the Host header. The API runs
+    # in the Compose network and validates this Docker service URL, not localhost.
+    OAUTH_ISSUER_HOST="${OAUTH_ISSUER_HOST:-mock-oauth2-server-smoketest:9999}"
     ;;
   uat)
     OAUTH_LOCAL_PORT="${OAUTH_LOCAL_PORT:-9999}"

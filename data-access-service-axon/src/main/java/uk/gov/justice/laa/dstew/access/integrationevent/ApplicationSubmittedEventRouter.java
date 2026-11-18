@@ -17,6 +17,7 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.config.interceptor.RequestMetadataDispatchInterceptor;
+import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 
 /** Schedules non-replayable integration-event publication after the command commit. */
 @Component
@@ -31,23 +32,35 @@ public class ApplicationSubmittedEventRouter {
   private final ApplicationSubmittedPublisher publisher;
   private final Clock clock;
   private final MeterRegistry meterRegistry;
+  private final ErrorReporter errorReporter;
 
   /** Creates the after-commit router using the system UTC clock. */
   @Autowired
   public ApplicationSubmittedEventRouter(
-      ApplicationSubmittedPublisher publisher, MeterRegistry meterRegistry) {
-    this(publisher, Clock.systemUTC(), meterRegistry);
+      ApplicationSubmittedPublisher publisher,
+      MeterRegistry meterRegistry,
+      ErrorReporter errorReporter) {
+    this(publisher, Clock.systemUTC(), meterRegistry, errorReporter);
   }
 
   ApplicationSubmittedEventRouter(ApplicationSubmittedPublisher publisher, Clock clock) {
-    this(publisher, clock, Metrics.globalRegistry);
+    this(publisher, clock, Metrics.globalRegistry, new ErrorReporter());
   }
 
   ApplicationSubmittedEventRouter(
       ApplicationSubmittedPublisher publisher, Clock clock, MeterRegistry meterRegistry) {
+    this(publisher, clock, meterRegistry, new ErrorReporter());
+  }
+
+  ApplicationSubmittedEventRouter(
+      ApplicationSubmittedPublisher publisher,
+      Clock clock,
+      MeterRegistry meterRegistry,
+      ErrorReporter errorReporter) {
     this.publisher = publisher;
     this.clock = clock;
     this.meterRegistry = meterRegistry;
+    this.errorReporter = errorReporter;
   }
 
   /** Schedules publication only for Applications created directly in submitted state. */
@@ -110,14 +123,14 @@ public class ApplicationSubmittedEventRouter {
           eventAgeSeconds(event));
     } catch (RuntimeException exception) {
       recordPublication("failure");
-      LOG.error(
-          "Failed to publish ApplicationSubmitted event after commit: eventId={}, applicationId={},"
-              + " applicationVersion={}, correlationId={}, eventAgeSeconds={}",
-          event.eventId(),
-          event.data().applicationId(),
-          event.data().applicationVersion(),
-          event.correlationId(),
-          eventAgeSeconds(event),
+      errorReporter.report(
+          "Failed to publish ApplicationSubmitted event after commit: eventId=%s, applicationId=%s,"
+                  .formatted(event.eventId(), event.data().applicationId())
+              + " applicationVersion=%s, correlationId=%s, eventAgeSeconds=%s"
+                  .formatted(
+                      event.data().applicationVersion(),
+                      event.correlationId(),
+                      eventAgeSeconds(event)),
           exception);
     }
   }

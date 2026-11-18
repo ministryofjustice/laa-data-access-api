@@ -43,7 +43,7 @@ class PriorAuthorityEvolveTest {
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
     PriorAuthoritySubmittedEvent event =
         new PriorAuthoritySubmittedEvent(
-            priorAuthorityId, applicationId, "EXPERT", 3, 0L, 0L, occurredAt);
+            priorAuthorityId, applicationId, "EXPERT", 3, 0L, 0L, occurredAt, "HOURLY");
 
     PriorAuthorityEvolve.apply(state, event);
 
@@ -52,6 +52,7 @@ class PriorAuthorityEvolveTest {
     assertThat(state.getPriorAuthorityType()).isEqualTo("EXPERT");
     assertThat(state.getSchemaVersion()).isEqualTo(3);
     assertThat(state.getDataVersion()).isEqualTo(0L);
+    assertThat(state.getBillingType()).isEqualTo("HOURLY");
     assertThat(state.isSubmitted()).isTrue();
     assertThat(state.isDecided()).isFalse();
   }

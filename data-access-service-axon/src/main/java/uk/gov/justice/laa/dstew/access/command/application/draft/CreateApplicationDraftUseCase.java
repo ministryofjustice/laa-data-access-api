@@ -2,7 +2,7 @@ package uk.gov.justice.laa.dstew.access.command.application.draft;
 
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
-import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
+import uk.gov.justice.laa.dstew.access.query.ProjectionReadinessGateway;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationProjectionExistsQuery;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 
@@ -14,10 +14,10 @@ import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 public class CreateApplicationDraftUseCase {
 
   private final RetryingCommandDispatcher dispatcher;
-  private final SubscriptionProjectionGateway projectionGateway;
+  private final ProjectionReadinessGateway projectionGateway;
 
   public CreateApplicationDraftUseCase(
-      RetryingCommandDispatcher dispatcher, SubscriptionProjectionGateway projectionGateway) {
+      RetryingCommandDispatcher dispatcher, ProjectionReadinessGateway projectionGateway) {
     this.dispatcher = dispatcher;
     this.projectionGateway = projectionGateway;
   }

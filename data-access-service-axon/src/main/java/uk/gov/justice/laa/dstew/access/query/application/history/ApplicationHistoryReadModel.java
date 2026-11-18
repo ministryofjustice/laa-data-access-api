@@ -35,6 +35,9 @@ public class ApplicationHistoryReadModel {
   @Column(name = "data_version")
   private Long dataVersion;
 
+  @Column(name = "justification_id")
+  private UUID justificationId;
+
   @Column(name = "service_name")
   private String serviceName;
 

@@ -2,8 +2,10 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
-import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
+import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.query.ProjectionReadinessGateway;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthoritySubmittedByPriorAuthorityIdQuery;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 
@@ -15,7 +17,7 @@ import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 public class SubmitPriorAuthorityDraftUseCase {
 
   private final RetryingCommandDispatcher dispatcher;
-  private final SubscriptionProjectionGateway projectionGateway;
+  private final ProjectionReadinessGateway projectionGateway;
   private final PriorAuthorityDraftStore draftStore;
 
   /**
@@ -27,7 +29,7 @@ public class SubmitPriorAuthorityDraftUseCase {
    */
   public SubmitPriorAuthorityDraftUseCase(
       RetryingCommandDispatcher dispatcher,
-      SubscriptionProjectionGateway projectionGateway,
+      ProjectionReadinessGateway projectionGateway,
       PriorAuthorityDraftStore draftStore) {
     this.dispatcher = dispatcher;
     this.projectionGateway = projectionGateway;
@@ -47,11 +49,14 @@ public class SubmitPriorAuthorityDraftUseCase {
    */
   @AllowApiCaseworker
   public boolean submit(SubmitPriorAuthorityDraftCommand command) {
-    draftStore
-        .find(command.priorAuthorityId())
-        .ifPresent(
-            draft ->
-                dispatcher.dispatch(new ValidateApplicationGrantedCommand(draft.applicationId())));
+    PriorAuthorityDataPayload draft =
+        draftStore
+            .find(command.priorAuthorityId())
+            .orElseThrow(
+                () ->
+                    new ResourceNotFoundException(
+                        "Prior Authority draft not found: " + command.priorAuthorityId()));
+    dispatcher.dispatch(new ValidateApplicationGrantedCommand(draft.applicationId()));
     return projectionGateway.awaitProjection(
         new PriorAuthoritySubmittedByPriorAuthorityIdQuery(command.priorAuthorityId()),
         () -> dispatcher.dispatch(command));

@@ -16,25 +16,13 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.resttestclient.TestRestTemplate;
-import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.annotation.DirtiesContext;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.BillingType;
@@ -50,6 +38,7 @@ import uk.gov.justice.laa.dstew.access.model.MakePriorAuthorityDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.WorkListAssignRequest;
@@ -60,23 +49,7 @@ import uk.gov.justice.laa.dstew.access.model.WorkListUnassignRequest;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 /** Full HTTP/Postgres/Axon integration tests for delivered work-list behaviour. */
-@Testcontainers
-@SpringBootTest(
-    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-    properties = {"feature.enable-dev-token=true"})
-@AutoConfigureTestRestTemplate
-@Import(TestJwtDecoderConfig.class)
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-class WorkListIntegrationTest {
-
-  @Container @ServiceConnection
-  static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
-
-  @LocalServerPort private int port;
-
-  @Autowired private TestRestTemplate restTemplate;
-
-  @Autowired private JdbcTemplate jdbcTemplate;
+class WorkListIntegrationTest extends BaseIntegrationTest {
 
   @Autowired private ObjectMapper objectMapper;
 
@@ -96,6 +69,7 @@ class WorkListIntegrationTest {
             Void.class);
     assertThat(assigned.getStatusCode()).isEqualTo(HttpStatus.OK);
     awaitWorkListContains("?assignedToMe=true&unassigned=false", applicationId, caseworkerId, 1L);
+    awaitApplicationDetailsAssignmentVersion(applicationId, 1L);
     await()
         .atMost(15, TimeUnit.SECONDS)
         .untilAsserted(
@@ -120,6 +94,95 @@ class WorkListIntegrationTest {
             Void.class);
     assertThat(unassigned.getStatusCode()).isEqualTo(HttpStatus.OK);
     awaitWorkListContains("", applicationId, null, 2L);
+    awaitApplicationDetailsAssignmentVersion(applicationId, 2L);
+  }
+
+  @Test
+  void givenSubmittedApplication_whenManualOutcomeArrives_thenUpdatesItsPendingWorkListRow() {
+    UUID applicationId = UUID.randomUUID();
+    ResponseEntity<Void> created =
+        restTemplate.postForEntity(
+            "http://localhost:" + port + "/api/v0/applications",
+            new HttpEntity<>(
+                validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()),
+            Void.class);
+    assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+    Instant submittedAt = awaitPendingApplicationWorkListItem(applicationId);
+
+    ResponseEntity<Void> manualOutcome =
+        restTemplate.exchange(
+            "http://localhost:"
+                + port
+                + "/api/v0/applications/"
+                + applicationId
+                + "/auto-grant-outcome",
+            HttpMethod.PATCH,
+            new HttpEntity<>(new ManualOutcomeRequest(AutoGrantOutcome.MANUAL), headers()),
+            Void.class);
+    assertThat(manualOutcome.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              assertThat(
+                      jdbcTemplate.queryForObject(
+                          "SELECT count(*) FROM axon.work_list_item WHERE item_id = ?",
+                          Long.class,
+                          applicationId))
+                  .isEqualTo(1L);
+              assertThat(workListSubmittedAt(applicationId)).isEqualTo(submittedAt);
+              assertThat(workListReadyAt(applicationId)).isNotNull();
+              assertThat(workListAutoGranted(applicationId)).isEqualTo("MANUAL");
+            });
+  }
+
+  @Test
+  void givenApplicationsCreatedBeforeManualOutcomes_whenListed_thenTheyRemainInSubmissionOrder() {
+    UUID firstApplicationId = UUID.randomUUID();
+    UUID secondApplicationId = UUID.randomUUID();
+    createSubmittedApplication(firstApplicationId);
+    createSubmittedApplication(secondApplicationId);
+    markApplicationManual(secondApplicationId);
+    markApplicationManual(firstApplicationId);
+
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                assertThat(getWorkList("").getItems())
+                    .filteredOn(
+                        item ->
+                            item.getItemId().equals(firstApplicationId)
+                                || item.getItemId().equals(secondApplicationId))
+                    .extracting(WorkListItem::getItemId)
+                    .containsExactly(firstApplicationId, secondApplicationId));
+  }
+
+  @Test
+  void givenPendingApplication_whenListed_thenOnlyThePendingItemIsExcluded() {
+    UUID pendingApplicationId = UUID.randomUUID();
+    createSubmittedApplication(pendingApplicationId);
+    awaitPendingApplicationWorkListItem(pendingApplicationId);
+
+    UUID manualApplicationId = UUID.randomUUID();
+    createSubmittedApplication(manualApplicationId);
+    markApplicationManual(manualApplicationId);
+
+    UUID priorAuthorityParentId = UUID.randomUUID();
+    createGrantedApplication(priorAuthorityParentId);
+    UUID priorAuthorityId = createAndSubmitPriorAuthorityDraft(priorAuthorityParentId);
+
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              List<UUID> itemIds =
+                  getWorkList("").getItems().stream().map(WorkListItem::getItemId).toList();
+              assertThat(itemIds).doesNotContain(pendingApplicationId);
+              assertThat(itemIds).contains(manualApplicationId, priorAuthorityId);
+            });
   }
 
   @Test
@@ -205,6 +268,7 @@ class WorkListIntegrationTest {
         caseworkerId,
         1L,
         WorkListItemType.PRIOR_AUTHORITY);
+    awaitPriorAuthorityDetailsAssignmentVersion(priorAuthorityId, 1L);
 
     OffsetDateTime decidedAt = OffsetDateTime.now();
     MakePriorAuthorityDecisionRequest decision =
@@ -238,6 +302,73 @@ class WorkListIntegrationTest {
                   .extracting(item -> item.getItemId())
                   .doesNotContain(priorAuthorityId);
             });
+  }
+
+  @Test
+  void
+      givenApplicationDetailsAssignmentVersion_whenAssigning_thenCurrentVersionSucceedsAndStaleVersionConflicts() {
+    UUID applicationId = UUID.randomUUID();
+    createManualApplication(applicationId);
+    awaitApplicationDetailsAssignmentVersion(applicationId, 0L);
+
+    assertThat(assignAtVersion(applicationId, applicationDetailsAssignmentVersion(applicationId)))
+        .extracting(ResponseEntity::getStatusCode)
+        .isEqualTo(HttpStatus.OK);
+    awaitApplicationDetailsAssignmentVersion(applicationId, 1L);
+    assertThat(unassignAtVersion(applicationId, applicationDetailsAssignmentVersion(applicationId)))
+        .extracting(ResponseEntity::getStatusCode)
+        .isEqualTo(HttpStatus.OK);
+    awaitApplicationDetailsAssignmentVersion(applicationId, 2L);
+
+    assertThat(assignAtVersion(applicationId, 1L).getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(assignAtVersion(applicationId, applicationDetailsAssignmentVersion(applicationId)))
+        .extracting(ResponseEntity::getStatusCode)
+        .isEqualTo(HttpStatus.OK);
+    awaitApplicationDetailsAssignmentVersion(applicationId, 3L);
+  }
+
+  @Test
+  void
+      givenPriorAuthorityDetailsAssignmentVersion_whenAssigning_thenCurrentVersionSucceedsAndStaleVersionConflicts() {
+    UUID parentApplicationId = UUID.randomUUID();
+    createGrantedApplication(parentApplicationId);
+    UUID priorAuthorityId = createAndSubmitPriorAuthorityDraft(parentApplicationId);
+    awaitPriorAuthorityDetailsAssignmentVersion(priorAuthorityId, 0L);
+    assertThat(priorAuthorityDetails(priorAuthorityId).getAssignedTo()).isNull();
+
+    assertThat(
+            assignAtVersion(
+                priorAuthorityId, priorAuthorityDetailsAssignmentVersion(priorAuthorityId)))
+        .extracting(ResponseEntity::getStatusCode)
+        .isEqualTo(HttpStatus.OK);
+    awaitPriorAuthorityDetailsAssignmentVersion(priorAuthorityId, 1L);
+    assertThat(priorAuthorityDetails(priorAuthorityId).getAssignedTo())
+        .isEqualTo(TestJwtDecoderConfig.CASEWORKER_ID);
+    awaitWorkListContains(
+        "?assignedToMe=true&unassigned=false",
+        priorAuthorityId,
+        TestJwtDecoderConfig.CASEWORKER_ID,
+        1L,
+        WorkListItemType.PRIOR_AUTHORITY);
+    assertThat(
+            unassignAtVersion(
+                priorAuthorityId, priorAuthorityDetailsAssignmentVersion(priorAuthorityId)))
+        .extracting(ResponseEntity::getStatusCode)
+        .isEqualTo(HttpStatus.OK);
+    awaitPriorAuthorityDetailsAssignmentVersion(priorAuthorityId, 2L);
+    assertThat(priorAuthorityDetails(priorAuthorityId).getAssignedTo()).isNull();
+    awaitWorkListContains("", priorAuthorityId, null, 2L, WorkListItemType.PRIOR_AUTHORITY);
+
+    assertThat(assignAtVersion(priorAuthorityId, 1L).getStatusCode())
+        .isEqualTo(HttpStatus.CONFLICT);
+    assertThat(
+            assignAtVersion(
+                priorAuthorityId, priorAuthorityDetailsAssignmentVersion(priorAuthorityId)))
+        .extracting(ResponseEntity::getStatusCode)
+        .isEqualTo(HttpStatus.OK);
+    awaitPriorAuthorityDetailsAssignmentVersion(priorAuthorityId, 3L);
+    assertThat(priorAuthorityDetails(priorAuthorityId).getAssignedTo())
+        .isEqualTo(TestJwtDecoderConfig.CASEWORKER_ID);
   }
 
   @Test
@@ -373,6 +504,8 @@ class WorkListIntegrationTest {
     assertThat(item.getMatterTypes()).containsExactly("Parent matter", "Second");
     assertThat(item.getMatterTypeCodes()).containsExactly("PARENT-1", "PARENT-2");
     assertThat(item.getSubmittedAt().toInstant()).isEqualTo(workListSubmittedAt(priorAuthorityId));
+    assertThat(workListReadyAt(priorAuthorityId)).isEqualTo(workListSubmittedAt(priorAuthorityId));
+    assertThat(workListAutoGranted(priorAuthorityId)).isNull();
   }
 
   @Test
@@ -927,19 +1060,30 @@ class WorkListIntegrationTest {
   }
 
   private void createManualApplication(ApplicationCreateRequest request) {
+    createSubmittedApplication(request);
+    markApplicationManual(request.getId());
+  }
+
+  private void createSubmittedApplication(UUID applicationId) {
+    createSubmittedApplication(validCreateApplicationRequest(applicationId, UUID.randomUUID()));
+  }
+
+  private void createSubmittedApplication(ApplicationCreateRequest request) {
     ResponseEntity<Void> created =
         restTemplate.postForEntity(
             "http://localhost:" + port + "/api/v0/applications",
             new HttpEntity<>(request, headers()),
             Void.class);
     assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+  }
 
+  private void markApplicationManual(UUID applicationId) {
     ResponseEntity<Void> ready =
         restTemplate.exchange(
             "http://localhost:"
                 + port
                 + "/api/v0/applications/"
-                + request.getId()
+                + applicationId
                 + "/auto-grant-outcome",
             HttpMethod.PATCH,
             new HttpEntity<>(new ManualOutcomeRequest(AutoGrantOutcome.MANUAL), headers()),
@@ -1065,6 +1209,51 @@ class WorkListIntegrationTest {
     return getWorkList(query, TestJwtDecoderConfig.CASEWORKER_ID);
   }
 
+  private void awaitApplicationDetailsAssignmentVersion(UUID applicationId, long expected) {
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                assertThat(applicationDetailsAssignmentVersion(applicationId)).isEqualTo(expected));
+  }
+
+  private long applicationDetailsAssignmentVersion(UUID applicationId) {
+    ResponseEntity<ApplicationResponse> response =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/applications/" + applicationId,
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            ApplicationResponse.class);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody()).isNotNull();
+    return response.getBody().getAssignmentVersion();
+  }
+
+  private void awaitPriorAuthorityDetailsAssignmentVersion(UUID priorAuthorityId, long expected) {
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                assertThat(priorAuthorityDetailsAssignmentVersion(priorAuthorityId))
+                    .isEqualTo(expected));
+  }
+
+  private long priorAuthorityDetailsAssignmentVersion(UUID priorAuthorityId) {
+    return priorAuthorityDetails(priorAuthorityId).getAssignmentVersion();
+  }
+
+  private PriorAuthorityResponse priorAuthorityDetails(UUID priorAuthorityId) {
+    ResponseEntity<PriorAuthorityResponse> response =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/prior-authorities/" + priorAuthorityId,
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            PriorAuthorityResponse.class);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody()).isNotNull();
+    return response.getBody();
+  }
+
   private WorkListResponse getWorkList(String query, UUID caseworkerId) {
     ResponseEntity<WorkListResponse> response =
         restTemplate.exchange(
@@ -1089,6 +1278,29 @@ class WorkListIntegrationTest {
         "SELECT submitted_at FROM axon.work_list_item WHERE item_id = ?", Instant.class, itemId);
   }
 
+  private Instant awaitPendingApplicationWorkListItem(UUID applicationId) {
+    return await()
+        .atMost(15, TimeUnit.SECONDS)
+        .until(
+            () -> {
+              Instant submittedAt = workListSubmittedAt(applicationId);
+              String autoGranted = workListAutoGranted(applicationId);
+              Instant readyAt = workListReadyAt(applicationId);
+              return "PENDING".equals(autoGranted) && readyAt == null ? submittedAt : null;
+            },
+            submittedAt -> submittedAt != null);
+  }
+
+  private Instant workListReadyAt(UUID itemId) {
+    return jdbcTemplate.queryForObject(
+        "SELECT ready_at FROM axon.work_list_item WHERE item_id = ?", Instant.class, itemId);
+  }
+
+  private String workListAutoGranted(UUID itemId) {
+    return jdbcTemplate.queryForObject(
+        "SELECT autogranted FROM axon.work_list_item WHERE item_id = ?", String.class, itemId);
+  }
+
   private String assignmentUrl(UUID itemId, String operation) {
     return "http://localhost:" + port + "/api/v0/work-list/" + itemId + "/" + operation;
   }
@@ -1101,19 +1313,19 @@ class WorkListIntegrationTest {
         Void.class);
   }
 
-  private HttpHeaders headers() {
-    return headersFor(TestJwtDecoderConfig.CASEWORKER_ID);
+  private ResponseEntity<Void> assignAtVersion(UUID itemId, long expectedAssignmentVersion) {
+    return restTemplate.exchange(
+        assignmentUrl(itemId, "assign"),
+        HttpMethod.POST,
+        new HttpEntity<>(new WorkListAssignRequest(expectedAssignmentVersion), headers()),
+        Void.class);
   }
 
-  private HttpHeaders headersFor(UUID caseworkerId) {
-    HttpHeaders headers = new HttpHeaders();
-    headers.set("X-Service-Name", "CIVIL_APPLY");
-    headers.set("X-Schema-Version", "1");
-    headers.setContentType(MediaType.APPLICATION_JSON);
-    headers.setBearerAuth(
-        caseworkerId.equals(TestJwtDecoderConfig.OTHER_CASEWORKER_ID)
-            ? TestJwtDecoderConfig.OTHER_BEARER_TOKEN
-            : TestJwtDecoderConfig.BEARER_TOKEN);
-    return headers;
+  private ResponseEntity<Void> unassignAtVersion(UUID itemId, long expectedAssignmentVersion) {
+    return restTemplate.exchange(
+        assignmentUrl(itemId, "unassign"),
+        HttpMethod.POST,
+        new HttpEntity<>(new WorkListUnassignRequest(expectedAssignmentVersion), headers()),
+        Void.class);
   }
 }

@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 @ExtendWith(MockitoExtension.class)
 class LinkApplicationUseCaseTest {
 
-  @Mock private LinkApplicationCommandHandler commandHandler;
+  @Mock private LinkApplicationCoordinator coordinator;
 
   @InjectMocks private LinkApplicationUseCase useCase;
 
@@ -26,12 +26,12 @@ class LinkApplicationUseCaseTest {
   void executeDelegatesExactlyOnceToTheCommandHandler() {
     var command =
         new LinkApplicationCommand(
-            UUID.randomUUID(), UUID.randomUUID(), LinkType.FAMILY, null, Instant.now());
+            UUID.randomUUID(), UUID.randomUUID(), LinkType.FAMILY, null, Instant.now(), null);
 
     useCase.execute(command);
 
-    verify(commandHandler).handle(command);
-    verifyNoMoreInteractions(commandHandler);
+    verify(coordinator).handle(command);
+    verifyNoMoreInteractions(coordinator);
   }
 
   @Test
@@ -44,12 +44,12 @@ class LinkApplicationUseCaseTest {
         .isFalse();
     assertThat(LinkApplicationUseCase.class.getDeclaredConstructors()).hasSize(1);
     assertThat(LinkApplicationUseCase.class.getDeclaredConstructors()[0].getParameterTypes())
-        .containsExactly(LinkApplicationCommandHandler.class);
+        .containsExactly(LinkApplicationCoordinator.class);
     assertThat(
             Arrays.stream(LinkApplicationUseCase.class.getDeclaredFields())
                 .filter(field -> !Modifier.isStatic(field.getModifiers()))
                 .map(field -> field.getType().getSimpleName())
                 .toList())
-        .containsExactly("LinkApplicationCommandHandler");
+        .containsExactly("LinkApplicationCoordinator");
   }
 }

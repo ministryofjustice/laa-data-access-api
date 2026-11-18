@@ -4,14 +4,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,10 +32,15 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 
 @ExtendWith(MockitoExtension.class)
 class DeleteEvidenceDocumentUseCaseTest {
+
+  private static final AuthenticatedCaller CALLER =
+      new AuthenticatedCaller(Optional.empty(), Set.of(), Set.of("1A001B"), Set.of());
 
   @Mock private PriorAuthorityDraftStore draftStore;
   @Mock private RetryingCommandDispatcher dispatcher;
@@ -55,7 +63,7 @@ class DeleteEvidenceDocumentUseCaseTest {
             any(PriorAuthorityDocumentDeleteCommand.class), eq(DocumentMetadata.class)))
         .thenReturn(pdfDocument(documentId));
 
-    useCase.execute(priorAuthorityId, documentId);
+    useCase.execute(priorAuthorityId, documentId, CALLER);
 
     ArgumentCaptor<PriorAuthorityDocumentDeleteCommand> commandCaptor =
         ArgumentCaptor.forClass(PriorAuthorityDocumentDeleteCommand.class);
@@ -64,6 +72,7 @@ class DeleteEvidenceDocumentUseCaseTest {
     calls.verify(sdsService).deleteEvidenceFile(priorAuthorityId, documentId, filename);
     assertThat(commandCaptor.getValue().priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(commandCaptor.getValue().documentId()).isEqualTo(documentId);
+    assertThat(commandCaptor.getValue().caller()).isEqualTo(CALLER);
   }
 
   @Test
@@ -82,9 +91,30 @@ class DeleteEvidenceDocumentUseCaseTest {
         .when(sdsService)
         .deleteEvidenceFile(priorAuthorityId, documentId, "file.PDF");
 
-    useCase.execute(priorAuthorityId, documentId);
+    useCase.execute(priorAuthorityId, documentId, CALLER);
 
     verify(sdsService).deleteEvidenceFile(priorAuthorityId, documentId, "file.PDF");
+  }
+
+  @Test
+  void givenSdsDeletionFails_whenExecute_thenReportsToSentry() {
+    ErrorReporter errorReporter = mock(ErrorReporter.class);
+    DeletePriorAuthorityDocumentUseCase useCase =
+        new DeletePriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService, errorReporter);
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    when(draftStore.find(priorAuthorityId))
+        .thenReturn(
+            Optional.of(draft(priorAuthorityId).withDocumentFilename(documentId, "file.PDF")));
+    when(dispatcher.dispatch(
+            any(PriorAuthorityDocumentDeleteCommand.class), eq(DocumentMetadata.class)))
+        .thenReturn(pdfDocument(documentId));
+    IllegalStateException failure = new IllegalStateException("SDS unavailable");
+    doThrow(failure).when(sdsService).deleteEvidenceFile(priorAuthorityId, documentId, "file.PDF");
+
+    useCase.execute(priorAuthorityId, documentId, CALLER);
+
+    verify(errorReporter).report(org.mockito.ArgumentMatchers.anyString(), same(failure));
   }
 
   @Test
@@ -95,7 +125,7 @@ class DeleteEvidenceDocumentUseCaseTest {
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.empty());
 
     assertThatExceptionOfType(ResourceNotFoundException.class)
-        .isThrownBy(() -> useCase.execute(priorAuthorityId, UUID.randomUUID()));
+        .isThrownBy(() -> useCase.execute(priorAuthorityId, UUID.randomUUID(), CALLER));
 
     verifyNoInteractions(dispatcher, sdsService);
   }
@@ -120,7 +150,7 @@ class DeleteEvidenceDocumentUseCaseTest {
         .thenReturn(pdfDocument(documentId).withFileSuffix(suffix));
 
     new DeletePriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService)
-        .execute(ownerId, documentId);
+        .execute(ownerId, documentId, CALLER);
 
     verify(sdsService).deleteEvidenceFile(ownerId, documentId, documentId + suffix);
   }

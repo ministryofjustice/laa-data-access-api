@@ -63,12 +63,6 @@ public class DataAccessApiProviderTests extends AbstractProviderPactTests {
     states.applicationsExist();
   }
 
-  /** Consumer: laa-civil-decide-api, GET individuals. */
-  @State(PactStates.CLIENT_INDIVIDUAL_EXISTS_FOR_APPLICATION_001)
-  public void clientIndividualExistsForApplication001() {
-    states.clientIndividualExistsForApplication001();
-  }
-
   /** Consumer: laa-apply-for-legal-aid, POST applications. */
   @State(PactStates.NO_MATCHING_SCA_APPLICATION_EXISTS)
   public void noMatchingSpecialChildrenActApplicationExists() {
@@ -115,6 +109,26 @@ public class DataAccessApiProviderTests extends AbstractProviderPactTests {
   @State(PactStates.NO_APPLICATION_WITH_ID)
   public void noApplicationWithId() {
     states.noApplicationWithId();
+  }
+
+  /**
+   * POST application-drafts/{id}/submit, POST applications/{id}/documents on a draft. Creates a
+   * fresh draft and returns its generated {@code applicationId} for injection, so no two
+   * interactions that change a draft share one.
+   */
+  @State(PactStates.NEW_APPLICATION_DRAFT_EXISTS)
+  public Map<String, Object> newApplicationDraftExists() {
+    return states.newApplicationDraftExists();
+  }
+
+  /**
+   * POST applications/{id}/link. Creates two fresh submitted applications in no linked group and
+   * returns {@code applicationId} (for the path) and {@code leadApplicationId} (for the body) for
+   * injection, so no two interactions that link share a pair.
+   */
+  @State(PactStates.NEW_UNLINKED_APPLICATIONS_EXIST)
+  public Map<String, Object> newUnlinkedApplicationsExist() {
+    return states.newUnlinkedApplicationsExist();
   }
 
   /** POST applications expecting 202. */

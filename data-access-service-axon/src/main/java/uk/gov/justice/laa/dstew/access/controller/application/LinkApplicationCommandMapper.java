@@ -9,6 +9,7 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkAppli
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 
 /** Maps the generated link request to the command-side explicit-link contract. */
 @Component
@@ -26,9 +27,9 @@ public class LinkApplicationCommandMapper {
     this.clock = clock;
   }
 
-  /** Maps the source path identifier and target request identifier into a link command. */
+  /** Maps the source path identifier, target request identifier, and authenticated caller. */
   public LinkApplicationCommand toCommand(
-      UUID sourceApplicationId, ApplicationLinkRequest request) {
+      UUID sourceApplicationId, ApplicationLinkRequest request, AuthenticatedCaller caller) {
     return new LinkApplicationCommand(
         sourceApplicationId,
         request.getApplicationId(),
@@ -36,7 +37,9 @@ public class LinkApplicationCommandMapper {
         request.getLinkedGroupVersion() == null
             ? null
             : LinkedGroupVersionTokens.decode(request.getLinkedGroupVersion()),
-        Instant.now(clock));
+        Instant.now(clock),
+        caller,
+        request.getEventHistory() == null ? null : request.getEventHistory().getEventDescription());
   }
 
   private LinkType toDomain(ApplicationLinkType linkType) {

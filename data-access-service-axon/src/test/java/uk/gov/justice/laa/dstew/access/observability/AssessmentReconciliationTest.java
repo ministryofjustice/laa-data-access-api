@@ -1,11 +1,12 @@
 package uk.gov.justice.laa.dstew.access.observability;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -34,6 +35,7 @@ class AssessmentReconciliationTest {
       CapturedOutput output) {
     QueryGateway queryGateway = mock(QueryGateway.class);
     SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+    ErrorReporter errorReporter = mock(ErrorReporter.class);
     Instant now = Instant.parse("2026-08-04T10:00:00Z");
     UUID applicationId = UUID.fromString("8c9e6c2e-4f1a-4e3a-9c2b-1a2b3c4d5e6f");
     StalledAssessment stalled =
@@ -42,7 +44,11 @@ class AssessmentReconciliationTest {
         .thenReturn(CompletableFuture.completedFuture(new StalledAssessments(List.of(stalled))));
     AssessmentReconciliation reconciliation =
         new AssessmentReconciliation(
-            queryGateway, meterRegistry, Clock.fixed(now, ZoneOffset.UTC), Duration.ofMinutes(15));
+            queryGateway,
+            meterRegistry,
+            Clock.fixed(now, ZoneOffset.UTC),
+            Duration.ofMinutes(15),
+            errorReporter);
 
     reconciliation.run();
 
@@ -57,24 +63,30 @@ class AssessmentReconciliationTest {
         .isEqualTo(2700);
     assertThat(meterRegistry.get("application.assessment.reconciliation.fresh").gauge().value())
         .isEqualTo(1);
+    verifyNoInteractions(errorReporter);
   }
 
   @Test
-  void givenTheProjectionQueryFails_whenReconciliationRuns_thenMarksItsSignalsStale() {
+  void givenTheProjectionQueryFails_whenReconciliationRuns_thenReportsToSentryAndSwallows() {
     QueryGateway queryGateway = mock(QueryGateway.class);
     SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+    ErrorReporter errorReporter = mock(ErrorReporter.class);
+    IllegalStateException failure = new IllegalStateException("projection failed");
     when(queryGateway.query(any(FindStalledAssessmentsQuery.class), eq(StalledAssessments.class)))
-        .thenReturn(CompletableFuture.failedFuture(new IllegalStateException("projection failed")));
+        .thenReturn(CompletableFuture.failedFuture(failure));
     AssessmentReconciliation reconciliation =
         new AssessmentReconciliation(
             queryGateway,
             meterRegistry,
             Clock.fixed(Instant.parse("2026-08-04T10:00:00Z"), ZoneOffset.UTC),
-            Duration.ofMinutes(15));
+            Duration.ofMinutes(15),
+            errorReporter);
 
-    assertThatThrownBy(reconciliation::run).isInstanceOf(RuntimeException.class);
+    reconciliation.run();
 
     assertThat(meterRegistry.get("application.assessment.reconciliation.fresh").gauge().value())
         .isZero();
+    verify(errorReporter)
+        .report(any(String.class), argThat(exception -> exception.getCause() == failure));
   }
 }

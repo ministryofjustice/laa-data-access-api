@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
+import uk.gov.justice.laa.dstew.access.shared.logging.ClientFacingException;
 
 /**
  * Validation exception that holds violations (errors). excluded from code coverage as
@@ -12,7 +13,7 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 @ExcludeFromGeneratedCodeCoverage
-public class ValidationException extends RuntimeException {
+public class ValidationException extends RuntimeException implements ClientFacingException {
   private final List<String> errors;
 
   /**

@@ -3,7 +3,6 @@ package uk.gov.justice.laa.dstew.access.query.application.history;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
@@ -19,16 +18,17 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.config.interceptor.RequestMetadataDispatchInterceptor;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
+import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 
 /** Projection that records Prior Authority activity to parent Application history. */
 @Component
 @RequiredArgsConstructor
 @Namespace("prior-authority-history-projection")
-@Slf4j
 public class PriorAuthorityHistoryProjection {
 
   private final PriorAuthorityDataRepository priorAuthorityDataRepository;
   private final PriorAuthorityHistoryReadRepository priorAuthorityHistoryReadRepository;
+  private final ErrorReporter errorReporter;
 
   /** Records a submitted Prior Authority in parent application's history. */
   @EventHandler
@@ -65,10 +65,12 @@ public class PriorAuthorityHistoryProjection {
 
     PriorAuthorityRef ref = lookupPriorAuthorityRef(event.workItemId(), event.itemVersion());
     if (ref == null) {
-      log.warn(
-          "Prior authority data not found for PA assignment event: priorAuthorityId={}, version={}",
-          event.workItemId(),
-          event.itemVersion());
+      errorReporter.report(
+          "Prior authority data not found for PA assignment event",
+          new ApplicationHistoryIntegrityException(
+              null,
+              event.workItemId(),
+              "no prior-authority data for version=" + event.itemVersion()));
       return;
     }
 
@@ -91,10 +93,12 @@ public class PriorAuthorityHistoryProjection {
 
     PriorAuthorityRef ref = lookupPriorAuthorityRef(event.workItemId(), event.itemVersion());
     if (ref == null) {
-      log.warn(
-          "Prior authority data not found for PA unassignment event: priorAuthorityId={}, version={}",
-          event.workItemId(),
-          event.itemVersion());
+      errorReporter.report(
+          "Prior authority data not found for PA unassignment event",
+          new ApplicationHistoryIntegrityException(
+              null,
+              event.workItemId(),
+              "no prior-authority data for version=" + event.itemVersion()));
       return;
     }
 

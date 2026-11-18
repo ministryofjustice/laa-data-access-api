@@ -12,6 +12,7 @@ import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
 import org.axonframework.modelling.ConcurrencyException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -76,6 +77,31 @@ class RetryingCommandDispatcherTest {
         .thenThrow(
             new DataIntegrityViolationException(
                 "duplicate key", new SQLException("duplicate key value", "23505")))
+        .thenReturn(null);
+
+    dispatcher.dispatch(command);
+
+    verify(commandGateway, times(2)).sendAndWait(command);
+  }
+
+  @Test
+  void givenNestedLockAcquisitionFailure_whenDispatch_thenRetriesOnce() {
+    when(commandGateway.sendAndWait(command))
+        .thenThrow(
+            new RuntimeException(
+                "command failed", new CannotAcquireLockException("could not obtain lock")))
+        .thenReturn(null);
+
+    dispatcher.dispatch(command);
+
+    verify(commandGateway, times(2)).sendAndWait(command);
+  }
+
+  @Test
+  void givenDeadlockSqlState_whenDispatch_thenRetriesOnce() {
+    when(commandGateway.sendAndWait(command))
+        .thenThrow(
+            new RuntimeException("append failed", new SQLException("deadlock detected", "40P01")))
         .thenReturn(null);
 
     dispatcher.dispatch(command);

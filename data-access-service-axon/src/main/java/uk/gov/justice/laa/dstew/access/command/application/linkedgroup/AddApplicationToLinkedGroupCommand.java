@@ -12,7 +12,14 @@ public record AddApplicationToLinkedGroupCommand(
     @TargetEntityId UUID groupId,
     UUID applicationId,
     long expectedGroupVersion,
-    Instant occurredAt) {
+    Instant occurredAt,
+    String justification) {
+
+  /** Creates a command without justification. */
+  public AddApplicationToLinkedGroupCommand(
+      UUID groupId, UUID applicationId, long expectedGroupVersion, Instant occurredAt) {
+    this(groupId, applicationId, expectedGroupVersion, occurredAt, null);
+  }
 
   /** Validates the routed group identity and application identifier. */
   public AddApplicationToLinkedGroupCommand {

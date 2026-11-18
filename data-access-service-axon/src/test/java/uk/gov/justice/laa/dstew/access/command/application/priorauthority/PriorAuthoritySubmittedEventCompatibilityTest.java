@@ -45,6 +45,7 @@ class PriorAuthoritySubmittedEventCompatibilityTest {
     assertThat(event.schemaVersion()).isEqualTo(1);
     assertThat(event.dataVersion()).isZero();
     assertThat(event.applicationDataVersion()).isZero();
+    assertThat(event.billingType()).isNull();
     assertThat(event.occurredAt()).isEqualTo(Instant.parse("2026-08-01T10:00:00Z"));
   }
 
@@ -58,12 +59,14 @@ class PriorAuthoritySubmittedEventCompatibilityTest {
             1,
             0L,
             5L,
-            Instant.parse("2026-08-02T10:00:00Z"));
+            Instant.parse("2026-08-02T10:00:00Z"),
+            "HOURLY");
 
     PriorAuthoritySubmittedEvent roundTripped =
         objectMapper.readValue(
             objectMapper.writeValueAsString(original), PriorAuthoritySubmittedEvent.class);
 
     assertThat(roundTripped).isEqualTo(original);
+    assertThat(roundTripped.billingType()).isEqualTo("HOURLY");
   }
 }

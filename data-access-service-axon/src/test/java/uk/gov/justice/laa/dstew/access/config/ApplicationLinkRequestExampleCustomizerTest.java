@@ -9,7 +9,10 @@ import io.swagger.v3.oas.models.Paths;
 import io.swagger.v3.oas.models.media.Content;
 import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.parameters.RequestBody;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import uk.gov.justice.laa.dstew.access.config.swagger.ApplicationLinkRequestExampleCustomizer;
 
 class ApplicationLinkRequestExampleCustomizerTest {
@@ -53,6 +56,33 @@ class ApplicationLinkRequestExampleCustomizerTest {
     // when / then
     org.assertj.core.api.Assertions.assertThatCode(() -> customizer.customise(openApi))
         .doesNotThrowAnyException();
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "firstTimeLink, Applications linked for related proceedings.",
+    "targetAlreadyLinked, Application added to the existing linked group."
+  })
+  void givenLinkExample_whenCustomise_thenEventHistoryIsIncluded(
+      String exampleName, String eventDescription) {
+    OpenAPI openApi = openApiWithLinkApplicationOperation();
+
+    customizer.customise(openApi);
+
+    var example =
+        openApi
+            .getPaths()
+            .get("/api/v0/applications/{id}/link")
+            .getPost()
+            .getRequestBody()
+            .getContent()
+            .get("application/json")
+            .getExamples()
+            .get(exampleName);
+    assertThat(example.getValue())
+        .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+        .containsEntry("eventHistory", Map.of("eventDescription", eventDescription));
+    assertThat(example.getDescription()).contains("eventHistory is optional");
   }
 
   private OpenAPI openApiWithLinkApplicationOperation() {

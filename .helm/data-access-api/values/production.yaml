@@ -9,7 +9,7 @@ image:
   tag: null
 
 service_account:
-  name: laa-data-access-prod-service-account
+  name: laa-data-access-prod-irsa
 
 service:
   type: ClusterIP
@@ -55,9 +55,6 @@ grafana:
   enabled: true
 
 slowQueryThresholdSeconds: 1
-
-massGenerator:
-  enabled: false
 
 featureFlags: {}
 

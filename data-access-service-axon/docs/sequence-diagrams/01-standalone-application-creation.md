@@ -7,7 +7,7 @@ explicit application-link endpoint.
 sequenceDiagram
     actor Client
     participant Controller as ApplicationCommandController
-    participant SubGateway as SubscriptionProjectionGateway
+    participant ReadinessGateway as ProjectionReadinessGateway
     participant CmdGateway as CommandGateway
     participant AppAggregate as ApplicationAggregate
     participant Factory as ApplicationCreationDetailsFactory
@@ -16,9 +16,8 @@ sequenceDiagram
 
     Client->>Controller: POST /api/v0/applications
 
-    Note over Controller,SubGateway: Subscription query opened BEFORE command dispatch
-    Controller->>SubGateway: awaitProjection(FindApplicationByIdQuery)
-    activate SubGateway
+    Controller->>ReadinessGateway: awaitProjection(ApplicationSubmissionProjectedQuery, dispatch)
+    activate ReadinessGateway
 
     Controller->>CmdGateway: sendAndWait(CreateApplicationCommand)
     CmdGateway->>AppAggregate: handle(CreateApplicationCommand) [CREATE_IF_MISSING]
@@ -34,9 +33,12 @@ sequenceDiagram
     RouteProjection->>RouteProjection: save STANDALONE route
     Projection->>Projection: on(ApplicationCreatedEvent) [async]
     Projection->>Projection: save unlinked ApplicationReadModel
-    Projection->>SubGateway: emit update to subscription query
 
-    SubGateway-->>Controller: ApplicationReadModel received
-    deactivate SubGateway
+    loop until readable or timeout (capped backoff)
+        ReadinessGateway->>ReadinessGateway: query ApplicationSubmissionProjectedQuery
+    end
+
+    ReadinessGateway-->>Controller: projection readable
+    deactivate ReadinessGateway
     Controller-->>Client: 201 Created + Location: /api/v0/applications/{id}
 ```

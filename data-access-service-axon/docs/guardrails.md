@@ -70,9 +70,28 @@ serialized shape and order.
 
 ### `sendAndWait` does not make tracking projections current
 
-It waits for command completion. Tracking processors can still lag. Use subscription queries where
-the API explicitly needs read-your-write behaviour, or return an asynchronous result such as the
-creation endpoint's `202 Accepted`.
+It waits for command completion. Tracking processors can still lag. Use
+`ProjectionReadinessGateway` where the API explicitly needs read-your-write behaviour, or return an
+asynchronous result such as the creation endpoint's `202 Accepted`.
+
+### Do not use subscription queries to wait for projections
+
+Without Axon Server, the query bus and `QueryUpdateEmitter` are local to each JVM. When several
+replicas run, the instance that owns a processor segment emits the update, which a request waiting
+on another instance never sees. `ProjectionReadinessGateway` polls the shared read model instead,
+so projections do not need to emit query updates.
+
+Readiness queries must be Boolean and answer exactly whether the projection reflects the command,
+using a repository `exists...` check. Do not reuse entity-loading queries: the request's open
+persistence context returns cached, stale entities on later polls, and a merely readable row (such
+as a draft whose submission data is already written) can report ready before its event is
+projected.
+
+Readiness conditions must be monotonic: once true, a later event must not make them false. Check
+for the target state or any later state (for example, `SUBMITTED` or `DECIDED`), not an exact
+current status, or a fast follow-up event leaves the request waiting until timeout. The gateway
+bounds each poll by the remaining deadline, so a stalled query falls back to `202 Accepted` rather
+than holding the request.
 
 ### Understand the split linking failure semantics
 
@@ -152,6 +171,32 @@ A command exception means no successful commit. `202 Accepted` means the command
 projection was not visible before the timeout.
 
 ## Data and transaction rules
+
+### Linked-group assignment locks
+
+Linked-group assignment and membership writers lock the relevant `application_group_route` rows
+with `PESSIMISTIC_WRITE`, in ascending application ID order, in one statement. They re-read
+membership after acquiring the locks. If membership changed while waiting, they return 409 rather
+than taking additional locks in another pass. A coordinator then dispatches one command; its
+handler loads the aggregate state, calls a pure decider and appends all resulting events together.
+
+Do not lock `work_item_route` before appending to an application. A decision appends to the
+application stream before its route projection removes the work-item route. Taking the route lock
+first could deadlock against that event append.
+
+The enforcement is part of the implementation:
+
+- The ArchUnit rule permits route `…ForUpdate` queries only in `ApplicationGroupRouteResolver` and
+  `ApplicationGroupRouteProjection`.
+- A second ArchUnit rule permits only `*Coordinator` classes to send the commands that rely on
+  route locks: establish, add, remove and change lead; linked-group assign and unassign; direct
+  application assign and unassign; and readiness. Each coordinator must call the resolver before
+  sending, in the same transaction.
+
+Add any new command that reads or changes a linked group's membership or an application's
+assignment to `ROUTE_LOCKED_COMMANDS` in `AxonArchitectureTest`, and send it from a coordinator.
+Tests may send these commands directly when they deliberately bypass coordinators. Route locking is still required when a handler only reads a
+member's state and does not append to that member's stream.
 
 ### Append; never update `application_data`
 

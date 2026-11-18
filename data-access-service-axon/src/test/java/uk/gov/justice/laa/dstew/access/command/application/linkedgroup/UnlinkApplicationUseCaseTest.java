@@ -14,7 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class UnlinkApplicationUseCaseTest {
 
-  @Mock private UnlinkApplicationCommandHandler commandHandler;
+  @Mock private UnlinkApplicationCoordinator coordinator;
 
   @InjectMocks private UnlinkApplicationUseCase useCase;
 
@@ -24,11 +24,12 @@ class UnlinkApplicationUseCaseTest {
         new UnlinkApplicationCommand(
             UUID.randomUUID(),
             new ExpectedLinkedGroup(UUID.randomUUID(), 3),
-            Instant.parse("2026-09-14T15:00:00Z"));
+            Instant.parse("2026-09-14T15:00:00Z"),
+            null);
 
     useCase.execute(command);
 
-    verify(commandHandler).handle(command);
-    verifyNoMoreInteractions(commandHandler);
+    verify(coordinator).handle(command);
+    verifyNoMoreInteractions(coordinator);
   }
 }

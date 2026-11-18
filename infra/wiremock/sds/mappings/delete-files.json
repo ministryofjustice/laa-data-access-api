@@ -1,0 +1,19 @@
+{
+  "request": {
+    "method": "DELETE",
+    "urlPath": "/delete_files",
+    "queryParameters": {
+      "file_keys": {
+        "matches": ".+"
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {}
+  }
+}
+
