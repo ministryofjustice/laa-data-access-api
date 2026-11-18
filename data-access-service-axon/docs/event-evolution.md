@@ -1,8 +1,12 @@
 # Event Evolution and Compatibility
 
-Events in Axon's store are long-lived serialized contracts. The module currently uses Axon
-Framework 5.2.0 with Jackson serialization. PostgreSQL stores the payload type, optional revision,
-and serialized bytes in `domain_event_entry`.
+Events in Axon's store are long-lived serialized contracts. The module uses Axon Framework with
+Jackson serialization through `EventJson`, the one mapper for event payloads and content.
+PostgreSQL stores the payload type, optional revision, and serialized bytes in `domain_event_entry`.
+Every event type declares its stored name explicitly, `@Event(namespace = "access", name = ...)`,
+so the payload type is `access.<Name>`, not the Java class name. The stored bytes hold only the
+fields in the event's kept-field schema; content is stored beside them in `event_content` (see
+[ADR 0007](adr/0007-event-content-is-stored-beside-its-event.md)).
 
 Changing a Java event record does not change events already stored in the database.
 
@@ -84,12 +88,11 @@ Previously persisted events are not retagged by changing the Java annotation, an
 already lost content cannot be reconstructed from this thin event. Any historical
 store remediation needs a separate decision; do not rewrite persisted metadata here.
 
-The record is annotated with plain `@Event` (no namespace, name or version), so tooling that
-resolves stored type names through `@Event` classes can resolve it. Axon's default
-`AnnotationMessageTypeResolver` still yields the fully qualified class name and version `0.0.1`,
-exactly as for the previously unannotated class, so stored `payload_type` values are unchanged.
-`LegacyGenesisPayloadCompatibilityTest` and `LegacyGenesisPayloadReplayIntegrationTest` assert
-this, and `GenesisScopeArchitectureTest` requires `@Event` on every `*Event` in `command` packages.
+Like every event, the record declares `@Event(namespace = "access", name = ...)`, so tooling that
+resolves stored type names through `@Event` classes can resolve it. `GenesisScopeArchitectureTest`
+requires `@Event` on every `*Event` in `command` packages. `LegacyGenesisPayloadCompatibilityTest`
+and `LegacyGenesisPayloadReplayIntegrationTest` check that payloads written before a genesis field
+existed still load.
 
 `PriorAuthorityAggregateTest` covers the old JSON and a following document-type event.
 The PostgreSQL draft integration tests force both competing commands to read stale
@@ -118,7 +121,7 @@ ApplicationDecisionMadeEvent → new meaning and fields
 
 This is often clearer than making one event schema represent several eras of behaviour.
 
-Do not delete the old class while its fully qualified name remains in `payload_type`.
+Do not delete the old class while its event name remains in `payload_type`.
 
 `ApplicationUpdatedEvent` follows this rule for the Axon update route: it records only identifiers,
 versions, previous/current status, Application type, and occurrence time. Detailed replacement
@@ -150,8 +153,8 @@ projection replay tests, and PostgreSQL integration coverage.
 
 ## Renaming or moving an event
 
-Because the stored payload type normally includes the fully qualified class name, moving a class can
-make historical events unresolvable. Options include:
+The stored payload type is the explicit `@Event` name, so moving or renaming the Java class does not
+change it. Changing the `@Event` name does, and makes historical events unresolvable. Options include:
 
 - leave a compatibility type at the old name;
 - configure a serializer alias/type mapping deliberately;

@@ -56,7 +56,15 @@ class ApplicationHistoryMapperTest {
   void givenApplicationCreated_whenMapped_thenGivesRowWithDataVersionAndMetadata() {
     var event =
         new ApplicationCreatedEvent(
-            APPLICATION, 1L, "fingerprint", "APPLICATION_IN_PROGRESS", 1, OCCURRED_AT, null, null);
+            APPLICATION,
+            1L,
+            "fingerprint",
+            "APPLICATION_IN_PROGRESS",
+            1,
+            OCCURRED_AT,
+            List.of(),
+            null,
+            null);
 
     var rows = mapper.map(APPLICATION, List.of(message(event, "created")));
 
@@ -118,6 +126,7 @@ class ApplicationHistoryMapperTest {
                     "APPLICATION_IN_PROGRESS",
                     1,
                     OCCURRED_AT,
+                    List.of(),
                     null,
                     null),
                 "created"),
@@ -133,7 +142,15 @@ class ApplicationHistoryMapperTest {
                 "pa-submitted"),
             message(
                 new PriorAuthorityDecisionMadeEvent(
-                    PRIOR_AUTHORITY, OTHER, "EXPERT", 3L, "GRANTED", null, null, null, OCCURRED_AT),
+                    PRIOR_AUTHORITY,
+                    OTHER,
+                    "EXPERT",
+                    3L,
+                    "GRANTED",
+                    (String) null,
+                    null,
+                    null,
+                    OCCURRED_AT),
                 "pa-decision"));
 
     var rows = mapper.map(APPLICATION, events);

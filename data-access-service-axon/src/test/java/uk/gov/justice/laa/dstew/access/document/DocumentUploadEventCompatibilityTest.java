@@ -26,9 +26,9 @@ class DocumentUploadEventCompatibilityTest {
          "sourceService":"CIVIL_APPLY","applicationDataVersion":3}
         """;
     var event = objectMapper.readValue(json, ApplicationDocumentUploadedEvent.class);
-    assertThat(event.fileSuffix()).isNull();
+    assertThat(event.fileSuffix().isErased()).isTrue();
     assertThat(event.applicationDataVersion()).isEqualTo(3L);
-    assertThat(event.documentType()).isEqualTo("GATEWAY_EVIDENCE");
+    assertThat(event.documentType().value()).isEqualTo("GATEWAY_EVIDENCE");
   }
 
   @Test
@@ -42,7 +42,7 @@ class DocumentUploadEventCompatibilityTest {
          "sourceService":"CIVIL_APPLY"}
         """;
     var event = objectMapper.readValue(json, PriorAuthorityDocumentUploadedEvent.class);
-    assertThat(event.fileSuffix()).isNull();
+    assertThat(event.fileSuffix().isErased()).isTrue();
     assertThat(event.parentApplicationId())
         .isEqualTo(UUID.fromString("00000000-0000-0000-0000-000000000003"));
   }

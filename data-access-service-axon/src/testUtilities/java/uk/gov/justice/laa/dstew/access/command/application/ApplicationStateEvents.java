@@ -9,6 +9,7 @@ import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpd
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
+import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 
 /** Builds common application event histories for linked-group tests. */
 public final class ApplicationStateEvents {
@@ -81,7 +82,15 @@ public final class ApplicationStateEvents {
 
   private static ApplicationCreatedEvent created(UUID applicationId) {
     return new ApplicationCreatedEvent(
-        applicationId, 0L, "hash", "APPLICATION_SUBMITTED", 1, OCCURRED_AT, null, null);
+        applicationId,
+        0L,
+        "hash",
+        "APPLICATION_SUBMITTED",
+        1,
+        OCCURRED_AT,
+        (List<PotentialDuplicate>) null,
+        null,
+        null);
   }
 
   private static ApplicationReadyForManualAssessmentEvent ready(UUID applicationId) {

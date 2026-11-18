@@ -35,6 +35,7 @@ import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.WorkListAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.WorkListUnassignRequest;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
+import uk.gov.justice.laa.dstew.access.testutils.EventTypeNames;
 
 class MultiAggregateCommandHandlerIntegrationTest extends BaseIntegrationTest {
 
@@ -234,7 +235,7 @@ class MultiAggregateCommandHandlerIntegrationTest extends BaseIntegrationTest {
         """,
         Long.class,
         aggregateId.toString(),
-        eventType.getName());
+        EventTypeNames.of(eventType));
   }
 
   private String assignedEvent(UUID aggregateId) {
@@ -247,7 +248,7 @@ class MultiAggregateCommandHandlerIntegrationTest extends BaseIntegrationTest {
         """,
         String.class,
         aggregateId.toString(),
-        WorkItemAssigned.class.getName());
+        EventTypeNames.of(WorkItemAssigned.class));
   }
 
   private void assertSequenceHasNoGaps(UUID aggregateId) {

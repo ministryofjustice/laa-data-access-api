@@ -9,7 +9,7 @@ import org.axonframework.messaging.eventhandling.annotation.Event;
 import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 
 /** Emitted when removing a member leaves a linked group with no active membership. */
-@Event
+@Event(namespace = "access", name = "LinkedApplicationGroupDissolved")
 public record LinkedApplicationGroupDissolvedEvent(
     @EventTag(key = "LinkedApplicationGroupAggregate") UUID groupId,
     UUID formerLeadApplicationId,

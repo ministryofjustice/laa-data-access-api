@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "access.PriorAuthorityDraftStarted kept fields",
+  "description": "Fields kept on the stored event. Every other field is content, stored apart so that it can be erased.",
+  "type": "object",
+  "properties": {
+    "priorAuthorityId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "applicationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "priorAuthorityType": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "schemaVersion": {
+      "type": "integer"
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "officeCode": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "priorAuthorityId",
+    "applicationId",
+    "priorAuthorityType",
+    "schemaVersion",
+    "occurredAt",
+    "officeCode"
+  ],
+  "additionalProperties": false
+}

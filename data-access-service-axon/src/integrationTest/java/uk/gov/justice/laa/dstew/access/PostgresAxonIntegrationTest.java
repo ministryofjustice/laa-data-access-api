@@ -158,7 +158,11 @@ class PostgresAxonIntegrationTest {
     assertThat(
             environment.getProperty("spring.main.allow-circular-references", Boolean.class, false))
         .isFalse();
-    assertThat(eventStorageEngine).isInstanceOf(AggregateBasedJpaEventStorageEngine.class);
+    assertThat(eventStorageEngine.getClass().getSimpleName())
+        .isEqualTo("ContentSeparatingStorageEngine");
+    assertThat(eventStorageEngine)
+        .extracting("delegate")
+        .isInstanceOf(AggregateBasedJpaEventStorageEngine.class);
     assertThat(axonTables).containsExactly("domain_event_entry", "token_entry");
   }
 
@@ -184,9 +188,11 @@ class PostgresAxonIntegrationTest {
 
     List<Map<String, Object>> events =
         jdbcTemplate.queryForList(
-            "SELECT aggregate_identifier, payload_type, sequence_number, convert_from(payload, 'UTF8') AS payload "
-                + "FROM axon.domain_event_entry "
-                + "WHERE aggregate_identifier = ? ORDER BY sequence_number",
+            "SELECT e.aggregate_identifier, e.payload_type, e.sequence_number, "
+                + "convert_from(e.payload, 'UTF8') AS payload, c.content::text AS content "
+                + "FROM axon.domain_event_entry e "
+                + "LEFT JOIN axon.event_content c ON c.event_id = e.event_identifier "
+                + "WHERE e.aggregate_identifier = ? ORDER BY e.sequence_number",
             applicationId.toString());
 
     assertThat(events)
@@ -195,16 +201,15 @@ class PostgresAxonIntegrationTest {
         .satisfies(
             event -> {
               assertThat(event.get("aggregate_identifier")).isEqualTo(applicationId.toString());
-              assertThat(event.get("payload_type"))
-                  .isEqualTo(
-                      "uk.gov.justice.laa.dstew.access.command.application"
-                          + ".ApplicationDocumentUploadedEvent");
+              assertThat(event.get("payload_type")).isEqualTo("access.ApplicationDocumentUploaded");
               assertThat(event.get("sequence_number")).isEqualTo(1L);
               assertThat(event.get("payload").toString())
-                  .doesNotContain("originalFilename.pdf", "originalFilename", "fileName");
+                  .doesNotContain("originalFilename.pdf", "originalFilename", "fileName")
+                  .doesNotContain("fileSuffix");
+              assertThat(event.get("content").toString()).doesNotContain("originalFilename");
               assertThat(
                       objectMapper
-                          .readTree(event.get("payload").toString())
+                          .readTree(event.get("content").toString())
                           .get("fileSuffix")
                           .asString())
                   .isEqualTo(".pdf");
@@ -416,6 +421,7 @@ class PostgresAxonIntegrationTest {
             "application_group_route",
             "application_list_index",
             "domain_event_entry",
+            "event_content",
             "flyway_schema_history",
             "lifecycle_stream",
             "linked_application_group_current_state",
@@ -571,9 +577,7 @@ class PostgresAxonIntegrationTest {
         .singleElement()
         .satisfies(
             event -> {
-              assertThat(event.get("payload_type"))
-                  .isEqualTo(
-                      "uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent");
+              assertThat(event.get("payload_type")).isEqualTo("access.ApplicationCreated");
               assertThat(event.get("sequence_number")).isEqualTo(0L);
             });
   }
@@ -606,7 +610,7 @@ class PostgresAxonIntegrationTest {
                 applicationId.toString()))
         .satisfies(
             event -> {
-              assertThat(event.get("payload_type").toString()).endsWith("ApplicationUpdatedEvent");
+              assertThat(event.get("payload_type").toString()).endsWith("ApplicationUpdated");
               assertThat(event.get("payload").toString())
                   .contains("applicationDataVersion", "APPLICATION_SUBMITTED")
                   .doesNotContain(
@@ -847,7 +851,7 @@ class PostgresAxonIntegrationTest {
         .satisfies(
             event -> {
               assertThat(event.get("payload_type").toString())
-                  .endsWith("ApplicationReadyForManualAssessmentEvent");
+                  .endsWith("ApplicationReadyForManualAssessment");
               assertThat(event.get("payload").toString())
                   .contains("applicationDataVersion")
                   .doesNotContain("applicationContent", "LAA-123");
@@ -1273,7 +1277,7 @@ class PostgresAxonIntegrationTest {
         .singleElement()
         .satisfies(
             event -> {
-              assertThat(event.get("payload_type")).asString().contains("ApplicationCreatedEvent");
+              assertThat(event.get("payload_type")).asString().contains("ApplicationCreated");
               assertThat(event.get("sequence_number")).isEqualTo(0L);
             });
   }
