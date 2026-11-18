@@ -22,16 +22,10 @@ public class UpdateApplicationCommandHandler {
       ApplicationDataStore applicationDataStore,
       ApplicationUpdateDetailsFactory detailsFactory,
       EventAppender eventAppender) {
-    var current =
-        applicationDataStore.get(
-            command.applicationId(), application.getState().getApplicationDataVersion());
-    String nextStatus =
-        command.status() == null ? application.getState().getStatus() : command.status();
-    boolean enteringSubmitted =
-        !"APPLICATION_SUBMITTED".equals(application.getState().getStatus())
-            && "APPLICATION_SUBMITTED".equals(nextStatus);
-    var updated = detailsFactory.prepare(command, current, enteringSubmitted);
-    var event = ApplicationDecider.decideUpdate(application.getState(), command);
+    var current = ApplicationCommandHandlerSupport.currentContent(application);
+    var parsed = detailsFactory.parse(command);
+    var event = ApplicationDecider.decideUpdate(application.getState(), command, parsed);
+    var updated = detailsFactory.prepare(parsed, command, current, event.enteredSubmitted());
     applicationDataStore.append(
         command.applicationId(),
         event.applicationDataVersion(),

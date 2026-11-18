@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
@@ -36,4 +37,11 @@ public class ApplicationState {
   Erasable<String> draftSerialisedRequest = Erasable.erased();
   Erasable<List<PotentialDuplicate>> draftPotentialDuplicates = Erasable.erased();
   Map<UUID, Erasable<String>> draftDocumentFilenames = new LinkedHashMap<>();
+  // Kept linking keys and decision fingerprint, available after content is erased.
+  List<UUID> proceedingIds = new ArrayList<>();
+  String decisionRequestFingerprint;
+  // Kept decision value per proceeding, merged across decisions; informs retention schedules.
+  Map<UUID, String> proceedingDecisions = new LinkedHashMap<>();
+  // Current submitted content, folded from event content; erased if any part of it is erased.
+  Erasable<ApplicationDataPayload> content = Erasable.erased();
 }
