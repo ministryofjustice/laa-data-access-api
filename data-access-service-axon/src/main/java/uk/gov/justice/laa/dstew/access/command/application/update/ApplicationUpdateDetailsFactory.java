@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.command.application.update;
 
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContentParser;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetails;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 
 /** Reconstructs a complete immutable data payload from an Application PATCH. */
@@ -14,10 +15,17 @@ public class ApplicationUpdateDetailsFactory {
     this.applicationContentParser = applicationContentParser;
   }
 
-  /** Parses replacement content and builds an updated data payload. */
+  /** Parses the replacement content of an Application PATCH. */
+  public ParsedAppContentDetails parse(UpdateApplicationCommand command) {
+    return applicationContentParser.parse(command.applicationContent());
+  }
+
+  /** Builds an updated data payload from already parsed replacement content. */
   public ApplicationDataPayload prepare(
-      UpdateApplicationCommand command, ApplicationDataPayload current, boolean resetAssessment) {
-    var parsed = applicationContentParser.parse(command.applicationContent());
+      ParsedAppContentDetails parsed,
+      UpdateApplicationCommand command,
+      ApplicationDataPayload current,
+      boolean resetAssessment) {
     return current.withApplicationUpdate(
         parsed.client(),
         parsed.provider(),
