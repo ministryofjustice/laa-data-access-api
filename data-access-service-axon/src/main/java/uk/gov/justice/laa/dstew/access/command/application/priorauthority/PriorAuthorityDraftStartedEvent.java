@@ -8,7 +8,7 @@ import org.axonframework.messaging.eventhandling.annotation.Event;
 import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 
 /** Event produced when a Prior Authority draft is first created. */
-@Event
+@Event(namespace = "access", name = "PriorAuthorityDraftStarted")
 public record PriorAuthorityDraftStartedEvent(
     @EventTag(key = "PriorAuthorityAggregate") UUID priorAuthorityId,
     UUID applicationId,

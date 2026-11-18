@@ -8,7 +8,7 @@ import org.axonframework.messaging.eventhandling.annotation.Event;
 import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 
 /** Thin, replayable fact that an Application's immutable data and current state advanced. */
-@Event
+@Event(namespace = "access", name = "ApplicationUpdated")
 public record ApplicationUpdatedEvent(
     @EventTag(key = "ApplicationAggregate") UUID applicationId,
     long applicationVersion,

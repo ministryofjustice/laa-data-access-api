@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import java.lang.reflect.Type;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
@@ -21,20 +22,27 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.axonframework.conversion.jackson.JacksonConverter;
 import org.axonframework.eventsourcing.eventstore.jpa.AggregateEventEntry;
 import org.axonframework.messaging.core.MessageType;
 import org.axonframework.messaging.core.annotation.AnnotationMessageTypeResolver;
 import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.GenericEventMessage;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
+import org.axonframework.messaging.eventhandling.conversion.DelegatingEventConverter;
 import org.axonframework.messaging.eventhandling.conversion.EventConverter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import tools.jackson.databind.node.ObjectNode;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
+import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
+import uk.gov.justice.laa.dstew.access.eventcontent.EventContentSeparator;
+import uk.gov.justice.laa.dstew.access.eventcontent.EventJson;
 
 @ExtendWith(MockitoExtension.class)
 class LifecycleStreamReaderTest {
@@ -196,6 +204,59 @@ class LifecycleStreamReaderTest {
         .hasMessageContaining("access.Same");
   }
 
+  @Test
+  void givenStoredKeptFieldsOnly_whenReadWithEventJsonConverter_thenDecodesWithContentErased() {
+    var json = new EventJson();
+    var priorAuthorityId = UUID.randomUUID();
+    var written =
+        new PriorAuthorityDecisionMadeEvent(
+            priorAuthorityId,
+            GENESIS,
+            "EXPERT",
+            3L,
+            "GRANTED",
+            "justified",
+            new BigDecimal("125.50"),
+            OCCURRED_AT,
+            OCCURRED_AT);
+    String type = eventName(PriorAuthorityDecisionMadeEvent.class);
+    var kept =
+        new EventContentSeparator(json)
+            .separate(type, (ObjectNode) json.mapper().valueToTree(written))
+            .kept();
+    when(repository.findAllByGenesisIdOrderByOccurredAtAscIdAsc(GENESIS))
+        .thenReturn(List.of(pointer("decision", LifecycleStreamProjection.LOCAL_SOURCE)));
+    givenStoredEntries(
+        List.of("decision"),
+        entry("decision", type, json.mapper().writeValueAsBytes(kept), METADATA));
+    var realReader =
+        new LifecycleStreamReader(
+            repository,
+            new DelegatingEventConverter(new JacksonConverter(json.mapper())),
+            entityManager);
+
+    var events = realReader.read(GENESIS);
+
+    assertThat(events)
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.payload())
+                  .isEqualTo(
+                      new PriorAuthorityDecisionMadeEvent(
+                          priorAuthorityId,
+                          GENESIS,
+                          "EXPERT",
+                          3L,
+                          "GRANTED",
+                          Erasable.erased(),
+                          Erasable.erased(),
+                          Erasable.erased(),
+                          OCCURRED_AT));
+              assertThat(event.metadata()).containsEntry("X-Service-Name", "CIVIL_APPLY");
+            });
+  }
+
   private void givenStoredEntries(List<String> identifiers, AggregateEventEntry... entries) {
     when(entityManager.createQuery(any(String.class), eq(AggregateEventEntry.class)))
         .thenReturn(query);
@@ -214,11 +275,16 @@ class LifecycleStreamReaderTest {
   }
 
   private static AggregateEventEntry entry(String identifier, String type, byte[] metadata) {
+    return entry(identifier, type, "{}".getBytes(), metadata);
+  }
+
+  private static AggregateEventEntry entry(
+      String identifier, String type, byte[] payload, byte[] metadata) {
     return new AggregateEventEntry(
         identifier,
         type,
         "1.0",
-        "{}".getBytes(),
+        payload,
         metadata,
         OCCURRED_AT,
         "ApplicationAggregate",

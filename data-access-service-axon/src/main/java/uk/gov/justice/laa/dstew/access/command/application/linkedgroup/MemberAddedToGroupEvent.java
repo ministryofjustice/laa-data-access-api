@@ -13,7 +13,7 @@ import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
  * Emitted when an application is added to an already-existing {@link
  * LinkedApplicationGroupAggregate}.
  */
-@Event
+@Event(namespace = "access", name = "MemberAddedToGroup")
 public record MemberAddedToGroupEvent(
     @EventTag(key = "LinkedApplicationGroupAggregate") UUID groupId,
     UUID leadApplicationId,
