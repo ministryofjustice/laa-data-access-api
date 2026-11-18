@@ -1,18 +1,17 @@
 package uk.gov.justice.laa.dstew.access.bdd.steps;
 
 import io.cucumber.java.en.And;
-import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import net.serenitybdd.junit5.SerenityJUnit5Extension;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(SerenityJUnit5Extension.class)
-public class DraftApplicationJourneySteps {
+public class TestDraftApplicationJourneySteps {
 
-  @Given("existing draft application")
-  public void existingDraftApplication() {
-    System.out.println("Given existing draft application");
+  @And("I create a draft application")
+  public void iCreateADraftApplication() {
+    System.out.println("And I create a draft application");
   }
 
   @And("I upload supporting document to the application")

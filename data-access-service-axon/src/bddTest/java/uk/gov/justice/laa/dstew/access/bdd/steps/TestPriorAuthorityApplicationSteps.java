@@ -1,13 +1,20 @@
 package uk.gov.justice.laa.dstew.access.bdd.steps;
 
 import io.cucumber.java.PendingException;
-import io.cucumber.java.en.Given;
+import io.cucumber.java.en.And;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 
-public class PriorAuthorityApplicationSteps {
-  @Given("existing prior-authority draft")
-  public void existingPriorAuthorityDraft() {
+public class TestPriorAuthorityApplicationSteps {
+
+  @And("The application is granted")
+  public void theApplicationIsGranted() {
+    // Write code here that turns the phrase above into concrete actions
+    throw new PendingException();
+  }
+
+  @And("I create a prior authority draft for the application")
+  public void iCreateAPriorAuthorityDraftForTheApplication() {
     // Write code here that turns the phrase above into concrete actions
     throw new PendingException();
   }

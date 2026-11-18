@@ -5,7 +5,10 @@ Feature: Manage a Prior Authority draft and its supporting documents
   so that I can submit a complete Prior Authority application
 
   Background: User create draft PA application
-   Given existing prior-authority draft
+    Given I am logged in as "smoke-test"
+    And I submit the draft application
+    And The application is granted
+    And I create a prior authority draft for the application
 
   @updatePA
   Scenario: Update a Prior Authority draft

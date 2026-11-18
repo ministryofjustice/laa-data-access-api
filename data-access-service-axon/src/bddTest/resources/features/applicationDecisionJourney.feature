@@ -5,7 +5,10 @@ Feature: caseworker makes decision on applications 'Manual' granted
   So the prior authority can be created and submitted
 
   Background: applications out come is 'Manual' granted
-    Given existing application with outcome 'Manual' granted
+    Given I am logged in as "smoke-test"
+    And I create a draft application
+    And I submit the draft application
+    And the application with outcome 'Manual' granted
 
   @applicationDecision
   Scenario Outline: caseworker can assign themselves to the application and make a decision

@@ -5,6 +5,7 @@ Feature: caseworker makes decision on PA applications
   So decision is made the PA application
 
   Background: caseworker has existing PA application to make decision on
+    Given I am logged in as "smoke-test"
     Given existing PA application
 
   @PAApplicationDecision
