@@ -196,7 +196,8 @@ class ApplicationAggregateDraftTest {
                 details.schemaVersion(),
                 details.occurredAt(),
                 details.potentialDuplicates(),
-                details.provider().getOfficeCode()));
+                details.provider().getOfficeCode(),
+                "LAA-123"));
 
     ArgumentCaptor<ApplicationDataPayload> payload =
         ArgumentCaptor.forClass(ApplicationDataPayload.class);
@@ -476,7 +477,8 @@ class ApplicationAggregateDraftTest {
                 details.schemaVersion(),
                 details.occurredAt(),
                 details.potentialDuplicates(),
-                details.provider().getOfficeCode()));
+                details.provider().getOfficeCode(),
+                "LAA-123"));
 
     verify(applicationDataStore)
         .append(

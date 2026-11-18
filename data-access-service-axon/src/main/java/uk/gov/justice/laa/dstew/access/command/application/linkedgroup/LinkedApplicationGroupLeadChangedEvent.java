@@ -10,7 +10,7 @@ import org.axonframework.messaging.eventhandling.annotation.Event;
 import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 
 /** Emitted when the lead of a linked application group changes. */
-@Event
+@Event(namespace = "access", name = "LinkedApplicationGroupLeadChanged")
 public record LinkedApplicationGroupLeadChangedEvent(
     @EventTag(key = "LinkedApplicationGroupAggregate") UUID groupId,
     UUID previousLeadApplicationId,

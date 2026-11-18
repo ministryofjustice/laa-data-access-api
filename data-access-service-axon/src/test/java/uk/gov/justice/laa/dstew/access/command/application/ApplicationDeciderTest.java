@@ -349,7 +349,8 @@ class ApplicationDeciderTest {
             "schemaVersion",
             "occurredAt",
             "potentialDuplicates",
-            "officeCode");
+            "officeCode",
+            "laaReference");
   }
 
   // ── decideStartDraft / decideSubmitDraft ─────────────────────

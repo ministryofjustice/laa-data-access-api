@@ -63,6 +63,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicatio
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdateDetailsFactory;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationCommand;
+import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
@@ -108,7 +109,8 @@ class ApplicationAggregateTest {
                 created.schemaVersion(),
                 created.occurredAt(),
                 created.potentialDuplicates(),
-                created.officeCode()))
+                created.officeCode(),
+                "LAA-123"))
         .when()
         .command(
             new ApplicationDocumentUploadCommand(
@@ -486,8 +488,9 @@ class ApplicationAggregateTest {
             "APPLICATION_IN_PROGRESS",
             1,
             Instant.parse("2026-07-21T09:00:00Z"),
+            Erasable.erased(),
             null,
-            null);
+            "LAA-123");
 
     fixture
         .given()
@@ -1232,8 +1235,9 @@ class ApplicationAggregateTest {
             "APPLICATION_SUBMITTED",
             1,
             Instant.now(),
+            Erasable.erased(),
             null,
-            null);
+            "LAA-123");
     ApplicationDataPayload currentPayload = mock(ApplicationDataPayload.class);
     ApplicationDataPayload updatedPayload = mock(ApplicationDataPayload.class);
     when(applicationDataStore.get(applicationId, 0L)).thenReturn(currentPayload);

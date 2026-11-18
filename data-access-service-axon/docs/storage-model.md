@@ -73,6 +73,7 @@ data, and retention must be able to delete application rows while thin events re
 | Table | Role | Authoritative? | Mutable? | Reset/replay? | Retention behaviour |
 |---|---|---:|---:|---:|---|
 | `domain_event_entry` | Aggregate event streams | Yes, for control state and transitions | Append-only | Source of replay | Retained by this design |
+| `event_content` | Erasable content of individual events, keyed by event identifier | Yes, for that content | Insert-only; updates rejected | No; rejoined on load | Erased by deleting the row |
 | `snapshot_event_entry` | Optional aggregate snapshots | No; optimization only | Replaceable | Rebuilt/discarded | Must not be the only source |
 | `application_data` | Complete sensitive payload versions | Yes, for detailed content | Append-only | Not a projection | Deleted only through retention function |
 | `application_current_state` | Current application query model | No | Yes | Yes | Pointer may outlive deleted payload |
@@ -80,6 +81,11 @@ data, and retention must be able to delete application rows while thin events re
 | `linked_application_group_current_state` | Group query model | No | Yes | Yes | Rebuilt from group events |
 | `token_entry` | Tracking processor positions and claims | Operational state | Yes, via Axon | Reset through processor APIs | Not application retention data |
 | `caseworkers` | Caseworker reference directory | Yes for caseworker existence | Yes | No | Requires its own policy |
+
+Stored event payloads hold only the fields listed in each event type's kept-field schema; the rest
+of the event is a row in `event_content`, written in the same transaction and joined back when an
+aggregate loads. Its foreign key to `domain_event_entry` is deferred to the end of the transaction.
+See [ADR 0007](adr/0007-event-content-is-stored-beside-its-event.md).
 
 ## Event and data version relationship
 

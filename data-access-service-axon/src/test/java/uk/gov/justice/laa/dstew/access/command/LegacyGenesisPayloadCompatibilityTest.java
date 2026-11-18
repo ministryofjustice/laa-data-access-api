@@ -7,9 +7,6 @@ import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import org.axonframework.extension.springboot.autoconfig.JacksonConverterAutoConfiguration;
-import org.axonframework.messaging.core.ClassBasedMessageTypeResolver;
-import org.axonframework.messaging.core.MessageType;
-import org.axonframework.messaging.core.annotation.AnnotationMessageTypeResolver;
 import org.axonframework.messaging.eventhandling.conversion.EventConverter;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -23,7 +20,6 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationEvolve;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentTypeUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentUploadedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDraftUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityEvolve;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityState;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
@@ -154,19 +150,6 @@ class LegacyGenesisPayloadCompatibilityTest {
     PriorAuthorityEvolve.apply(expected, current);
     assertThat(replayed).usingRecursiveComparison().isEqualTo(expected);
     assertThat(replayed.getUploadedDocuments().getFirst().documentType()).isEqualTo("INVOICE");
-  }
-
-  /** Adding plain {@code @Event} must not change the type name already stored for this event. */
-  @Test
-  void givenPlainEventAnnotation_whenDraftUpdateTypeResolved_thenMatchesStoredClassName() {
-    MessageType unannotated =
-        new ClassBasedMessageTypeResolver().resolveOrThrow(PriorAuthorityDraftUpdatedEvent.class);
-    MessageType annotated =
-        new AnnotationMessageTypeResolver().resolveOrThrow(PriorAuthorityDraftUpdatedEvent.class);
-
-    assertThat(annotated).isEqualTo(unannotated);
-    assertThat(annotated.name()).isEqualTo(PriorAuthorityDraftUpdatedEvent.class.getName());
-    assertThat(annotated.version()).isEqualTo(MessageType.DEFAULT_VERSION);
   }
 
   private static <T> T read(String json, Class<T> type) {

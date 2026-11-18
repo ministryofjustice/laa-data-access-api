@@ -186,7 +186,7 @@ class LinkedGroupJustificationIntegrationTest extends AbstractLinkedGroupIntegra
         """
         CREATE FUNCTION axon.reject_test_justification_create() RETURNS trigger AS $$
         BEGIN
-          IF NEW.payload_type LIKE '%LinkedApplicationGroupCreatedEvent' THEN
+          IF NEW.payload_type = 'access.LinkedApplicationGroupCreated' THEN
             RAISE EXCEPTION 'forced group creation failure';
           END IF;
           RETURN NEW;

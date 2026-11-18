@@ -49,7 +49,9 @@ public class GenesisIdsTest {
   public static Stream<Arguments> events() {
     return Stream.of(
         scoped(
-            new ApplicationCreatedEvent(APP, 1L, "fp", "S", 1, OCCURRED_AT, List.of(), "OFF"), APP),
+            new ApplicationCreatedEvent(
+                APP, 1L, "fp", "S", 1, OCCURRED_AT, List.of(), "OFF", "LAA-1"),
+            APP),
         scoped(new ApplicationDraftStartedEvent(APP, 1, "fp", OCCURRED_AT, "OFF"), APP),
         scoped(new ApplicationUpdatedEvent(APP, 1L, 1L, "A", "B", OCCURRED_AT), APP),
         scoped(new ApplicationReadyForManualAssessmentEvent(APP, 1L, 1L, OCCURRED_AT), APP),

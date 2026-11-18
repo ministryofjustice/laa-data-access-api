@@ -24,7 +24,10 @@ import org.springframework.util.ClassUtils;
 /**
  * Reads a genesis's lifecycle stream: its events, in the order they occurred, whichever aggregate
  * appended them. Axon has no load-by-identifier API, so stored rows are decoded here the same way
- * Axon's JPA storage engine decodes them.
+ * Axon's JPA storage engine decodes them, with the same {@link EventConverter}.
+ *
+ * <p>Stored rows hold kept fields only. Content is not joined, so content fields read as erased;
+ * readers of the stream must use kept fields only.
  */
 @Component
 public class LifecycleStreamReader {

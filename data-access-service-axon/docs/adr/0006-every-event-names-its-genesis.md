@@ -177,7 +177,8 @@ concerning its genesis, not that it includes every event concerning every linked
 
 - New `@Event` types must implement `GenesisScoped`; the build enforces this.
 - No upcasters and no data reset: legacy events missing these fields are left out of the
-  lifecycle streams of the applications they concern. There is no production data.
+  lifecycle streams of the applications they concern. There is no production data. (The event
+  content foundation, [ADR 0007][content-adr], deployed with this work, needs a one-off reset.)
 - Genesis ID set order is not defined and is not event-history order.
 - Event pointers and identifiers are not automatically anonymous. Retention must account for
   content versions, documents, downstream copies and references held by other geneses.
@@ -219,3 +220,4 @@ processing is a read-side concern, separate from whether a business command succ
 [proposal]: https://dsdmoj.atlassian.net/wiki/spaces/WHCZA/pages/6367543645/Genesis+ID
 [retention-adr]: 0003-define-application-behaviour-after-retention-deletion.md
 [assignment-adr]: 0005-linked-group-assignment-stays-per-application.md
+[content-adr]: 0007-event-content-is-stored-beside-its-event.md
