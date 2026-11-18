@@ -32,6 +32,8 @@ class EventContentArchitectureTest {
   private static final JavaClasses classes =
       new ClassFileImporter()
           .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+          // Shared test helpers, such as the in-memory content store, are not production code.
+          .withImportOption(location -> !location.contains("/testUtilities/"))
           .importPackages(ROOT);
 
   /**

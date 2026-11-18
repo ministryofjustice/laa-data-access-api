@@ -12,6 +12,7 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
+import org.springframework.context.annotation.Import;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -43,6 +44,7 @@ import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerFactory;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsDownloadResult;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsUploadResult;
+import uk.gov.justice.laa.dstew.access.testsupport.InMemoryEventContentStoreConfig;
 
 /**
  * Shared scaffolding for Pact provider verification.
@@ -54,7 +56,8 @@ import uk.gov.justice.laa.dstew.access.service.sds.SdsUploadResult;
  *
  * <p>Only systems outside the service are faked. Secure Document Storage is replaced by a Mockito
  * bean, the same way the module's integration tests do it, until a consumer contract with the SDS
- * team exists. Login uses the dev token and SNS publication is switched off.
+ * team exists. Login uses the dev token and SNS publication is switched off. Event content is kept
+ * in memory, because H2 has no {@code axon} schema.
  *
  * <p>Pact replays each interaction in isolation and calls the state handler first. The wait inside
  * the handler is what absorbs the projection lag of the event-sourced write path.
@@ -63,6 +66,7 @@ import uk.gov.justice.laa.dstew.access.service.sds.SdsUploadResult;
     classes = DataAccessServiceAxonApplication.class,
     webEnvironment = WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("pact")
+@Import(InMemoryEventContentStoreConfig.class)
 public abstract class AbstractProviderPactTests {
 
   private static final String STATE_SETUP_PRINCIPAL = "pact-provider-state-setup";
