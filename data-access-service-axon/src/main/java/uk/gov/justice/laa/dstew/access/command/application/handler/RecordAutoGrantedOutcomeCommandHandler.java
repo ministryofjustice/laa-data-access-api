@@ -1,15 +1,14 @@
 package uk.gov.justice.laa.dstew.access.command.application.handler;
 
-import java.util.Objects;
 import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.axonframework.modelling.annotation.InjectEntity;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationDecider;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
@@ -27,15 +26,13 @@ public class RecordAutoGrantedOutcomeCommandHandler {
       @InjectEntity(idProperty = "applicationId") ApplicationAggregate application,
       ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
-    validateAutomaticOutcome(command, application, applicationDataStore);
+    validateAutomaticOutcome(command, application);
     if (application.getState().getAutoGranted() == AutoGrantedState.AUTOGRANTED) {
       return;
     }
 
-    var current =
-        applicationDataStore.get(
-            command.applicationId(), application.getState().getApplicationDataVersion());
-    MakeApplicationDecisionCommand decision = automaticGrantDecision(command, application, current);
+    var current = ApplicationCommandHandlerSupport.currentContent(application);
+    MakeApplicationDecisionCommand decision = automaticGrantDecision(command, application);
     MakeApplicationDecisionCommandHandler.recordDecision(
         decision,
         AutoGrantedState.AUTOGRANTED,
@@ -46,9 +43,7 @@ public class RecordAutoGrantedOutcomeCommandHandler {
   }
 
   private static void validateAutomaticOutcome(
-      RecordAutoGrantedOutcomeCommand command,
-      ApplicationAggregate application,
-      ApplicationDataStore applicationDataStore) {
+      RecordAutoGrantedOutcomeCommand command, ApplicationAggregate application) {
     ApplicationState state = application.getState();
     if (state.getAutoGranted() == AutoGrantedState.MANUAL) {
       throw new ApplicationAutoGrantOutcomeConflictException(command.applicationId());
@@ -56,23 +51,19 @@ public class RecordAutoGrantedOutcomeCommandHandler {
     if (state.getAutoGranted() != AutoGrantedState.AUTOGRANTED) {
       return;
     }
-    var recorded =
-        applicationDataStore.get(command.applicationId(), state.getApplicationDataVersion());
-    if (!Objects.equals(recorded.decisionSerialisedRequest(), command.serialisedRequest())) {
+    if (!ApplicationDecider.isSameAutoGrantRequest(state, command.serialisedRequest())) {
       throw new ApplicationAutoGrantOutcomeConflictException(command.applicationId());
     }
   }
 
   private static MakeApplicationDecisionCommand automaticGrantDecision(
-      RecordAutoGrantedOutcomeCommand command,
-      ApplicationAggregate application,
-      ApplicationDataPayload current) {
+      RecordAutoGrantedOutcomeCommand command, ApplicationAggregate application) {
     var grantedProceedings =
-        current.proceedings().stream()
+        application.getState().getProceedingIds().stream()
             .map(
-                proceeding ->
+                proceedingId ->
                     new MakeDecisionProceeding(
-                        proceeding.getId(), DecisionValue.GRANTED.name(), null, "Autogranted"))
+                        proceedingId, DecisionValue.GRANTED.name(), null, "Autogranted"))
             .toList();
     return new MakeApplicationDecisionCommand(
         command.applicationId(),

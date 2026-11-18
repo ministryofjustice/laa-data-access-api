@@ -21,9 +21,7 @@ public class CreateNoteCommandHandler {
       ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
     var event = ApplicationDecider.decideNote(application.getState(), command);
-    var current =
-        applicationDataStore.get(
-            command.applicationId(), application.getState().getApplicationDataVersion());
+    var current = ApplicationCommandHandlerSupport.currentContent(application);
     applicationDataStore.append(
         command.applicationId(),
         event.applicationDataVersion(),

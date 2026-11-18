@@ -13,8 +13,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
+import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
@@ -26,9 +27,11 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentChange
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
+import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Unit tests for {@link ApplicationDecider}. */
@@ -288,6 +291,11 @@ class ApplicationDeciderTest {
     assertThat(event.schemaVersion()).isEqualTo(1);
     assertThat(event.applicationDataVersion()).isEqualTo(0L);
     assertThat(event.officeCode()).isEqualTo("1A001B");
+    assertThat(event.proceedingIds())
+        .isEqualTo(details.proceedings().stream().map(Proceeding::getId).toList());
+    assertThat(event.content().value().proceedings()).isEqualTo(details.proceedings());
+    assertThat(event.content().value().provider()).isEqualTo(details.provider());
+    assertThat(event.serialisedRequest()).isEqualTo(Erasable.of(details.serialisedRequest()));
   }
 
   @Test
@@ -351,7 +359,10 @@ class ApplicationDeciderTest {
             "occurredAt",
             "potentialDuplicates",
             "officeCode",
-            "laaReference");
+            "laaReference",
+            "proceedingIds",
+            "content",
+            "serialisedRequest");
   }
 
   // ── decideStartDraft / decideSubmitDraft ─────────────────────
@@ -458,7 +469,7 @@ class ApplicationDeciderTest {
     ApplicationState state = stateAfterCreate(applicationId, "fp", 1);
     state.applicationVersion = 0L;
     state.applicationDataVersion = 0L;
-    ApplicationDataPayload current = payloadWithProceeding(applicationId, proceedingId);
+    state.proceedingIds.add(proceedingId);
     Instant occurredAt = Instant.parse("2026-07-19T10:00:00Z");
 
     ApplicationDecisionMadeEvent event =
@@ -473,14 +484,21 @@ class ApplicationDeciderTest {
                 null,
                 "{}",
                 "desc",
-                occurredAt),
-            current);
+                occurredAt));
 
     assertThat(event.applicationId()).isEqualTo(applicationId);
     assertThat(event.applicationVersion()).isEqualTo(1L);
     assertThat(event.applicationDataVersion()).isEqualTo(1L);
     assertThat(event.overallDecision()).isEqualTo("REFUSED");
     assertThat(event.occurredAt()).isEqualTo(occurredAt);
+    assertThat(event.decisionRequestFingerprint()).isEqualTo(PayloadFingerprint.compute("{}"));
+    assertThat(event.meritsDecisions())
+        .isEqualTo(
+            Erasable.of(
+                Map.of(proceedingId, new ApplicationMeritsDecision("REFUSED", "reason", "just"))));
+    assertThat(event.certificate().isErased()).isTrue();
+    assertThat(event.serialisedRequest()).isEqualTo(Erasable.of("{}"));
+    assertThat(event.eventDescription()).isEqualTo(Erasable.of("desc"));
   }
 
   @Test
@@ -499,9 +517,9 @@ class ApplicationDeciderTest {
             "{}",
             null,
             TIMESTAMP);
-    ApplicationDataPayload current = payloadWithProceeding(applicationId, UUID.randomUUID());
+    state.proceedingIds.add(UUID.randomUUID());
 
-    assertThatThrownBy(() -> ApplicationDecider.decideDecision(state, command, current))
+    assertThatThrownBy(() -> ApplicationDecider.decideDecision(state, command))
         .isInstanceOf(ApplicationVersionConflictException.class);
   }
 
@@ -512,9 +530,9 @@ class ApplicationDeciderTest {
     MakeApplicationDecisionCommand command =
         new MakeApplicationDecisionCommand(
             applicationId, null, 0L, "REFUSED", List.of(), null, "{}", null, TIMESTAMP);
-    ApplicationDataPayload current = payloadWithProceeding(applicationId, UUID.randomUUID());
+    state.proceedingIds.add(UUID.randomUUID());
 
-    assertThatThrownBy(() -> ApplicationDecider.decideDecision(state, command, current))
+    assertThatThrownBy(() -> ApplicationDecider.decideDecision(state, command))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -534,9 +552,9 @@ class ApplicationDeciderTest {
             "{}",
             null,
             TIMESTAMP);
-    ApplicationDataPayload current = payloadWithProceeding(applicationId, proceedingId);
+    state.proceedingIds.add(proceedingId);
 
-    assertThatThrownBy(() -> ApplicationDecider.decideDecision(state, command, current))
+    assertThatThrownBy(() -> ApplicationDecider.decideDecision(state, command))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -557,9 +575,9 @@ class ApplicationDeciderTest {
             "{}",
             null,
             TIMESTAMP);
-    ApplicationDataPayload current = payloadWithProceeding(applicationId, knownProceedingId);
+    state.proceedingIds.add(knownProceedingId);
 
-    assertThatThrownBy(() -> ApplicationDecider.decideDecision(state, command, current))
+    assertThatThrownBy(() -> ApplicationDecider.decideDecision(state, command))
         .isInstanceOf(ResourceNotFoundException.class);
   }
 
@@ -581,9 +599,9 @@ class ApplicationDeciderTest {
             "{}",
             null,
             TIMESTAMP);
-    ApplicationDataPayload current = payloadWithProceeding(applicationId, proceedingId);
+    state.proceedingIds.add(proceedingId);
 
-    assertThatThrownBy(() -> ApplicationDecider.decideDecision(state, command, current))
+    assertThatThrownBy(() -> ApplicationDecider.decideDecision(state, command))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -642,6 +660,7 @@ class ApplicationDeciderTest {
     assertThat(event.applicationId()).isEqualTo(applicationId);
     assertThat(event.applicationDataVersion()).isEqualTo(1L);
     assertThat(event.occurredAt()).isEqualTo(TIMESTAMP);
+    assertThat(event.noteText()).isEqualTo(Erasable.of("My note"));
   }
 
   // ── validateGranted ────────────────────────────────────────────────────────────
@@ -723,38 +742,5 @@ class ApplicationDeciderTest {
         "{}",
         Instant.parse("2026-07-15T08:00:00Z"),
         List.of());
-  }
-
-  private static ApplicationDataPayload payloadWithProceeding(
-      UUID applicationId, UUID proceedingId) {
-    ApplicationCreationDetails details =
-        new ApplicationCreationDetails(
-            "APPLICATION_SUBMITTED",
-            "LAA-123",
-            null,
-            uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider.builder()
-                .officeCode("1A001B")
-                .build(),
-            null,
-            1,
-            Instant.parse("2026-07-14T12:30:00Z"),
-            false,
-            null,
-            null,
-            "MAT",
-            "KPBLW",
-            List.of(
-                uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding.builder()
-                    .id(proceedingId)
-                    .leadProceeding(true)
-                    .description("Care order")
-                    .code("SE003")
-                    .categoryOfLawCode("MAT")
-                    .matterTypeCode("KPBLW")
-                    .build()),
-            "{}",
-            Instant.parse("2026-07-15T08:00:00Z"),
-            List.of());
-    return ApplicationDataPayload.from(details);
   }
 }

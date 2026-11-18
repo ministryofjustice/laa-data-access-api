@@ -13,7 +13,6 @@ import static uk.gov.justice.laa.dstew.access.command.application.ApplicationSta
 import static uk.gov.justice.laa.dstew.access.command.application.ApplicationStateEvents.notReady;
 import static uk.gov.justice.laa.dstew.access.command.application.ApplicationStateEvents.resubmittedAfterAssignment;
 import static uk.gov.justice.laa.dstew.access.command.application.ApplicationStateEvents.stateOf;
-import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
 
 import java.time.Instant;
 import java.util.List;
@@ -29,7 +28,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupState;
@@ -66,7 +64,7 @@ class MarkApplicationReadyGroupAssignmentTest {
   @Test
   void givenGroupAssignedToC1_whenMemberReady_thenReadyEventThenAssignedToC1() {
     givenApplicationState(stateOf(notReady(APPLICATION_ID)));
-    givenDataStore(0L);
+    givenDataStore();
     givenGroup(List.of(APPLICATION_ID, OTHER_MEMBER_ID));
     givenMember(OTHER_MEMBER_ID, activeAssigned(OTHER_MEMBER_ID, CASEWORKER_ID));
 
@@ -92,7 +90,7 @@ class MarkApplicationReadyGroupAssignmentTest {
   @Test
   void givenResubmittedMemberOfUnassignedGroup_whenReady_thenReadyEventThenUnassigned() {
     givenApplicationState(stateOf(resubmittedAfterAssignment(APPLICATION_ID, CASEWORKER_ID)));
-    givenDataStore(2L);
+    givenDataStore();
     givenGroup(List.of(APPLICATION_ID, OTHER_MEMBER_ID));
     givenMember(OTHER_MEMBER_ID, activeUnassigned(OTHER_MEMBER_ID));
 
@@ -121,7 +119,7 @@ class MarkApplicationReadyGroupAssignmentTest {
   @Test
   void givenStandalone_whenReady_thenOnlyReadyEvent() {
     givenApplicationState(stateOf(notReady(APPLICATION_ID)));
-    givenDataStore(0L);
+    givenDataStore();
     handler.handle(
         command().withLinkedGroupId(null),
         application,
@@ -140,7 +138,7 @@ class MarkApplicationReadyGroupAssignmentTest {
   @Test
   void givenGroupWithoutMembers_whenReady_thenRejectsChangedMembership() {
     givenApplicationState(stateOf(notReady(APPLICATION_ID)));
-    givenDataStore(0L);
+    givenDataStore();
     givenGroup(List.of());
 
     assertThatThrownBy(
@@ -194,9 +192,7 @@ class MarkApplicationReadyGroupAssignmentTest {
     when(application.getState()).thenReturn(state);
   }
 
-  private void givenDataStore(long dataVersion) {
-    when(applicationDataStore.get(APPLICATION_ID, dataVersion))
-        .thenReturn(ApplicationDataPayload.from(applicationCreationDetails(APPLICATION_ID)));
+  private void givenDataStore() {
     when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
   }
 

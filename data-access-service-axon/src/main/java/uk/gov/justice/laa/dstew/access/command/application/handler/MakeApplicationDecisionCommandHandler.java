@@ -31,8 +31,7 @@ public class MakeApplicationDecisionCommandHandler {
     ApplicationCommandHandlerSupport.requireApplicationExists(application, command.applicationId());
     ApplicationState state = application.getState();
     ApplicationDecider.validateManualDecisionAssignment(state, command);
-    var current =
-        applicationDataStore.get(command.applicationId(), state.getApplicationDataVersion());
+    var current = ApplicationCommandHandlerSupport.currentContent(application);
     recordDecision(
         command,
         AutoGrantedState.MANUAL,
@@ -51,7 +50,7 @@ public class MakeApplicationDecisionCommandHandler {
       EventAppender eventAppender) {
     ApplicationState state = application.getState();
     ApplicationDecisionMadeEvent decision =
-        ApplicationDecider.decideDecision(state, command, current, autoGranted);
+        ApplicationDecider.decideDecision(state, command, autoGranted);
     long nextVersion = state.getApplicationDataVersion() + 1;
     var updated =
         current.withDecision(
