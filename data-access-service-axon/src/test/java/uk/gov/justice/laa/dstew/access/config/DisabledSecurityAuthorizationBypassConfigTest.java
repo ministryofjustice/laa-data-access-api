@@ -7,7 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import uk.gov.justice.laa.dstew.access.DataAccessServiceAxonApplication;
-import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
+import uk.gov.justice.laa.dstew.access.security.EffectiveAuthorizationProvider;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 @SpringBootTest(

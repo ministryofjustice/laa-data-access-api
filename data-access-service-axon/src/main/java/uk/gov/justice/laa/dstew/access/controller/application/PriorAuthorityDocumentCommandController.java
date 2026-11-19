@@ -16,9 +16,9 @@ import uk.gov.justice.laa.dstew.access.model.PriorAuthorityDocumentTypeUpdateRes
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.model.UpdatePriorAuthorityDocumentTypeRequest;
 import uk.gov.justice.laa.dstew.access.model.UploadPriorAuthorityDocumentResponse;
+import uk.gov.justice.laa.dstew.access.observability.logging.aspects.LogMethodArguments;
+import uk.gov.justice.laa.dstew.access.observability.logging.aspects.LogMethodResponse;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerFactory;
-import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
-import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 import uk.gov.justice.laa.dstew.access.util.RequestSerialiser;
 
 /** HTTP command adapter for prior-authority document commands. */

@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.shared.logging.aspects;
+package uk.gov.justice.laa.dstew.access.observability.logging.aspects;
 
 import java.util.Arrays;
 import java.util.Objects;
@@ -14,7 +14,7 @@ import org.slf4j.MDC;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import uk.gov.justice.laa.dstew.access.shared.logging.ClientFacingException;
+import uk.gov.justice.laa.dstew.access.observability.logging.ClientFacingException;
 
 /** AspectJ implementation for @LogMethodArguments and @LogMethodResponse annotations. */
 @Aspect
@@ -41,7 +41,8 @@ public class LoggingAspects {
    *
    * @param joinPoint AspectJ-provided join point.
    */
-  @Before("@annotation(uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments)")
+  @Before(
+      "@annotation(uk.gov.justice.laa.dstew.access.observability.logging.aspects.LogMethodArguments)")
   public void logMethodArgumentsAdvice(JoinPoint joinPoint) {
     if (log.isInfoEnabled()) {
       Object[] argumentsArray = Objects.requireNonNullElse(joinPoint.getArgs(), new Object[] {});
@@ -69,7 +70,7 @@ public class LoggingAspects {
    */
   @AfterReturning(
       value =
-          "@annotation(uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse)",
+          "@annotation(uk.gov.justice.laa.dstew.access.observability.logging.aspects.LogMethodResponse)",
       returning = "methodResponse")
   public void logMethodResponseAdvice(JoinPoint joinPoint, Object methodResponse) {
     if (log.isInfoEnabled()) {
@@ -92,8 +93,8 @@ public class LoggingAspects {
    */
   @AfterThrowing(
       pointcut =
-          "@annotation(uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments) || "
-              + "@annotation(uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse)",
+          "@annotation(uk.gov.justice.laa.dstew.access.observability.logging.aspects.LogMethodArguments) || "
+              + "@annotation(uk.gov.justice.laa.dstew.access.observability.logging.aspects.LogMethodResponse)",
       throwing = "exception")
   public void logMethodExceptionAdvice(JoinPoint joinPoint, Throwable exception) {
 

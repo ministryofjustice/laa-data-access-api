@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.shared.logging.aspects;
+package uk.gov.justice.laa.dstew.access.observability.logging.aspects;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import uk.gov.justice.laa.dstew.access.shared.logging.ClientFacingException;
+import uk.gov.justice.laa.dstew.access.observability.logging.ClientFacingException;
 
 /** Verifies method logging content, truncation, and client-facing exception classification. */
 class LoggingAspectsTest {
