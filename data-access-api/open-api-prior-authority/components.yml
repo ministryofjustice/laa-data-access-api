@@ -50,7 +50,7 @@ components:
 
     ExpertMakePriorAuthorityDecisionRequest:
       type: object
-      description: Optional expert details for the decision
+      description: Optional expert values granted by the Caseworker. Supply either a fixed or an hourly rate amount, not both.
       properties:
         grantedFixedRateAmount:
           type: number
@@ -488,6 +488,7 @@ components:
 
     Apportionment:
       type: object
+      description: Optional apportionment value granted by the Caseworker
       properties:
         partiesSharingCosts:
           type: integer
