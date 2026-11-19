@@ -76,10 +76,21 @@ class PriorAuthorityProjectionTest {
     when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(model));
     var assigned =
         new WorkItemAssigned(
-            priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, UUID.randomUUID(), assignedAt);
+            priorAuthorityId,
+            WorkItemType.PRIOR_AUTHORITY,
+            model.getApplicationId(),
+            1L,
+            1L,
+            UUID.randomUUID(),
+            assignedAt);
     var unassigned =
         new WorkItemUnassigned(
-            priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 1L, 2L, unassignedAt);
+            priorAuthorityId,
+            WorkItemType.PRIOR_AUTHORITY,
+            model.getApplicationId(),
+            1L,
+            2L,
+            unassignedAt);
 
     for (int replay = 0; replay < 2; replay++) {
       projection.on(assigned);
@@ -100,9 +111,16 @@ class PriorAuthorityProjectionTest {
 
     projection.on(
         new WorkItemAssigned(
-            applicationId, WorkItemType.APPLICATION, 1L, 1L, UUID.randomUUID(), Instant.now()));
+            applicationId,
+            WorkItemType.APPLICATION,
+            applicationId,
+            1L,
+            1L,
+            UUID.randomUUID(),
+            Instant.now()));
     projection.on(
-        new WorkItemUnassigned(applicationId, WorkItemType.APPLICATION, 1L, 2L, Instant.now()));
+        new WorkItemUnassigned(
+            applicationId, WorkItemType.APPLICATION, applicationId, 1L, 2L, Instant.now()));
 
     verifyNoInteractions(repository);
   }
@@ -116,6 +134,7 @@ class PriorAuthorityProjectionTest {
         new WorkItemAssigned(
             priorAuthorityId,
             WorkItemType.PRIOR_AUTHORITY,
+            UUID.randomUUID(),
             1L,
             1L,
             UUID.randomUUID(),
@@ -153,7 +172,7 @@ class PriorAuthorityProjectionTest {
         uploaded(priorAuthorityId, deletedId, applicationId, uploadedAt.plusSeconds(1));
     var typeUpdate =
         new PriorAuthorityDocumentTypeUpdatedEvent(
-            priorAuthorityId, keptId, "EXPERT_REPORT", uploadedAt.plusSeconds(2));
+            priorAuthorityId, keptId, "EXPERT_REPORT", uploadedAt.plusSeconds(2), applicationId);
     var deletion =
         new PriorAuthorityDocumentDeletedEvent(
             priorAuthorityId, deletedId, uploadedAt.plusSeconds(3), applicationId);
@@ -495,6 +514,7 @@ class PriorAuthorityProjectionTest {
     assertThat(result.caseworkerId()).isEqualTo(caseworkerId);
     assertThat(result.justification()).isEqualTo("Counsel is required");
     assertThat(result.status()).isEqualTo(status);
+    assertThat(result.dataVersion()).isEqualTo(4L);
     assertThat(result.submittedAt()).isEqualTo(submittedAt);
     assertThat(result.counselDetails().counselType()).isEqualTo(CounselType.TWO_JUNIOR_COUNSEL);
     assertThat(result.expertDetails()).isNull();
