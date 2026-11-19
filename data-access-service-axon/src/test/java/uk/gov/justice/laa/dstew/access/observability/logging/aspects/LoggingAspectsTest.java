@@ -12,6 +12,10 @@ import ch.qos.logback.core.read.ListAppender;
 import java.util.Map;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.Signature;
+import org.axonframework.messaging.commandhandling.CommandMessage;
+import org.axonframework.messaging.core.MessageType;
+import org.axonframework.messaging.core.QualifiedName;
+import org.axonframework.modelling.entity.EntityMissingForInstanceCommandHandlerException;
 import org.axonframework.modelling.repository.EntityNotFoundException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -206,8 +210,19 @@ class LoggingAspectsTest {
   }
 
   @Test
-  void givenFrameworkClientFacingExceptionByName_whenThrown_thenLogsAtWarn() {
+  void givenEntityNotFoundException_whenThrown_thenLogsAtWarn() {
     Throwable exception = new EntityNotFoundException("aggregate missing");
+    aspects.logMethodExceptionAdvice(joinPoint(), exception);
+
+    assertWarnMessage(exception);
+  }
+
+  @Test
+  void givenEntityMissingForInstanceCommandHandlerException_whenThrown_thenLogsAtWarn() {
+    CommandMessage command = mock(CommandMessage.class);
+    when(command.type()).thenReturn(new MessageType(new QualifiedName("SomeCommand"), "0.0.1"));
+    Throwable exception = new EntityMissingForInstanceCommandHandlerException(command);
+
     aspects.logMethodExceptionAdvice(joinPoint(), exception);
 
     assertWarnMessage(exception);
