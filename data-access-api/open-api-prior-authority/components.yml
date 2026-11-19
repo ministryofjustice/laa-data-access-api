@@ -488,7 +488,6 @@ components:
 
     Apportionment:
       type: object
-      description: Optional apportionment value granted by the Caseworker
       properties:
         partiesSharingCosts:
           type: integer
@@ -566,7 +565,7 @@ components:
         apportionment:
           description: Optional apportionment value granted by the Caseworker
           allOf:
-            - $ref: "#/components/schemas/Apportionment"
+            - $ref: "#/components/schemas/ApportionmentInformation"
 
     ExpertFeeInformation:
       type: object
@@ -588,3 +587,14 @@ components:
         grantedAmount:
           type: number
           description: The disbursement amount granted by the Caseworker as part of the decision, whether or not it differs from the amount requested.
+
+    ApportionmentInformation:
+      type: object
+      description: Optional apportionment value granted by the Caseworker
+      properties:
+        partiesSharingCosts:
+          type: integer
+          minimum: 2
+        grantedClientShareAmount:
+          type: number
+          description: Amount granted by the Caseworker as the client’s share of a cost apportioned between parties, whether or not it differs from the amount requested.

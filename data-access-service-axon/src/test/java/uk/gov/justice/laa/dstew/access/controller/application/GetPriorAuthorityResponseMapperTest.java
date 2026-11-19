@@ -290,7 +290,7 @@ class GetPriorAuthorityResponseMapperTest {
         .isEqualTo(30);
     assertThat(response.getDecisionDetails().getDisbursement().getGrantedAmount())
         .isEqualByComparingTo("50");
-    assertThat(response.getDecisionDetails().getApportionment().getClientShareAmount())
+    assertThat(response.getDecisionDetails().getApportionment().getGrantedClientShareAmount())
         .isEqualByComparingTo("25");
     assertThat(response.getUploadedDocuments()).hasSize(1);
     assertThat(response.getUploadedDocuments().getFirst().getDocumentType()).isNull();

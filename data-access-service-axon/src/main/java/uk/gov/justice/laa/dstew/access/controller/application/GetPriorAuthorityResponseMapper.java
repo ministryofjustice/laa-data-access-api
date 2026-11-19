@@ -8,7 +8,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.PriorAuthorityDocumentFormat;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
-import uk.gov.justice.laa.dstew.access.model.Apportionment;
+import uk.gov.justice.laa.dstew.access.model.ApportionmentInformation;
 import uk.gov.justice.laa.dstew.access.model.BillingType;
 import uk.gov.justice.laa.dstew.access.model.CounselDetails;
 import uk.gov.justice.laa.dstew.access.model.CounselType;
@@ -112,7 +112,16 @@ public class GetPriorAuthorityResponseMapper {
         .timeRequested(toTimeRequested(costs.timeRequested()))
         .totalAmount(costs.totalAmount())
         .costsSharedWithOtherParties(costs.costsSharedWithOtherParties())
-        .apportionment(toApportionment(costs.apportionment()));
+        .apportionment(toApportionmentForExpertCosts(costs.apportionment()));
+  }
+
+  private uk.gov.justice.laa.dstew.access.model.Apportionment toApportionmentForExpertCosts(
+      uk.gov.justice.laa.dstew.access.content.priorauthority.Apportionment apportionment) {
+    return apportionment == null
+        ? null
+        : new uk.gov.justice.laa.dstew.access.model.Apportionment()
+            .partiesSharingCosts(apportionment.partiesSharingCosts())
+            .clientShareAmount(apportionment.clientShareAmount());
   }
 
   private CounselDetails toCounselDetails(
@@ -142,13 +151,13 @@ public class GetPriorAuthorityResponseMapper {
         : new TimeRequested().hours(timeRequested.hours()).minutes(timeRequested.minutes());
   }
 
-  private Apportionment toApportionment(
+  private ApportionmentInformation toApportionmentForDecisionDetails(
       uk.gov.justice.laa.dstew.access.content.priorauthority.Apportionment apportionment) {
     return apportionment == null
         ? null
-        : new Apportionment()
+        : new ApportionmentInformation()
             .partiesSharingCosts(apportionment.partiesSharingCosts())
-            .clientShareAmount(apportionment.clientShareAmount());
+            .grantedClientShareAmount(apportionment.clientShareAmount());
   }
 
   private PriorAuthorityResponse.DecisionEnum toDecision(String decision) {
@@ -208,8 +217,9 @@ public class GetPriorAuthorityResponseMapper {
       result.setDisbursement(disbursementInfo);
     }
     if (details.apportionment() != null) {
-      Apportionment apportionmentInfo = new Apportionment();
-      apportionmentInfo.setClientShareAmount(details.apportionment().getGrantedClientShareAmount());
+      ApportionmentInformation apportionmentInfo = new ApportionmentInformation();
+      apportionmentInfo.setGrantedClientShareAmount(
+          details.apportionment().getGrantedClientShareAmount());
       result.setApportionment(apportionmentInfo);
     }
     return result;
