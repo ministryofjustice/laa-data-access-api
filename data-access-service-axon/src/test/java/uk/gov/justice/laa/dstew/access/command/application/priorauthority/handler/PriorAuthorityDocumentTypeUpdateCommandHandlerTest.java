@@ -75,6 +75,7 @@ class PriorAuthorityDocumentTypeUpdateCommandHandlerTest {
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(existingDraft));
     when(priorAuthority.getState())
         .thenReturn(draftStateWithDocument(priorAuthorityId, applicationId, documentId));
+    when(priorAuthority.getApplicationId()).thenReturn(applicationId);
 
     UUID returnedDocumentId =
         new PriorAuthorityDocumentTypeUpdateCommandHandler()
@@ -93,7 +94,7 @@ class PriorAuthorityDocumentTypeUpdateCommandHandlerTest {
     verify(eventAppender)
         .append(
             new PriorAuthorityDocumentTypeUpdatedEvent(
-                priorAuthorityId, documentId, "GATEWAY_EVIDENCE", OCCURRED_AT));
+                priorAuthorityId, documentId, "GATEWAY_EVIDENCE", OCCURRED_AT, applicationId));
   }
 
   @Test
