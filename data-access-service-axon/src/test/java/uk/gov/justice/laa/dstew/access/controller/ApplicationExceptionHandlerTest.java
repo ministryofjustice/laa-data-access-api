@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -25,6 +26,9 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.mock.http.MockHttpInputMessage;
 import org.springframework.security.oauth2.client.ClientAuthorizationException;
 import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.exc.MismatchedInputException;
@@ -180,6 +184,25 @@ class ApplicationExceptionHandlerTest {
     assertLoggedAtWarnForClientError();
     assertThat(response.getBody().getProperties())
         .containsEntry("errors", List.of("pageSize cannot be more than 100"));
+  }
+
+  @Test
+  void givenBodyValidationErrorWithSubmittedMarker_whenHandled_thenWarnLogExcludesMarker() {
+    String marker = "PII_MARKER_CLIENT_VALUE";
+    MethodArgumentNotValidException exception = mock(MethodArgumentNotValidException.class);
+    BindingResult bindingResult = mock(BindingResult.class);
+    FieldError fieldError =
+        new FieldError("request", "clientFirstName", "must not equal " + marker);
+    when(exception.getBindingResult()).thenReturn(bindingResult);
+    when(bindingResult.getFieldErrors()).thenReturn(List.of(fieldError));
+
+    var response = handler.handleMethodArgumentNotValidException(exception);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertLoggedAtWarnForClientError();
+    assertThat(logEvents.list.getLast().getFormattedMessage())
+        .contains("Request body validation failed: errorCount=1, fields=[clientFirstName]")
+        .doesNotContain(marker);
   }
 
   @Test

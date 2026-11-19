@@ -59,6 +59,7 @@ sentry:
   enabled: true
   environment: rc-feature
   tracesSampleRate: 1
+  minimumBreadcrumbLevel: warn
 
 alerting:
   environment: rc-feature

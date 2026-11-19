@@ -66,7 +66,7 @@ public class ApplicationExceptionHandler {
   /** Returns validation errors using the production service's Problem Detail shape. */
   @ExceptionHandler(ValidationException.class)
   ResponseEntity<ProblemDetail> handleValidationException(ValidationException exception) {
-    log.warn("Validation failed: errors={}", exception.errors());
+    log.warn("Validation failed: errorCount={}", exception.errors().size());
     return validationError(exception.errors());
   }
 
@@ -81,13 +81,15 @@ public class ApplicationExceptionHandler {
   @ExceptionHandler(MethodArgumentNotValidException.class)
   ResponseEntity<ProblemDetail> handleMethodArgumentNotValidException(
       MethodArgumentNotValidException exception) {
+    List<String> fields =
+        exception.getBindingResult().getFieldErrors().stream().map(FieldError::getField).toList();
     List<String> errors =
         exception.getBindingResult().getFieldErrors().stream()
             .map(
                 (FieldError error) ->
                     "%s: %s".formatted(error.getField(), error.getDefaultMessage()))
             .toList();
-    log.warn("Request body validation failed: errors={}", errors);
+    log.warn("Request body validation failed: errorCount={}, fields={}", errors.size(), fields);
     return validationError(errors);
   }
 
