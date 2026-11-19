@@ -34,13 +34,12 @@ public class PriorAuthorityHistoryAssembler {
    * @return immutable list of groups ordered by the earliest event in the group
    * @throws ApplicationHistoryIntegrityException if a group has conflicting prior-authority types
    */
-  public List<PriorAuthorityHistoryGroupResult> assemble(
-      List<PriorAuthorityHistoryReadModel> rows) {
-    var rowsByPriorAuthorityId = new LinkedHashMap<UUID, List<PriorAuthorityHistoryReadModel>>();
+  public List<PriorAuthorityHistoryGroupResult> assemble(List<PriorAuthorityHistoryRow> rows) {
+    var rowsByPriorAuthorityId = new LinkedHashMap<UUID, List<PriorAuthorityHistoryRow>>();
     rows.stream()
         .sorted(
-            Comparator.comparing(PriorAuthorityHistoryReadModel::getOccurredAt)
-                .thenComparing(PriorAuthorityHistoryReadModel::getEventId))
+            Comparator.comparing(PriorAuthorityHistoryRow::getOccurredAt)
+                .thenComparing(PriorAuthorityHistoryRow::getEventId))
         .forEach(
             row ->
                 rowsByPriorAuthorityId
@@ -53,12 +52,12 @@ public class PriorAuthorityHistoryAssembler {
   }
 
   private PriorAuthorityHistoryGroupResult toGroup(
-      UUID priorAuthorityId, List<PriorAuthorityHistoryReadModel> rows) {
+      UUID priorAuthorityId, List<PriorAuthorityHistoryRow> rows) {
     UUID applicationId = rows.getFirst().getApplicationId();
 
     Set<String> distinctTypes =
         rows.stream()
-            .map(PriorAuthorityHistoryReadModel::getPriorAuthorityType)
+            .map(PriorAuthorityHistoryRow::getPriorAuthorityType)
             .collect(Collectors.toSet());
     if (distinctTypes.size() > 1) {
       throw new ApplicationHistoryIntegrityException(
@@ -72,7 +71,7 @@ public class PriorAuthorityHistoryAssembler {
     return new PriorAuthorityHistoryGroupResult(priorAuthorityId, priorAuthorityType, events);
   }
 
-  private PriorAuthorityHistoryEventResult toEvent(PriorAuthorityHistoryReadModel row) {
+  private PriorAuthorityHistoryEventResult toEvent(PriorAuthorityHistoryRow row) {
     String eventDescription = decisionDescription(row);
     return new PriorAuthorityHistoryEventResult(
         row.getEventType(),
@@ -82,7 +81,7 @@ public class PriorAuthorityHistoryAssembler {
         row.getCaseworkerId());
   }
 
-  private String decisionDescription(PriorAuthorityHistoryReadModel row) {
+  private String decisionDescription(PriorAuthorityHistoryRow row) {
     if (!"PRIOR_AUTHORITY_MAKE_DECISION_GRANTED".equals(row.getEventType())
         && !"PRIOR_AUTHORITY_MAKE_DECISION_REFUSED".equals(row.getEventType())) {
       return null;

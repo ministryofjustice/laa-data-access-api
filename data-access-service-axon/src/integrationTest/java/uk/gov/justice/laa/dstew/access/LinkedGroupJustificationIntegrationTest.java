@@ -6,13 +6,10 @@ import static org.awaitility.Awaitility.await;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
-import org.axonframework.messaging.core.MessageType;
-import org.axonframework.messaging.eventhandling.GenericEventMessage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -22,14 +19,8 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDissolvedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupLeadChangedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberRemovedFromGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteKind;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
@@ -37,22 +28,17 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
-import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryProjection;
 
 /**
- * Persistence and recovery guarantees for linked-group justifications: transactional rollback,
- * shared references, append-only storage, data minimisation and direct projection replay. Ordinary
- * endpoint no-op and omitted-history behaviour lives in the linking and membership integration
- * slices.
+ * Persistence guarantees for linked-group justifications: transactional rollback, shared
+ * references, append-only storage and data minimisation. Ordinary endpoint no-op and
+ * omitted-history behaviour lives in the linking and membership integration slices.
  */
 class LinkedGroupJustificationIntegrationTest extends AbstractLinkedGroupIntegrationTest {
   @Autowired private ObjectMapper objectMapper;
-  @Autowired private ApplicationHistoryProjection historyProjection;
-  @Autowired private org.springframework.transaction.PlatformTransactionManager transactionManager;
 
   @Test
-  void
-      givenGroupLifecycle_whenActionsAccepted_thenEveryMemberHasSharedJustificationAndDirectProjectionReplay() {
+  void givenGroupLifecycle_whenActionsAccepted_thenEveryMemberHasSharedJustification() {
     var surname = uniqueLastName();
     var lead = createApplication(surname);
     var member = createApplication(surname);
@@ -62,7 +48,7 @@ class LinkedGroupJustificationIntegrationTest extends AbstractLinkedGroupIntegra
     var group = awaitRoute(lead, ApplicationGroupRouteKind.LINKED_GROUP);
     assertHistory(lead, DomainEventType.APPLICATION_GROUP_CREATED, "Create reason");
     assertHistory(member, DomainEventType.APPLICATION_GROUP_JOINED, "Create reason");
-    assertSharedReference(group, "Create reason", 2);
+    assertSharedReference(group, "Create reason");
 
     assertThat(linkWithReason(joining, lead, groupToken(group, 0), "Add reason").getStatusCode())
         .isEqualTo(HttpStatus.NO_CONTENT);
@@ -70,14 +56,14 @@ class LinkedGroupJustificationIntegrationTest extends AbstractLinkedGroupIntegra
     for (var id : List.of(lead, member)) {
       assertHistory(id, DomainEventType.APPLICATION_GROUP_MEMBER_ADDED, "Add reason");
     }
-    assertSharedReference(group, "Add reason", 3);
+    assertSharedReference(group, "Add reason");
 
     assertThat(change(member, "make-lead", group, 1, "Lead reason").getStatusCode())
         .isEqualTo(HttpStatus.NO_CONTENT);
     for (var id : List.of(lead, member, joining)) {
       assertHistory(id, DomainEventType.APPLICATION_GROUP_LEAD_CHANGED, "Lead reason");
     }
-    assertSharedReference(group, "Lead reason", 3);
+    assertSharedReference(group, "Lead reason");
 
     assertThat(change(joining, "unlink", group, 2, "Remove reason").getStatusCode())
         .isEqualTo(HttpStatus.NO_CONTENT);
@@ -85,13 +71,13 @@ class LinkedGroupJustificationIntegrationTest extends AbstractLinkedGroupIntegra
     for (var id : List.of(lead, member)) {
       assertHistory(id, DomainEventType.APPLICATION_GROUP_MEMBER_REMOVED, "Remove reason");
     }
-    assertSharedReference(group, "Remove reason", 3);
+    assertSharedReference(group, "Remove reason");
 
     assertThat(change(lead, "unlink", group, 3, "Dissolve reason").getStatusCode())
         .isEqualTo(HttpStatus.NO_CONTENT);
     assertHistory(lead, DomainEventType.APPLICATION_GROUP_LEFT, "Dissolve reason");
     assertHistory(member, DomainEventType.APPLICATION_GROUP_DISSOLVED, "Dissolve reason");
-    assertSharedReference(group, "Dissolve reason", 2);
+    assertSharedReference(group, "Dissolve reason");
     assertThat(payloadCount(group)).isEqualTo(5);
 
     var stored =
@@ -113,29 +99,11 @@ class LinkedGroupJustificationIntegrationTest extends AbstractLinkedGroupIntegra
           .doesNotContain(
               "Create reason", "Add reason", "Lead reason", "Remove reason", "Dissolve reason");
     }
-
-    new TransactionTemplate(transactionManager)
-        .executeWithoutResult(
-            status -> {
-              jdbcTemplate.update(
-                  "DELETE FROM axon.application_history WHERE justification_id IN"
-                      + " (SELECT id FROM axon.linked_group_justification WHERE group_id = ?)",
-                  group);
-              stored.forEach(this::replayIntoHistoryProjection);
-              stored.forEach(this::replayIntoHistoryProjection);
-            });
-    assertThat(payloadCount(group)).isEqualTo(5);
-    assertSharedReference(group, "Create reason", 2);
-    assertSharedReference(group, "Add reason", 3);
-    assertSharedReference(group, "Lead reason", 3);
-    assertSharedReference(group, "Remove reason", 3);
-    assertSharedReference(group, "Dissolve reason", 2);
-    assertHistory(member, DomainEventType.APPLICATION_GROUP_DISSOLVED, "Dissolve reason");
   }
 
   @ParameterizedTest
   @MethodSource("writeFailureCases")
-  void givenWriteFailure_whenActionAttempted_thenEventsPayloadsAndHistoryRollBack(
+  void givenWriteFailure_whenActionAttempted_thenEventsAndPayloadsRollBack(
       Action action, FailurePoint failurePoint) {
     var surname = uniqueLastName();
     var lead = createApplication(surname);
@@ -149,7 +117,6 @@ class LinkedGroupJustificationIntegrationTest extends AbstractLinkedGroupIntegra
     }
     var eventsBefore = groupEventCount(group);
     var payloadsBefore = payloadCount(group);
-    var historyWithTextBefore = historyRowsWithJustification();
     injectFailure(failurePoint, group);
     try {
       ResponseEntity<String> response =
@@ -162,7 +129,6 @@ class LinkedGroupJustificationIntegrationTest extends AbstractLinkedGroupIntegra
       assertThat(response.getStatusCode().is5xxServerError()).isTrue();
       assertThat(payloadCount(group)).isEqualTo(payloadsBefore);
       assertThat(groupEventCount(group)).isEqualTo(eventsBefore);
-      assertThat(historyRowsWithJustification()).isEqualTo(historyWithTextBefore);
     } finally {
       removeInjectedFailure(failurePoint);
     }
@@ -321,13 +287,7 @@ class LinkedGroupJustificationIntegrationTest extends AbstractLinkedGroupIntegra
                 jdbcTemplate.update(
                     "DELETE FROM axon.linked_group_justification WHERE group_id = ?", group))
         .hasMessageContaining("append-only");
-    assertSharedReference(group, "Immutable reason", 2);
-  }
-
-  private long historyRowsWithJustification() {
-    return jdbcTemplate.queryForObject(
-        "SELECT COUNT(*) FROM axon.application_history WHERE justification_id IS NOT NULL",
-        Long.class);
+    assertSharedReference(group, "Immutable reason");
   }
 
   private void assertHistory(UUID application, DomainEventType type, String text) {
@@ -356,63 +316,16 @@ class LinkedGroupJustificationIntegrationTest extends AbstractLinkedGroupIntegra
             });
   }
 
-  private void assertSharedReference(UUID group, String text, int expectedRows) {
-    var payloads =
-        jdbcTemplate.queryForList(
-            "SELECT id FROM axon.linked_group_justification WHERE group_id = ? AND justification = ?",
-            UUID.class,
-            group,
-            text);
-    assertThat(payloads).hasSize(1);
-    await()
-        .atMost(Duration.ofSeconds(15))
-        .untilAsserted(
-            () ->
-                assertThat(
-                        jdbcTemplate.queryForObject(
-                            "SELECT COUNT(*) FROM axon.application_history WHERE justification_id = ?",
-                            Integer.class,
-                            payloads.getFirst()))
-                    .isEqualTo(expectedRows));
-  }
-
-  /**
-   * Feeds stored group events straight into the history projection; this is not a processor
-   * rebuild.
-   */
-  private void replayIntoHistoryProjection(Map<String, Object> row) {
-    String type = (String) row.get("payload_type");
-    byte[] payload = (byte[]) row.get("payload");
-    Object event =
-        switch (type.substring(type.lastIndexOf('.') + 1)) {
-          case "LinkedApplicationGroupCreatedEvent" ->
-              objectMapper.readValue(payload, LinkedApplicationGroupCreatedEvent.class);
-          case "MemberAddedToGroupEvent" ->
-              objectMapper.readValue(payload, MemberAddedToGroupEvent.class);
-          case "LinkedApplicationGroupLeadChangedEvent" ->
-              objectMapper.readValue(payload, LinkedApplicationGroupLeadChangedEvent.class);
-          case "MemberRemovedFromGroupEvent" ->
-              objectMapper.readValue(payload, MemberRemovedFromGroupEvent.class);
-          case "LinkedApplicationGroupDissolvedEvent" ->
-              objectMapper.readValue(payload, LinkedApplicationGroupDissolvedEvent.class);
-          default -> throw new IllegalArgumentException("Unexpected group event type " + type);
-        };
-    var message =
-        new GenericEventMessage(
-            (String) row.get("event_identifier"),
-            new MessageType(event.getClass()),
-            event,
-            Map.of(),
-            Instant.EPOCH);
-    switch (event) {
-      case LinkedApplicationGroupCreatedEvent created -> historyProjection.on(created, message);
-      case MemberAddedToGroupEvent added -> historyProjection.on(added, message);
-      case LinkedApplicationGroupLeadChangedEvent lead -> historyProjection.on(lead, message);
-      case MemberRemovedFromGroupEvent removed -> historyProjection.on(removed, message);
-      case LinkedApplicationGroupDissolvedEvent dissolved ->
-          historyProjection.on(dissolved, message);
-      default -> throw new IllegalArgumentException("Unexpected group event " + type);
-    }
+  /** One stored justification is shared by every member's history entry for the change. */
+  private void assertSharedReference(UUID group, String text) {
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.linked_group_justification"
+                    + " WHERE group_id = ? AND justification = ?",
+                Integer.class,
+                group,
+                text))
+        .isEqualTo(1);
   }
 
   private enum Action {

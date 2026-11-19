@@ -123,7 +123,7 @@ class ApplicationHistoryAssemblerTest {
     UUID caseworkerId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-19T10:00:00Z");
     var row =
-        ApplicationHistoryReadModel.builder()
+        ApplicationHistoryRow.builder()
             .eventId("event-id")
             .applicationId(applicationId)
             .eventType("APPLICATION_CREATED")
@@ -155,8 +155,8 @@ class ApplicationHistoryAssemblerTest {
     verifyNoInteractions(applicationDataStore);
   }
 
-  private ApplicationHistoryReadModel row(UUID applicationId, String eventType, Long dataVersion) {
-    return ApplicationHistoryReadModel.builder()
+  private ApplicationHistoryRow row(UUID applicationId, String eventType, Long dataVersion) {
+    return ApplicationHistoryRow.builder()
         .eventId(UUID.randomUUID().toString())
         .applicationId(applicationId)
         .eventType(eventType)
