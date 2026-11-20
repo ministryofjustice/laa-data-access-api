@@ -1,0 +1,60 @@
+{
+  "id": "{{$randomUUID}}",
+  "status": "APPLICATION_SUBMITTED",
+  "applicationContent": {
+    "createdAt": "2024-06-01T12:00:00Z",
+    "submittedAt": "2024-06-01T12:00:00Z",
+    "provider": {
+      "officeCode": "0Z888A",
+      "contactEmail": "test@mail.com"
+    },
+    "client": {
+      "firstName": "testFirstName",
+      "lastName": "testLastName",
+      "dateOfBirth": "1815-12-10",
+      "appliedPreviously": false,
+      "addresses": [
+        {
+          "location": "home",
+          "addressLineOne": "Test Address Line 1",
+          "city": "Test City",
+          "postcode": "SW1A 1AA",
+          "countryCode": "GBR",
+          "countryName": "United Kingdom"
+        }
+      ]
+    },
+    "proceedings": [
+      {
+        "id": "dd55c2ac-0af3-4777-9934-f2fcc801620e",
+        "leadProceeding": true,
+        "code": "SE003",
+        "meaning": "Care order",
+        "description": "Care order",
+        "matterType": "SPECIAL_CHILDREN_ACT",
+        "matterTypeCode": "KPBLW",
+        "categoryOfLaw": "Family",
+        "categoryOfLawCode": "MAT",
+        "clientInvolvementType": "Respondent",
+        "clientInvolvementTypeCode": "A",
+        "usedDelegatedFunctions": false,
+        "delegatedFunctionsCostLimitation": "0",
+        "substantiveCostLimitation": "2500.01",
+        "substantiveLevelOfServiceCode": 3,
+        "substantiveLevelOfServiceName": "Full Representation",
+        "emergencyLevelOfServiceCode": 3,
+        "emergencyLevelOfServiceName": "Full Representation",
+        "scopeLimitations": [
+          {
+            "id": "dd55c2ac-0af3-4777-9934-f2fcc801620e",
+            "type": "SUBSTANTIVE",
+            "code": "FM062",
+            "meaning": "Final hearing",
+            "description": "Limited to all steps up to and including the final hearing"
+          }
+        ]
+      }
+    ]
+  },
+  "laaReference": "LAA-{{$randomInt}}"
+}

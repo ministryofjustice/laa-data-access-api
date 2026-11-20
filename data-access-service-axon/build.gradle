@@ -5,23 +5,25 @@ plugins {
     id 'jacoco'
     id 'checkstyle'
     id 'uk.gov.justice.service.laa.laa-spring-boot-gradle-plugin'
+    id 'net.serenity-bdd.serenity-gradle-plugin' version '4.2.16'
 }
 
 def versions = [
-        sentry                  : '8.60.0',
-        axonFramework           : '5.4.0',
-        jsonSchemaValidator     : '3.0.8',
-        swaggerAnnotations      : '2.2.55',
-        springdocOpenapi        : '3.1.1',
-        springCloudAws          : '4.2.0',
-        lombok                  : '1.18.48',
-        datafaker               : '2.7.0',
-        archunit                : '1.5.1',
-        testcontainers          : '2.0.5',
-        micrometerSpringBoot    : '2.3.0',
-        logbackEcsEncoder       : '1.8.0',
-        cucumber                : '7.30.0',
-        playwright              : '1.57.0'
+        sentry              : '8.60.0',
+        axonFramework       : '5.4.0',
+        jsonSchemaValidator : '3.0.8',
+        swaggerAnnotations  : '2.2.55',
+        springdocOpenapi    : '3.1.1',
+        springCloudAws      : '4.2.0',
+        lombok              : '1.18.48',
+        datafaker           : '2.7.0',
+        archunit            : '1.5.1',
+        testcontainers      : '2.0.5',
+        micrometerSpringBoot: '2.3.0',
+        logbackEcsEncoder   : '1.8.0',
+        cucumber            : '7.30.0',
+        playwright          : '1.57.0',
+        serenity            : '4.2.16'
 ]
 
 sourceSets {
@@ -134,6 +136,10 @@ dependencies {
     bddTestImplementation "org.junit.platform:junit-platform-suite"
     bddTestImplementation "com.microsoft.playwright:playwright:$versions.playwright"
     bddTestImplementation 'com.fasterxml.jackson.core:jackson-databind'
+    bddTestImplementation "net.serenity-bdd:serenity-cucumber:$versions.serenity"
+    bddTestRuntimeOnly 'junit:junit:4.13.2'
+    bddTestImplementation "net.serenity-bdd:serenity-junit5:$versions.serenity"
+    bddTestImplementation "net.serenity-bdd:serenity-rest-assured:$versions.serenity"
 }
 
 test {
@@ -157,21 +163,36 @@ tasks.register('bddTest', Test) {
     testClassesDirs = sourceSets.bddTest.output.classesDirs
     classpath = sourceSets.bddTest.runtimeClasspath
     useJUnitPlatform()
-    systemProperty 'cucumber.glue', 'uk.gov.justice.laa.dstew.access.bdd'
+    systemProperty 'cucumber.glue', 'uk.gov.justice.laa.dstew.access.bdd.steps'
     systemProperty 'cucumber.plugin', System.getProperty(
             'cucumber.plugin',
-            "pretty,html:${layout.buildDirectory.get().asFile}/reports/cucumber/index.html,json:${layout.buildDirectory.get().asFile}/reports/cucumber/cucumber.json")
+            "pretty,html:${layout.buildDirectory.get().asFile}/reports/cucumber/index.html," + "json:${layout.buildDirectory.get().asFile}/reports/cucumber/cucumber.json," +
+                    "io.cucumber.core.plugin.SerenityReporter"
+    )
     if (System.getProperty('cucumber.filter.tags')) {
         systemProperty 'cucumber.filter.tags', System.getProperty('cucumber.filter.tags')
     }
     if (System.getProperty('cucumber.execution.dry-run')) {
         systemProperty 'cucumber.execution.dry-run', System.getProperty('cucumber.execution.dry-run')
     }
+
+    systemProperty 'serenity.outputDirectory',
+            project.file('target/site/serenity').absolutePath
+    systemProperty 'cucumber.object-factory', 'io.cucumber.picocontainer.PicoFactory'
+
     testLogging {
         events TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED
         exceptionFormat = 'full'
         showStandardStreams = true
     }
+
+    outputs.upToDateWhen { false }
+
+    doFirst {
+        project.delete(project.file('target/site/serenity'))
+    }
+    finalizedBy tasks.named('aggregate')
+
 }
 
 tasks.register('pactTest', Test) {
@@ -188,8 +209,8 @@ tasks.register('pactTest', Test) {
     // Set PACT_PUBLISH_RESULTS=false for a local diagnostic run that must not record a result.
     def canPublish =
             providers.environmentVariable('PACT_BROKER_USERNAME').isPresent() &&
-            providers.environmentVariable('PACT_BROKER_PASSWORD').isPresent() &&
-            providers.environmentVariable('PACT_PUBLISH_RESULTS').getOrElse('true') != 'false'
+                    providers.environmentVariable('PACT_BROKER_PASSWORD').isPresent() &&
+                    providers.environmentVariable('PACT_PUBLISH_RESULTS').getOrElse('true') != 'false'
     if (canPublish) {
         systemProperty 'pact.verifier.publishResults', 'true'
     }
@@ -306,8 +327,8 @@ jacocoTestCoverageVerification {
     dependsOn integrationTest
 
     executionData(
-        layout.buildDirectory.file("jacoco/test.exec"),
-        layout.buildDirectory.file("jacoco/integrationTest.exec")
+            layout.buildDirectory.file("jacoco/test.exec"),
+            layout.buildDirectory.file("jacoco/integrationTest.exec")
     )
 
     afterEvaluate {
@@ -350,8 +371,8 @@ tasks.register('combinedCoverageReport', JacocoReport) {
     dependsOn test, tasks.named('integrationTest')
 
     executionData(
-        layout.buildDirectory.file('jacoco/test.exec'),
-        layout.buildDirectory.file('jacoco/integrationTest.exec')
+            layout.buildDirectory.file('jacoco/test.exec'),
+            layout.buildDirectory.file('jacoco/integrationTest.exec')
     )
 
     sourceDirectories.from(sourceSets.main.allJava.srcDirs)
