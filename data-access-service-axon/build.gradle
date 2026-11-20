@@ -61,7 +61,6 @@ dependencies {
     implementation(project(':data-access-api')) {
         transitive = false
     }
-    implementation project(':data-access-shared')
 
     implementation 'io.projectreactor:reactor-core'
     implementation "org.axonframework.extensions.spring:axon-spring-boot-starter:$versions.axonFramework"
