@@ -25,8 +25,6 @@ See `docs/pre-commit-hooks.md` for information on setting up and using pre-commi
 ### Project structure
 Includes the following subprojects:
 
-- `data-access-shared` - common Java classes packaged into a library to avoid unexpected dependencies - can depend
-  on Spring Web, but must not depend on Spring Data (nor any database code)
 - `data-access-api` - OpenAPI specification used for generating API stub interfaces and documentation.
 - `data-access-service-axon` - event-driven proof of concept using Axon aggregates and projections. See its
   [developer guide](data-access-service-axon/docs/README.md) for the architecture, linking logic, sensitive-data
