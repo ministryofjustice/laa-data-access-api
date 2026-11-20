@@ -33,15 +33,15 @@ sourceSets {
     }
     test {
         compileClasspath += sourceSets.testUtilities.output
-        runtimeClasspath += sourceSets.testUtilities.output
+        runtimeClasspath += sourceSets.testUtilities.runtimeClasspath
     }
     integrationTest {
         compileClasspath += sourceSets.testUtilities.output
-        runtimeClasspath += sourceSets.testUtilities.output
+        runtimeClasspath += sourceSets.testUtilities.runtimeClasspath
     }
     pactTest {
         compileClasspath += sourceSets.main.output + sourceSets.testUtilities.output
-        runtimeClasspath += sourceSets.main.output + sourceSets.testUtilities.output
+        runtimeClasspath += sourceSets.main.output + sourceSets.testUtilities.runtimeClasspath
     }
     bddTest {
         java.srcDir 'src/bddTest/java'
@@ -93,17 +93,17 @@ dependencies {
     compileOnly "org.projectlombok:lombok:$versions.lombok"
     annotationProcessor "org.projectlombok:lombok:$versions.lombok"
     runtimeOnly 'org.postgresql:postgresql'
-    implementation "net.datafaker:datafaker:$versions.datafaker"
 
     // Sentry
     implementation platform("io.sentry:sentry-bom:$versions.sentry")
     implementation "io.sentry:sentry-logback:$versions.sentry"
     implementation "io.sentry:sentry-spring-boot-4:$versions.sentry"
 
-    // Structured Logging - ECS format
-    implementation 'ch.qos.logback:logback-core'
-    implementation 'ch.qos.logback:logback-classic'
+    // Structured Logging - ECS format. logback-classic comes in transitively via
+    // spring-boot-starter-logging.
     implementation "co.elastic.logging:logback-ecs-encoder:$versions.logbackEcsEncoder"
+
+    testUtilitiesImplementation "net.datafaker:datafaker:$versions.datafaker"
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
