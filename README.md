@@ -229,7 +229,7 @@ expert fee overrides:
   "eventHistory": {},
   "priorAuthorityVersion": 0,
   "expert": {
-    "newHourlyRateAmount": 95.00,
+    "grantedHourlyRateAmount": 95.00,
     "grantedTime": {
       "hours": 3,
       "minutes": 15
