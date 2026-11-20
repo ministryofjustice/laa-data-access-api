@@ -217,6 +217,9 @@ optimistic concurrency control: use the `version` value from a prior `GET
 decision yet returns `version: 0`. Sending a `priorAuthorityVersion` that no longer matches the
 prior authority's current `version` returns `409 Conflict`.
 
+`amountGranted` and `dateGranted` are required when `decision` is `GRANTED` and must be omitted
+when `decision` is `REFUSED`; otherwise the request returns `400`.
+
 For an expert decision, the optional `grantedTime` value can be included alongside other
 expert fee overrides:
 

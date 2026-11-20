@@ -5,8 +5,6 @@ components:
       required:
         - decision
         - decisionJustification
-        - amountGranted
-        - dateGranted
         - eventHistory
         - priorAuthorityVersion
       properties:
@@ -16,9 +14,11 @@ components:
           type: string
         amountGranted:
           type: number
+          description: Required when decision is GRANTED; must be omitted when decision is REFUSED.
         dateGranted:
           type: string
           format: date-time
+          description: Required when decision is GRANTED; must be omitted when decision is REFUSED.
         eventHistory:
           $ref: "../open-api-common/components.yml#/components/schemas/EventHistoryRequest"
         priorAuthorityVersion:
