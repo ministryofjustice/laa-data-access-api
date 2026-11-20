@@ -24,11 +24,6 @@ public class AxonEventProcessingConfig {
     return pooledStreamingProcessor("application-projection");
   }
 
-  @Bean
-  EventProcessorDefinition applicationHistoryProjectionProcessor() {
-    return pooledStreamingProcessor("application-history-projection");
-  }
-
   /** Writes lifecycle stream pointers; it needs no content, only IDs and timestamps. */
   @Bean
   EventProcessorDefinition lifecycleStreamProcessor() {

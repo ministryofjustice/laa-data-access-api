@@ -205,7 +205,7 @@ class PriorAuthorityHistoryAssemblerTest {
     UUID applicationId = UUID.randomUUID();
     UUID priorAuthorityId = UUID.randomUUID();
     var historyRow =
-        PriorAuthorityHistoryReadModel.builder()
+        PriorAuthorityHistoryRow.builder()
             .eventId("e1")
             .applicationId(applicationId)
             .priorAuthorityId(priorAuthorityId)
@@ -234,7 +234,7 @@ class PriorAuthorityHistoryAssemblerTest {
     UUID applicationId = UUID.randomUUID();
     UUID priorAuthorityId = UUID.randomUUID();
     var historyRow =
-        PriorAuthorityHistoryReadModel.builder()
+        PriorAuthorityHistoryRow.builder()
             .eventId("e1")
             .applicationId(applicationId)
             .priorAuthorityId(priorAuthorityId)
@@ -258,7 +258,7 @@ class PriorAuthorityHistoryAssemblerTest {
     UUID applicationId = UUID.randomUUID();
     UUID priorAuthorityId = UUID.randomUUID();
     var historyRow =
-        PriorAuthorityHistoryReadModel.builder()
+        PriorAuthorityHistoryRow.builder()
             .eventId("e1")
             .applicationId(applicationId)
             .priorAuthorityId(priorAuthorityId)
@@ -282,7 +282,7 @@ class PriorAuthorityHistoryAssemblerTest {
     UUID applicationId = UUID.randomUUID();
     UUID priorAuthorityId = UUID.randomUUID();
     var historyRow =
-        PriorAuthorityHistoryReadModel.builder()
+        PriorAuthorityHistoryRow.builder()
             .eventId("e1")
             .applicationId(applicationId)
             .priorAuthorityId(priorAuthorityId)
@@ -306,7 +306,7 @@ class PriorAuthorityHistoryAssemblerTest {
     UUID applicationId = UUID.randomUUID();
     UUID priorAuthorityId = UUID.randomUUID();
     var historyRow =
-        PriorAuthorityHistoryReadModel.builder()
+        PriorAuthorityHistoryRow.builder()
             .eventId("e1")
             .applicationId(applicationId)
             .priorAuthorityId(priorAuthorityId)
@@ -373,7 +373,7 @@ class PriorAuthorityHistoryAssemblerTest {
 
   // --- helpers ---
 
-  private PriorAuthorityHistoryReadModel row(
+  private PriorAuthorityHistoryRow row(
       UUID applicationId,
       UUID priorAuthorityId,
       String priorAuthorityType,
@@ -383,14 +383,14 @@ class PriorAuthorityHistoryAssemblerTest {
         applicationId, priorAuthorityId, priorAuthorityType, eventId, occurredAt, "CIVIL_APPLY");
   }
 
-  private PriorAuthorityHistoryReadModel row(
+  private PriorAuthorityHistoryRow row(
       UUID applicationId,
       UUID priorAuthorityId,
       String priorAuthorityType,
       String eventId,
       Instant occurredAt,
       String serviceName) {
-    return PriorAuthorityHistoryReadModel.builder()
+    return PriorAuthorityHistoryRow.builder()
         .eventId(eventId)
         .applicationId(applicationId)
         .priorAuthorityId(priorAuthorityId)

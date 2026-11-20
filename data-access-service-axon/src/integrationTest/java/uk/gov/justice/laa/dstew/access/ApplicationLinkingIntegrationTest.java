@@ -8,6 +8,7 @@ import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequest
 
 import jakarta.annotation.PostConstruct;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -61,9 +62,13 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
+import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
+import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryEventResult;
+import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
+import uk.gov.justice.laa.dstew.access.query.application.history.FindApplicationHistoryQuery;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
@@ -300,20 +305,15 @@ public class ApplicationLinkingIntegrationTest {
         .pollInterval(100, TimeUnit.MILLISECONDS)
         .until(
             () ->
-                jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM axon.application_history"
-                            + " WHERE application_id IN (?, ?, ?)"
-                            + " AND event_type LIKE 'APPLICATION_GROUP_%'",
-                        Long.class, leadId, memberId, joiningId)
+                Stream.of(leadId, memberId, joiningId)
+                        .flatMap(id -> groupHistory(id).stream())
+                        .count()
                     == 5);
     assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_history"
-                    + " WHERE application_id IN (?, ?) AND justification_id IS NOT NULL",
-                Long.class,
-                leadId,
-                memberId))
-        .isEqualTo(storedHistory ? 2 : 0);
+            Stream.of(leadId, memberId)
+                .flatMap(id -> groupHistory(id).stream())
+                .filter(event -> event.eventDescription() != null))
+        .hasSize(storedHistory ? 2 : 0);
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.linked_group_justification WHERE group_id = ?",
@@ -1312,5 +1312,19 @@ public class ApplicationLinkingIntegrationTest {
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.set("X-Schema-Version", String.valueOf(schemaVersion));
     return headers;
+  }
+
+  private List<ApplicationHistoryEventResult> groupHistory(UUID applicationId) {
+    return queryGateway
+        .query(
+            new FindApplicationHistoryQuery(
+                applicationId,
+                Arrays.stream(DomainEventType.values())
+                    .map(DomainEventType::getValue)
+                    .filter(type -> type.startsWith("APPLICATION_GROUP_"))
+                    .toList()),
+            ApplicationHistoryResult.class)
+        .join()
+        .applicationHistoryEvents();
   }
 }

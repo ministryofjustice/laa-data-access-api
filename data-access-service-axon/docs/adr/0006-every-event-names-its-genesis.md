@@ -107,8 +107,8 @@ root closes and existing dependents do not transfer.
 These are pointers to the same events, not duplicate business commands or duplicate domain
 events. The lifecycle streams do not enforce the link or its retention consequences.
 
-The current `genesisIds()` implementations express this event-specific scope. The pointer
-stream itself is follow-on work. Self-contained means that a stream includes the events
+The current `genesisIds()` implementations express this event-specific scope, and
+`LifecycleStreamProjection` records a pointer for each genesis they name. Self-contained means that a stream includes the events
 concerning its genesis, not that it includes every event concerning every linked member.
 
 ### Current implementation
@@ -152,10 +152,10 @@ concerning its genesis, not that it includes every event concerning every linked
 
 ### Planned use
 
-- **Next:** a lifecycle stream with one pointer row per domain event per genesis, replacing
-  the existing history projections. "Application history" is the ADS view built from events
-  referenced by that lifecycle stream, including PA and relationship events; it is not a
-  replay of only the Application aggregate.
+- **Delivered:** a lifecycle stream with one pointer row per domain event per genesis, which
+  replaces the history projections. "Application history" is the ADS view built when queried
+  from the events that lifecycle stream references, including PA and relationship events; it is
+  not a replay of only the Application aggregate.
 - **Later:** genesis-scoped retention and erasure. Lifecycle events supply evidence for
   applying policy as facts and retention triggers become known. Drafts need a rule or review
   arrangement from creation; uncertainty about a final disposal date is not permission for
@@ -195,11 +195,11 @@ to the group itself (membership, lead or dissolution) name every member at the t
 events concerning one member, such as its notes or Prior Authorities, do not name the rest of
 the group merely because they are linked.
 
-The remaining work concerns the history reader and wider adoption, not a change to these scopes:
+The remaining work concerns wider adoption, not a change to these scopes:
 
 | Topic | Evidence in this branch | Follow-on work |
 |---|---|---|
-| Application history delivery | `ApplicationHistoryProjection`, `PriorAuthorityHistoryProjection` and their assemblers still provide history. This branch adds `GenesisScoped`, not the lifecycle-stream replacement. | The papers describe the intended ADS view. Treat the pointer stream and replacement history reader as follow-on work, not delivered by this ADR's branch. |
+| Application history delivery | `LifecycleStreamProjection` records the pointers; `ApplicationHistoryQueryHandler` reads them and maps the events to history. The history projections are removed; their tables stay until every running pod reads history from the stream, then a later migration drops them. | Other sources contributing pointers, and history views beyond the application's own entries. |
 | Wider identity model | `GenesisScoped` uses `Set<UUID>` and derives IDs from root application fields. | Person/account geneses, non-UUID external identities and a broader case-file mapping are not implemented here. Agree their issuing and mapping contracts before adoption across systems. |
 
 Retaining both IDs on link does not establish shared retention, and a lifecycle stream does

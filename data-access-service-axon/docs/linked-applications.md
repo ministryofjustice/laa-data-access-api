@@ -35,8 +35,8 @@ Application creation does not create or extend linked groups.
    handler dispatches `AddApplicationToLinkedGroupCommand`.
 6. If both applications are already in the same group, the request is an idempotent success.
 7. `LinkedApplicationGroupAggregate` emits `LinkedApplicationGroupCreatedEvent` or
-   `MemberAddedToGroupEvent`; route, application, list-index, group, and history projections update
-   from those events.
+   `MemberAddedToGroupEvent`; route, application, list-index, group, and lifecycle-stream
+   projections update from those events.
 
 Joining an existing group requires the target group's version. The aggregate checks that version
 and rejects a stale request with 409. A successful membership change advances the version; an
@@ -200,10 +200,12 @@ is described in [Guardrails](guardrails.md).
 - Application detail and list responses use the group projection to populate `isLead`,
   `linkedApplications`, and `linkedGroupVersion`. These projections are asynchronous and may lag
   independently.
-- `ApplicationHistoryProjection` writes `APPLICATION_GROUP_CREATED` for the lead and
-  `APPLICATION_GROUP_JOINED` for each associated member, `APPLICATION_GROUP_LEAD_CHANGED` for
-  both old and new leads, `APPLICATION_GROUP_LEFT` for a removed application, and
-  `APPLICATION_GROUP_DISSOLVED` for the remaining former lead when a group dissolves.
+- Application history, read from the lifecycle stream, shows `APPLICATION_GROUP_CREATED` for the
+  lead and `APPLICATION_GROUP_JOINED` for each associated member; `APPLICATION_GROUP_JOINED` or
+  `APPLICATION_GROUP_LEFT` for an added or removed application and
+  `APPLICATION_GROUP_MEMBER_ADDED` or `APPLICATION_GROUP_MEMBER_REMOVED` for the other members;
+  `APPLICATION_GROUP_LEAD_CHANGED` for every member; and `APPLICATION_GROUP_DISSOLVED` for the
+  remaining applications when a group dissolves.
 
 When changing linking, update the command handler, route resolver/projection, aggregate, and
 projection tests. Application creation tests should continue to prove create alone leaves a
@@ -219,7 +221,7 @@ membership there, and membership events moving G1 to G2 from being applied out o
 processor pooled and streaming; the policy is not a global event ordering mechanism.
 
 The application and list-index policies serialize handlers only within their respective
-processors. The group and history processors remain independent, and all these query models may lag
+processors. The group and lifecycle-stream processors remain independent, and all these query models may lag
 one another. Neither sequencing policy establishes a global order across processors.
 
 A query-owned per-application membership model is an alternative: store a nullable group ID, a
@@ -232,7 +234,7 @@ routing table for link commands; GET/list membership comes from query-side data.
 processor. This serializes its application-row event handlers across aggregate IDs, preventing the
 tested creation/group-event overwrite and G1-to-G2 reordering within that index projection. It is
 independent of `ApplicationProjection` and does not order the index against application, group, or
-history projections. Those processors can still lag one another. The index's `stream_version` is
+lifecycle-stream projections. Those processors can still lag one another. The index's `stream_version` is
 not a conditional write guard, and `projectionPosition` is a hash of the event identifier, not an
 ordered event position. The list query uses the index for filtering and paging, while
 linked-application summaries derive from separate application and group projections; do not infer
