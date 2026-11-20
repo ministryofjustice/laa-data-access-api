@@ -39,7 +39,7 @@ components:
       properties:
         grantedClientShareAmount:
           type: number
-          description: Amount granted by the Caseworker as the client’s share of a cost apportioned between parties, whether or not it differs from the amount requested.
+          description: Amount granted by the Caseworker as the client's share of a cost apportioned between parties, whether or not it differs from the amount requested.
 
     DisbursementMakePriorAuthorityDecisionRequest:
       type: object
@@ -561,7 +561,7 @@ components:
           format: date-time
           description: Date granted if decision is GRANTED
         expert:
-          description: Optional expert values granted by the Caseworker. Supply either a fixed or an hourly rate amount, not both.
+          description: Expert values granted by the Caseworker. Contains either a fixed or an hourly rate amount, not both.
           allOf:
             - $ref: "#/components/schemas/ExpertFeeInformation"
         disbursement:
@@ -575,7 +575,7 @@ components:
 
     ExpertFeeInformation:
       type: object
-      description: Optional expert values granted by the Caseworker. Supply either a fixed or an hourly rate amount, not both
+      description: Expert values granted by the Caseworker. Contains either a fixed or an hourly rate amount, not both.
       properties:
         grantedFixedRateAmount:
           type: number
@@ -598,9 +598,6 @@ components:
       type: object
       description: Optional apportionment value granted by the Caseworker
       properties:
-        partiesSharingCosts:
-          type: integer
-          minimum: 2
         grantedClientShareAmount:
           type: number
-          description: Amount granted by the Caseworker as the client’s share of a cost apportioned between parties, whether or not it differs from the amount requested.
+          description: Amount granted by the Caseworker as the client's share of a cost apportioned between parties, whether or not it differs from the amount requested.
