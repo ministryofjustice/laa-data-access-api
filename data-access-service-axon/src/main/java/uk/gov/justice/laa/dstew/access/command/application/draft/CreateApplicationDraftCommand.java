@@ -10,8 +10,8 @@ import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 
 /**
  * Command that starts (or, on a fresh aggregate, first saves) an Application draft. The content is
- * schema-validated eagerly, before this command reaches the aggregate, then written directly to the
- * mutable draft store.
+ * schema-validated eagerly, before this command reaches the aggregate, then carried as erasable
+ * content on {@link ApplicationDraftStartedEvent}.
  */
 @Command(routingKey = "applicationId")
 public record CreateApplicationDraftCommand(

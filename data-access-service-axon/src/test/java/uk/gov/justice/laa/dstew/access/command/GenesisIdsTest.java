@@ -6,6 +6,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -52,7 +53,19 @@ public class GenesisIdsTest {
             new ApplicationCreatedEvent(
                 APP, 1L, "fp", "S", 1, OCCURRED_AT, List.of(), "OFF", "LAA-1"),
             APP),
-        scoped(new ApplicationDraftStartedEvent(APP, 1, "fp", OCCURRED_AT, "OFF"), APP),
+        scoped(
+            new ApplicationDraftStartedEvent(
+                APP,
+                1,
+                "fp",
+                OCCURRED_AT,
+                "OFF",
+                "APPLICATION_SUBMITTED",
+                "LAA-1",
+                Map.of(),
+                "{}",
+                List.of()),
+            APP),
         scoped(new ApplicationUpdatedEvent(APP, 1L, 1L, "A", "B", OCCURRED_AT), APP),
         scoped(new ApplicationReadyForManualAssessmentEvent(APP, 1L, 1L, OCCURRED_AT), APP),
         scoped(
