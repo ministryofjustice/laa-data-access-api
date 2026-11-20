@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.observability.ReportingErrorHandler;
+import uk.gov.justice.laa.dstew.access.query.lifecycle.LifecycleStreamProjection;
 
 /** Defines isolated processors for projections and synchronous command-side route updates. */
 @Configuration
@@ -23,9 +24,10 @@ public class AxonEventProcessingConfig {
     return pooledStreamingProcessor("application-projection");
   }
 
+  /** Writes lifecycle stream pointers; it needs no content, only IDs and timestamps. */
   @Bean
-  EventProcessorDefinition applicationHistoryProjectionProcessor() {
-    return pooledStreamingProcessor("application-history-projection");
+  EventProcessorDefinition lifecycleStreamProcessor() {
+    return pooledStreamingProcessor(LifecycleStreamProjection.PROCESSING_GROUP);
   }
 
   @Bean

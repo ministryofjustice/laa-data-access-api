@@ -16,7 +16,7 @@ sequenceDiagram
     participant EventStore as Event store
     participant AppProjection as ApplicationProjection<br/>(async)
     participant GroupProjection as LinkedApplicationGroupProjection<br/>(async)
-    participant HistoryProjection as ApplicationHistoryProjection<br/>(async)
+    participant LifecycleStream as LifecycleStreamProjection<br/>(async)
     participant ListProjection as ApplicationListIndexProjection<br/>(async)
 
     Client->>Controller: POST /api/v0/applications/{id}/make-lead<br/>linkedGroupVersion (token)
@@ -43,8 +43,8 @@ sequenceDiagram
         EventStore-->>GroupProjection: LeadChanged
         GroupProjection->>GroupProjection: update lead and group version
     and
-        EventStore-->>HistoryProjection: LeadChanged
-        HistoryProjection->>HistoryProjection: append history for both leads
+        EventStore-->>LifecycleStream: LeadChanged
+        LifecycleStream->>LifecycleStream: add a pointer for every member
     and
         EventStore-->>ListProjection: LeadChanged
         ListProjection->>ListProjection: update index lead references

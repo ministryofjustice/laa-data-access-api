@@ -2,9 +2,11 @@ package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
+import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 
 /** Emitted when removing a member leaves a linked group with no active membership. */
 @Event
@@ -16,7 +18,7 @@ public record LinkedApplicationGroupDissolvedEvent(
     long groupVersion,
     Instant occurredAt,
     UUID justificationId)
-    implements LinkedGroupMemberRemoval {
+    implements LinkedGroupMemberRemoval, GenesisScoped {
 
   /** Preserves callers and historical events without a justification reference. */
   public LinkedApplicationGroupDissolvedEvent(
@@ -46,5 +48,10 @@ public record LinkedApplicationGroupDissolvedEvent(
         groupVersion,
         occurredAt,
         justificationRefId);
+  }
+
+  @Override
+  public Set<UUID> genesisIds() {
+    return GenesisScoped.ids(memberApplicationIds, formerLeadApplicationId, removedApplicationId);
   }
 }

@@ -50,6 +50,7 @@ public class AppendToTwoApplicationsCommandHandler {
     return new WorkItemAssigned(
         state.getApplicationId(),
         WorkItemType.APPLICATION,
+        state.getApplicationId(),
         state.getApplicationVersion(),
         state.getAssignmentVersion() + 1,
         caseworkerId,

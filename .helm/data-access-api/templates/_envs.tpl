@@ -79,6 +79,8 @@ For per-run Kubernetes smoke tests, use the ephemeral PostgreSQL deployed with t
   value: {{ .Values.sentry.environment | quote }}
 - name: SENTRY_TRACES_SAMPLE_RATE
   value: {{ .Values.sentry.tracesSampleRate | quote }}
+- name: SENTRY_MINIMUM_BREADCRUMB_LEVEL
+  value: {{ .Values.sentry.minimumBreadcrumbLevel | quote }}
 {{- else }}
 - name: SENTRY_ENABLED
   value: "false"

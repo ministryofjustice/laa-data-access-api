@@ -67,20 +67,13 @@ class RequestLoggingFilterConfigurationTest {
     assertThat(chainInvoked).isTrue();
     assertThat(logEvents.list).hasSize(2);
     assertThat(logEvents.list.getLast().getFormattedMessage())
-        .contains(
-            "/applications?page=1",
-            "client=192.0.2.1",
-            "user=caller",
-            "headers=",
-            "X-Test",
-            "header-value",
-            "payload=request-body");
+        .contains("/applications", "client=192.0.2.1", "user=caller")
+        .doesNotContain("?page=1", "headers=", "X-Test", "header-value", "payload=");
   }
 
   @ParameterizedTest
   @ValueSource(ints = {49_999, 50_000, 50_001})
-  void givenPayload_whenFiltered_thenLogsAtMostFiftyThousandCharacters(int length)
-      throws Exception {
+  void givenPayload_whenFiltered_thenDoesNotLogPayload(int length) throws Exception {
     MockHttpServletRequest request = new MockHttpServletRequest("POST", "/applications");
     request.setCharacterEncoding(StandardCharsets.UTF_8.name());
     request.setContent("a".repeat(length).getBytes(StandardCharsets.UTF_8));
@@ -91,9 +84,7 @@ class RequestLoggingFilterConfigurationTest {
         (filteredRequest, response) -> filteredRequest.getInputStream().readAllBytes());
 
     assertThat(logEvents.list).hasSize(2);
-    String message = logEvents.list.getLast().getFormattedMessage();
-    assertThat(message.substring(message.indexOf("payload=")))
-        .isEqualTo("payload=" + "a".repeat(Math.min(length, 50_000)) + "]");
+    assertThat(logEvents.list.getLast().getFormattedMessage()).doesNotContain("payload=");
   }
 
   @ParameterizedTest

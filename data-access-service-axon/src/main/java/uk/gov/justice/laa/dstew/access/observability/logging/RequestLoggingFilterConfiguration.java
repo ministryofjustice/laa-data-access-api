@@ -33,9 +33,9 @@ public class RequestLoggingFilterConfiguration {
           }
         };
 
-    filter.setIncludeQueryString(true);
-    filter.setIncludePayload(true);
-    filter.setIncludeHeaders(true);
+    filter.setIncludeQueryString(false);
+    filter.setIncludePayload(false);
+    filter.setIncludeHeaders(false);
     filter.setIncludeClientInfo(true);
     filter.setMaxPayloadLength(50_000);
 

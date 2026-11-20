@@ -55,6 +55,7 @@ sentry:
   enabled: true
   environment: uat
   tracesSampleRate: 1
+  minimumBreadcrumbLevel: warn
 
 alerting:
   environment: uat

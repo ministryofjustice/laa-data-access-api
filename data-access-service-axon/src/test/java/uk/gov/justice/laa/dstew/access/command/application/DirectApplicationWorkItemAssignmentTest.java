@@ -72,7 +72,7 @@ class DirectApplicationWorkItemAssignmentTest {
         .then()
         .resultMessagePayload(
             new AssignedWorkItems(List.of(new AssignedWorkItems.AssignedItem(id, "LAA-123"))))
-        .events(new WorkItemAssigned(id, WorkItemType.APPLICATION, 1L, 1L, caseworkerId, when));
+        .events(new WorkItemAssigned(id, WorkItemType.APPLICATION, id, 1L, 1L, caseworkerId, when));
   }
 
   @Test
@@ -108,7 +108,7 @@ class DirectApplicationWorkItemAssignmentTest {
     ApplicationAggregate active = new ApplicationAggregate();
     active.on(created(id, when));
     active.on(new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when));
-    active.on(new WorkItemAssigned(id, WorkItemType.APPLICATION, 1L, 1L, caseworkerId, when));
+    active.on(new WorkItemAssigned(id, WorkItemType.APPLICATION, id, 1L, 1L, caseworkerId, when));
     assertThatThrownBy(
             () ->
                 new DirectApplicationWorkItemAssignmentCommandHandler()

@@ -77,7 +77,7 @@ data, and retention must be able to delete application rows while thin events re
 | `snapshot_event_entry` | Optional aggregate snapshots | No; optimization only | Replaceable | Rebuilt/discarded | Must not be the only source |
 | `application_data` | Complete sensitive payload versions | Yes, for detailed content | Append-only | Not a projection | Deleted only through retention function |
 | `application_current_state` | Current application query model | No | Yes | Yes | Pointer may outlive deleted payload |
-| `application_history` | Public audit query model | No | Append during handling | Yes | Thin row may outlive deleted payload |
+| `lifecycle_stream` | Event pointers per genesis application, read by application history | No | Append during handling | Yes | Pointer may outlive deleted payload |
 | `linked_application_group_current_state` | Group query model | No | Yes | Yes | Rebuilt from group events |
 | `token_entry` | Tracking processor positions and claims | Operational state | Yes, via Axon | Reset through processor APIs | Not application retention data |
 | `caseworkers` | Caseworker reference directory | Yes for caseworker existence | Yes | No | Requires its own policy |
@@ -98,11 +98,10 @@ remain aligned.
 ## Projection data
 
 `application_current_state` deliberately excludes most detailed application content. Query handlers
-hydrate it from the referenced `application_data` row. `application_history` stores event
-identity/type, metadata, occurrence time, and a nullable `data_version` pointer; it does not store a
-serialized request payload. Decision and note descriptions are hydrated from the referenced
-`application_data` version when queried. Events without application data (including group and
-assignment events) have no version pointer.
+hydrate it from the referenced `application_data` row. Application history is read from the
+events named by `lifecycle_stream`, which stores only event pointers. Decision and note
+descriptions are hydrated from the `application_data` version the event references when queried.
+Events without application data (including group and assignment events) have no version pointer.
 
 Group events are stored on their own event stream and projected into
 `linked_application_group_current_state`. Application queries use

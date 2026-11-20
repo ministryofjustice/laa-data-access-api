@@ -8,7 +8,7 @@ rebuilt without changing aggregate event streams or immutable application-data v
 | Processing group | Mode | Builds |
 |---|---|---|
 | `application-projection` | Pooled streaming | `application_current_state` |
-| `application-history-projection` | Pooled streaming | `application_history` |
+| `lifecycle-stream` | Pooled streaming | `lifecycle_stream`, read by application history |
 | `linked-application-group-projection` | Pooled streaming | `linked_application_group_current_state` |
 | `application-list-index-projection` | Pooled streaming | `application_list_index` |
 | `work-list-projection` | Pooled streaming | `work_list_item` |
@@ -130,38 +130,41 @@ upload timestamps in sorting. Preserve the event store and `application_data` du
 New draft uploads become visible in Application details after submission and once the asynchronous
 projection catches up; the upload response does not add a read-your-write guarantee.
 
-## History projection
+## Application history
 
-`ApplicationHistoryProjection` stores one public audit row per relevant event. Group events can
-produce several rows: one for the lead and one for each member. Their IDs combine the Axon message
-ID and application ID so each row remains unique and replay-idempotent.
+Application history is not a projection. `ApplicationHistoryQueryHandler` builds it when queried:
+`LifecycleStreamReader` loads the events named by the application's lifecycle stream, in stream
+order, and `ApplicationHistoryMapper` turns each event into the application's public history entry,
+if it has one. Nothing is stored, so there is nothing to replay when the mapping changes.
 
-Lead-change history is recorded against both the previous and new lead. A member removal records
-`APPLICATION_GROUP_LEFT` for the removed application; dissolution also records
-`APPLICATION_GROUP_DISSOLVED` for the remaining former lead. These linked-group records retain the
-serialized thin event payload and do not require application-data hydration.
+The lifecycle stream holds one pointer per event per genesis application (see
+[ADR 0006](adr/0006-every-event-names-its-genesis.md)). A group change appears in the history of
+every application it names: the lead and members get `APPLICATION_GROUP_CREATED` or
+`APPLICATION_GROUP_JOINED`; an added or removed member gets `APPLICATION_GROUP_JOINED` or
+`APPLICATION_GROUP_LEFT`, and the other members get `APPLICATION_GROUP_MEMBER_ADDED` or
+`APPLICATION_GROUP_MEMBER_REMOVED`; a lead change appears for every member; dissolution records
+`APPLICATION_GROUP_LEFT` for the removed application and `APPLICATION_GROUP_DISSOLVED` for the
+rest. Group events stored before they recorded the group's members appear only for the
+applications they name.
 
-Decision, assignment, unassignment, and note events contain version pointers rather than their
-free-text details. When history is queried, the projection retrieves the matching
-`application_data` payload and reconstructs the public request fragment. If hydration fails, it
-returns the thin stored payload rather than failing the entire history query.
-History rows store event type, occurrence time, service/caseworker metadata, and a nullable
-`application_data` version pointer. Decision and note descriptions are hydrated from the exact
-referenced version when the history query is assembled; assignment and unassignment rows have no
-application-data pointer. If a referenced version is absent (for example, after retention), its
-description is `null` while the history row remains available. Other data-store failures are not
-treated as missing versions and continue to fail the query. Caseworker attribution comes from event
-metadata when present, so historical events without authenticated-user metadata have no
-caseworker attribution.
+Decision and note events contain version pointers rather than their free-text details. The
+assemblers hydrate descriptions from the exact referenced `application_data` version, and group
+descriptions from `linked_group_justification`. Assignment and unassignment entries have no
+description. If a referenced version is absent (for example, after retention), its description is
+`null` while the entry remains. Other data-store failures are not treated as missing versions and
+continue to fail the query. Caseworker attribution comes from event metadata when present, so
+historical events without authenticated-user metadata have no caseworker attribution.
 
-### Deployment after the history schema change
+Prior Authority assignment and unassignment entries take their Prior Authority type from the
+`PriorAuthoritySubmittedEvent` in the same stream; history reads no Prior Authority data. A Prior
+Authority can only be assigned once submitted, so an assignment with no submission in the stream
+fails the query with `ApplicationHistoryIntegrityException`.
 
-The history migration does not backfill existing rows. After deploying it, reset and replay the
-`application-history-projection` so rows are rebuilt with their `application_data` version pointers;
-otherwise pre-existing rows cannot hydrate decision or note descriptions. Historical events that
-were dispatched without authenticated-user metadata will still have no caseworker attribution after
-replay. Coordinate the reset through the approved processor lifecycle described below; do not edit
-processor tokens manually.
+If the lifecycle stream names an event the store does not hold, the query fails with
+`ApplicationHistoryIntegrityException` rather than returning partial history. History is only as
+current as the asynchronous `lifecycle-stream` processor. Events stored before the lifecycle
+stream recorded them are included once the processor replays them; legacy events that name no
+genesis (see the ADR) never appear.
 
 ## Reset and replay
 

@@ -8,9 +8,12 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEventResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityEventResponse;
+import uk.gov.justice.laa.dstew.access.model.PriorAuthorityEventType;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryEventResult;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
@@ -122,7 +125,7 @@ class GetApplicationHistoryResponseMapperTest {
                   .satisfies(
                       mappedEvent -> {
                         assertThat(mappedEvent.getEventType())
-                            .isEqualTo("PRIOR_AUTHORITY_SUBMITTED");
+                            .isEqualTo(PriorAuthorityEventType.PRIOR_AUTHORITY_SUBMITTED);
                         assertThat(mappedEvent.getCreatedBy()).isEqualTo("CIVIL_APPLY");
                         assertThat(mappedEvent.getEventDescription()).isNull();
                         assertThat(mappedEvent.getCaseworkerId()).isNull();
@@ -200,5 +203,32 @@ class GetApplicationHistoryResponseMapperTest {
   private PriorAuthorityHistoryEventResult event(
       String eventType, Instant occurredAt, String serviceName) {
     return new PriorAuthorityHistoryEventResult(eventType, occurredAt, serviceName, null, null);
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "PRIOR_AUTHORITY_SUBMITTED, PRIOR_AUTHORITY_SUBMITTED",
+    "PRIOR_AUTHORITY_MAKE_DECISION_GRANTED, PRIOR_AUTHORITY_MAKE_DECISION_GRANTED",
+    "PRIOR_AUTHORITY_MAKE_DECISION_REFUSED, PRIOR_AUTHORITY_MAKE_DECISION_REFUSED",
+    "ASSIGN_APPLICATION_TO_CASEWORKER, ASSIGN_APPLICATION_TO_CASEWORKER",
+    "UNASSIGN_APPLICATION_TO_CASEWORKER, UNASSIGN_APPLICATION_TO_CASEWORKER"
+  })
+  void givenEachPriorAuthorityEventType_whenMapped_thenMapsToExpectedEnumValue(
+      String rawEventType, PriorAuthorityEventType expected) {
+    UUID priorAuthorityId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-05T10:00:00Z");
+    var priorAuthorityGroup =
+        group(priorAuthorityId, "EXPERT", event(rawEventType, occurredAt, "CIVIL_APPLY"));
+
+    var response =
+        mapper.toResponse(new ApplicationHistoryResult(List.of(), List.of(priorAuthorityGroup)));
+
+    assertThat(response.getPriorAuthorities())
+        .singleElement()
+        .satisfies(
+            mappedGroup ->
+                assertThat(mappedGroup.getEvents())
+                    .extracting(PriorAuthorityEventResponse::getEventType)
+                    .containsExactly(expected));
   }
 }

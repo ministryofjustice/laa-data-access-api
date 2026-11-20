@@ -1,9 +1,11 @@
 package uk.gov.justice.laa.dstew.access.command.application.update;
 
 import java.time.Instant;
+import java.util.Set;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
+import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 
 /** Thin, replayable fact that an Application's immutable data and current state advanced. */
 @Event
@@ -13,11 +15,17 @@ public record ApplicationUpdatedEvent(
     long applicationDataVersion,
     String previousStatus,
     String status,
-    Instant occurredAt) {
+    Instant occurredAt)
+    implements GenesisScoped {
 
   /** Whether this update represents a transition into submitted state. */
   public boolean enteredSubmitted() {
     return !"APPLICATION_SUBMITTED".equals(previousStatus)
         && "APPLICATION_SUBMITTED".equals(status);
+  }
+
+  @Override
+  public Set<UUID> genesisIds() {
+    return GenesisScoped.ids(applicationId);
   }
 }

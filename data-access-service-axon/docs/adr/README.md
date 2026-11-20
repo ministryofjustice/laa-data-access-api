@@ -9,6 +9,7 @@ context in which they were made, and the conditions that should cause them to be
 | [0003](0003-define-application-behaviour-after-retention-deletion.md) | Proposed | Give applications an explicit retention-deleted state after sensitive data is deleted |
 | [0004](0004-proxy-prior-authority-document-downloads.md) | Proposed | Proxy Prior Authority document downloads without exposing signed storage URLs |
 | [0005](0005-linked-group-assignment-stays-per-application.md) | Accepted | Keep assignment on each application and synchronise active linked-group members |
+| [0006](0006-every-event-names-its-genesis.md) | Proposed | Every domain event identifies the genesis IDs used to build read-only lifecycle streams |
 
 ADRs describe why a decision was made. The developer guides describe how the resulting
 implementation works today.
