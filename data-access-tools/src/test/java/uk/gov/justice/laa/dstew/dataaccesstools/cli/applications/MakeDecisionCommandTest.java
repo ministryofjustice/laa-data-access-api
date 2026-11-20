@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
@@ -68,6 +69,14 @@ class MakeDecisionCommandTest {
     assertEquals(2, decision.required("proceedings").size());
     assertTrue(decision.toString().contains(firstProceedingId.toString()));
     assertTrue(decision.toString().contains(secondProceedingId.toString()));
+    JsonNode certificate = decision.required("certificate");
+    assertEquals(applicationId.toString(), certificate.required("applicationId").asText());
+    assertEquals("LAA-CLI-12345678", certificate.required("laaReference").asText());
+    assertEquals(2, certificate.required("proceedings").size());
+    assertEquals(
+        "GRANTED", certificate.required("proceedings").get(0).required("meritsDecision").asText());
+    assertEquals(
+        "GRANTED", certificate.required("proceedings").get(1).required("meritsDecision").asText());
   }
 
   private URI baseUri() {
@@ -79,13 +88,18 @@ class MakeDecisionCommandTest {
     requests.add(
         new Request(exchange.getRequestMethod(), exchange.getRequestURI().getPath(), body));
     if (exchange.getRequestMethod().equals("GET")) {
-      byte[] response =
-          ("{\"laaReference\":\"LAA-CLI-12345678\",\"proceedings\":[{\"proceedingId\":\""
-                  + firstProceedingId
-                  + "\"},{\"proceedingId\":\""
-                  + secondProceedingId
-                  + "\"}],\"version\":7}")
-              .getBytes();
+      JsonNode generated =
+          OBJECT_MAPPER.readTree(new ApplicationRequestFactory(42).create().request());
+      ObjectNode details = generated.required("applicationContent").deepCopy();
+      details.put("applicationId", applicationId.toString());
+      details.put("laaReference", "LAA-CLI-12345678");
+      details.put("version", 7);
+      ObjectNode first = (ObjectNode) details.required("proceedings").get(0);
+      first.put("proceedingId", firstProceedingId.toString());
+      first.put("meritsDecision", "PENDING");
+      var second = first.deepCopy().put("proceedingId", secondProceedingId.toString());
+      details.withArray("proceedings").add(second);
+      byte[] response = OBJECT_MAPPER.writeValueAsBytes(details);
       exchange.sendResponseHeaders(200, response.length);
       exchange.getResponseBody().write(response);
     } else {
