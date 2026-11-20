@@ -80,11 +80,23 @@ in application details without an original filename; the event stream cannot rec
 were never persisted. Removing a document from the current response does not erase filenames from
 historical sensitive-data versions. Application-level retention removes those versions together.
 
+## Event content
+
+The content events do carry is stored beside them rather than in them. Each stored event type has
+a kept-field schema in `src/main/resources/event-schemas/access.<Name>.json`; on append, fields the
+schema does not list are written to `event_content`, keyed by event identifier, in the same
+transaction. Content fields are `Erasable<T>`: erasing content deletes its row, and the event still
+loads with those fields erased. Aggregates load with content rejoined; only the processors listed
+in `RegisteredContentReaders` receive it. Every other processor, and application history, sees kept
+fields only. See [ADR 0007](adr/0007-event-content-is-stored-beside-its-event.md) for the
+classification rule and the content fields of each event.
+
 ## What is stored where
 
 | Store | Typical contents | Purpose |
 |---|---|---|
 | Axon event store | IDs, timestamps, status/type, version pointers, decision outcome, group membership | Durable business timeline and aggregate control state |
+| `event_content` | Potential duplicates, document metadata, Prior Authority document types and decision details | Erasable content of individual events |
 | `application_data` | Application content, individuals, proceedings, certificates, notes, request JSON, free-text descriptions | Immutable versioned sensitive payloads |
 | `application_current_state` | IDs, status, timestamps, versions, caseworker ID and other thin query state | Disposable current-state projection |
 | `lifecycle_stream` | Genesis application ID, event identifier and name, timestamp | Disposable pointers from which history is read; descriptions are hydrated when queried |
@@ -142,7 +154,8 @@ When a new operation contains sensitive or free-text data:
 
 1. add the complete new state to `ApplicationDataPayload`;
 2. append a new `application_data` version in the command handler;
-3. put only routing, concurrency, and non-sensitive control fields in the event;
+3. put only routing, concurrency, and non-sensitive control fields in the event, list exactly
+   those fields in its kept-field schema, and make any other field `Erasable`;
 4. include `applicationId` and `applicationDataVersion` when consumers need hydration;
 5. update aggregate event-sourcing state;
 6. update current-state and history projections, including replay tests;

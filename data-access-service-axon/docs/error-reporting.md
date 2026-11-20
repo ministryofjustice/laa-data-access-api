@@ -404,10 +404,11 @@ rethrow/retry/abort semantics (`delegate.handleError`) still execute uncondition
 observability failure from becoming a correctness/availability failure.
 
 **Why subscribing processors are excluded:** `AxonEventProcessingConfig` wires
-`ReportingErrorHandler` only into `pooledStreamingProcessor(...)` (used by all current
-pooled-streaming beans — `applicationProjectionProcessor`, `workListProjectionProcessor`,
-`priorAuthorityProjectionProcessor`, `linkedApplicationGroupProjectionProcessor`,
-`linkedGroupWorkItemLifecycleProcessor`, `lifecycleStreamProcessor`). The subscribing
+`ReportingErrorHandler` only into pooled-streaming processors: `pooledStreamingProcessor(...)`
+(`workListProjectionProcessor`, `linkedApplicationGroupProjectionProcessor`,
+`linkedGroupWorkItemLifecycleProcessor`, `lifecycleStreamProcessor`) and
+`contentReadingProcessor(...)` (`applicationProjectionProcessor`,
+`priorAuthorityProjectionProcessor`). The subscribing
 beans (`applicationGroupRouteProcessor`, `workItemRouteProcessor`,
 `applicationSubmittedPublisherProcessor`) keep `PropagatingErrorHandler.instance()` directly — their
 failures propagate synchronously back through the originating command's call stack to the HTTP

@@ -85,7 +85,8 @@ class WorkListProjectionTest {
             1,
             submittedAt,
             List.of(),
-            "1A"),
+            "1A",
+            null),
         message());
 
     ArgumentCaptor<WorkListItemReadModel> captor =

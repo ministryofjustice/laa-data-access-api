@@ -921,7 +921,7 @@ class ApplicationDraftIntegrationTest {
                 RETURNS trigger AS $$
                 BEGIN
                         IF NEW.aggregate_identifier = '%s'
-                                AND NEW.payload_type LIKE '%%ApplicationDocumentUploadedEvent' THEN
+                                AND NEW.payload_type LIKE '%%ApplicationDocumentUploaded' THEN
                                 RAISE EXCEPTION 'forced application upload concurrency failure'
                                         USING ERRCODE = '23505';
                         END IF;

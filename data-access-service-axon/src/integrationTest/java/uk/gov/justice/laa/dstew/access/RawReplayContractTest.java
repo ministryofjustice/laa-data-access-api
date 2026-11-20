@@ -162,18 +162,18 @@ class RawReplayContractTest {
   private void dispatchEvent(ApplicationState state, String payloadType, byte[] payload)
       throws Exception {
     switch (payloadType) {
-      case "uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent" ->
+      case "access.ApplicationDraftStarted" ->
           ApplicationEvolve.apply(
               state, objectMapper.readValue(payload, ApplicationDraftStartedEvent.class));
-      case "uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent" ->
+      case "access.ApplicationCreated" ->
           ApplicationEvolve.apply(
               state, objectMapper.readValue(payload, ApplicationCreatedEvent.class));
-      case "uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent" ->
+      case "access.ApplicationDecisionMade" ->
           ApplicationEvolve.apply(
               state, objectMapper.readValue(payload, ApplicationDecisionMadeEvent.class));
-      case "uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent" ->
+      case "access.NoteCreated" ->
           ApplicationEvolve.apply(state, objectMapper.readValue(payload, NoteCreatedEvent.class));
-      case "uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent" ->
+      case "access.ApplicationDocumentUploaded" ->
           ApplicationEvolve.apply(
               state, objectMapper.readValue(payload, ApplicationDocumentUploadedEvent.class));
       default -> throw new IllegalArgumentException("Unknown event type: " + payloadType);

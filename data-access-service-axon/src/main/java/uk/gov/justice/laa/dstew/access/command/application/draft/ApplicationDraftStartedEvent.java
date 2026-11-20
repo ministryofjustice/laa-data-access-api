@@ -8,7 +8,7 @@ import org.axonframework.messaging.eventhandling.annotation.Event;
 import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 
 /** Event indicating that an Application draft has been started for the given ID. */
-@Event
+@Event(namespace = "access", name = "ApplicationDraftStarted")
 public record ApplicationDraftStartedEvent(
     @EventTag(key = "ApplicationAggregate") UUID applicationId,
     int schemaVersion,
