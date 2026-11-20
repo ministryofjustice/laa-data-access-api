@@ -403,4 +403,19 @@ class AxonArchitectureTest {
             .allowEmptyShould(true);
     rule.check(classes);
   }
+
+  @Test
+  void securityAndObservabilityMustNotDependOnPersistence() {
+    ArchRule rule =
+        noClasses()
+            .that()
+            .resideInAnyPackage(
+                "uk.gov.justice.laa.dstew.access.security..",
+                "uk.gov.justice.laa.dstew.access.observability..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage("org.springframework.data..", "jakarta.persistence..")
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
 }
