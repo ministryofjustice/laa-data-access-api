@@ -605,6 +605,16 @@ For authentication tokens, see the [Authentication Across Environments](#authent
 #### API docs (JSON)
 - http://localhost:8080/v3/api-docs
 
+#### Documentation-only schemas
+Springdoc builds the runtime document from the generated code, so schemas that no operation
+references are normally omitted. Schemas that only document conditional validation (for example
+`SubmitPriorAuthorityDraftValidationRequest` and `MakePriorAuthorityDecisionValidationRequest`)
+are published by `DocumentationOnlySchemaCustomizer`, which copies them, with their
+`oneOf`/`not` rules intact, from the bundled source specification. The `bundleOpenApiSpec` task
+in `data-access-api` resolves the spec into `openapi/openapi.yaml` on the classpath. To add a new
+documentation-only schema, define it in the spec and register it under `components.schemas` in
+`open-api-specification.yml`.
+
 ### Actuator endpoints
 The following actuator endpoints have been configured:
 - http://localhost:8080/actuator
