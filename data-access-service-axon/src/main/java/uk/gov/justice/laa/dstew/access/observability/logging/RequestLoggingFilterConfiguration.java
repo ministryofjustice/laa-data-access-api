@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.shared.logging;
+package uk.gov.justice.laa.dstew.access.observability.logging;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Bean;

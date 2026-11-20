@@ -16,8 +16,8 @@ import uk.gov.justice.laa.dstew.access.model.CreateApplicationDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.SaveApplicationDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.model.SubmitApplicationDraftResponse;
-import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
-import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
+import uk.gov.justice.laa.dstew.access.observability.logging.aspects.LogMethodArguments;
+import uk.gov.justice.laa.dstew.access.observability.logging.aspects.LogMethodResponse;
 
 /** HTTP command adapter for Application draft writes. */
 @RestController

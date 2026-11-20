@@ -49,7 +49,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
-import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
+import uk.gov.justice.laa.dstew.access.security.EffectiveAuthorizationProvider;
 import uk.gov.laa.springboot.oauth2.EndpointAccessManager;
 import uk.gov.laa.springboot.oauth2.Oauth2AccessDeniedHandler;
 import uk.gov.laa.springboot.oauth2.Oauth2AuthenticationEntryPoint;

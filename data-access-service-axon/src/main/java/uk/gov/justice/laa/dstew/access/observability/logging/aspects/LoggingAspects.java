@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.shared.logging.aspects;
+package uk.gov.justice.laa.dstew.access.observability.logging.aspects;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -7,7 +7,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -16,10 +15,11 @@ import org.aspectj.lang.annotation.AfterReturning;
 import org.aspectj.lang.annotation.AfterThrowing;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
+import org.axonframework.modelling.repository.EntityNotFoundException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import uk.gov.justice.laa.dstew.access.shared.logging.ClientFacingException;
+import uk.gov.justice.laa.dstew.access.observability.logging.ClientFacingException;
 
 /** AspectJ implementation for @LogMethodArguments and @LogMethodResponse annotations. */
 @Aspect
@@ -28,23 +28,13 @@ import uk.gov.justice.laa.dstew.access.shared.logging.ClientFacingException;
 public class LoggingAspects {
 
   /**
-   * Fully-qualified names of third-party exception types that represent expected, client-caused
-   * failures but cannot implement {@link ClientFacingException} directly (they are defined outside
-   * this codebase). Matched by name so this shared module does not need a compile-time dependency
-   * on every framework that defines a "not found"/"conflict" style exception.
-   */
-  private static final Set<String> CLIENT_FACING_FRAMEWORK_TYPE_NAMES =
-      Set.of(
-          "org.axonframework.modelling.repository.EntityNotFoundException",
-          "org.axonframework.modelling.entity.EntityMissingForInstanceCommandHandlerException");
-
-  /**
    * Before advice for @LogMethodArguments aspect. Logs method entry with arguments in structured
    * format, including correlation ID for traceability.
    *
    * @param joinPoint AspectJ-provided join point.
    */
-  @Before("@annotation(uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments)")
+  @Before(
+      "@annotation(uk.gov.justice.laa.dstew.access.observability.logging.aspects.LogMethodArguments)")
   public void logMethodArgumentsAdvice(JoinPoint joinPoint) {
     if (log.isInfoEnabled()) {
       Object[] argumentsArray = Objects.requireNonNullElse(joinPoint.getArgs(), new Object[] {});
@@ -72,7 +62,7 @@ public class LoggingAspects {
    */
   @AfterReturning(
       value =
-          "@annotation(uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse)",
+          "@annotation(uk.gov.justice.laa.dstew.access.observability.logging.aspects.LogMethodResponse)",
       returning = "methodResponse")
   public void logMethodResponseAdvice(JoinPoint joinPoint, Object methodResponse) {
     if (log.isInfoEnabled()) {
@@ -95,8 +85,8 @@ public class LoggingAspects {
    */
   @AfterThrowing(
       pointcut =
-          "@annotation(uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments) || "
-              + "@annotation(uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse)",
+          "@annotation(uk.gov.justice.laa.dstew.access.observability.logging.aspects.LogMethodArguments) || "
+              + "@annotation(uk.gov.justice.laa.dstew.access.observability.logging.aspects.LogMethodResponse)",
       throwing = "exception")
   public void logMethodExceptionAdvice(JoinPoint joinPoint, Throwable exception) {
 
@@ -134,7 +124,7 @@ public class LoggingAspects {
         || exception instanceof IllegalArgumentException
         || exception instanceof AccessDeniedException
         || exception instanceof MethodArgumentNotValidException
-        || CLIENT_FACING_FRAMEWORK_TYPE_NAMES.contains(exception.getClass().getName());
+        || exception instanceof EntityNotFoundException;
   }
 
   /**

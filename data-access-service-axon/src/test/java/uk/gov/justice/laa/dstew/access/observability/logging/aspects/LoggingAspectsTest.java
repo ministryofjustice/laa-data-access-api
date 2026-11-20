@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.shared.logging.aspects;
+package uk.gov.justice.laa.dstew.access.observability.logging.aspects;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -21,6 +21,10 @@ import java.util.Map;
 import java.util.UUID;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.Signature;
+import org.axonframework.messaging.commandhandling.CommandMessage;
+import org.axonframework.messaging.core.MessageType;
+import org.axonframework.messaging.core.QualifiedName;
+import org.axonframework.modelling.entity.EntityMissingForInstanceCommandHandlerException;
 import org.axonframework.modelling.repository.EntityNotFoundException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,7 +36,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import uk.gov.justice.laa.dstew.access.shared.logging.ClientFacingException;
+import uk.gov.justice.laa.dstew.access.observability.logging.ClientFacingException;
 
 /** Verifies method logging sanitization and client-facing exception classification. */
 class LoggingAspectsTest {
@@ -254,8 +258,19 @@ class LoggingAspectsTest {
   }
 
   @Test
-  void givenFrameworkClientFacingExceptionByName_whenThrown_thenLogsAtWarn() {
+  void givenEntityNotFoundException_whenThrown_thenLogsAtWarn() {
     Throwable exception = new EntityNotFoundException("aggregate missing");
+    aspects.logMethodExceptionAdvice(joinPoint(), exception);
+
+    assertWarnMessage(exception);
+  }
+
+  @Test
+  void givenEntityMissingForInstanceCommandHandlerException_whenThrown_thenLogsAtWarn() {
+    CommandMessage command = mock(CommandMessage.class);
+    when(command.type()).thenReturn(new MessageType(new QualifiedName("SomeCommand"), "0.0.1"));
+    Throwable exception = new EntityMissingForInstanceCommandHandlerException(command);
+
     aspects.logMethodExceptionAdvice(joinPoint(), exception);
 
     assertWarnMessage(exception);

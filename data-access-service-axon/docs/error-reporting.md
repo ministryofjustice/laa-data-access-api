@@ -156,7 +156,7 @@ stack (e.g. service-layer methods called before the result reaches a controller,
 modules that don't go through the exception handler at all).
 
 `LoggingAspects` is a Spring AOP aspect
-(`data-access-shared/src/main/java/uk/gov/justice/laa/dstew/access/shared/logging/aspects/LoggingAspects.java`)
+(`data-access-service-axon/src/main/java/uk/gov/justice/laa/dstew/access/observability/logging/aspects/LoggingAspects.java`)
 that wraps any method annotated with `@LogMethodArguments` and/or `@LogMethodResponse`. Beyond
 logging method entry/exit, its `@AfterThrowing` advice (`logMethodExceptionAdvice`) intercepts
 **every exception thrown by an annotated method** and classifies it into one of two reporting paths
@@ -172,8 +172,11 @@ operator-actionable (HTTP 5xx) and should surface loudly. This aspect encodes th
 one place so every annotated method doesn't have to re-implement it.
 
 **Why this remains a second `log.error` call site (alongside `ErrorReporter`):**
-`data-access-shared` is a lower-level module that cannot depend on `ErrorReporter` (which lives in
-`data-access-service-axon`). This aspect is the closest equivalent mechanism for that layer, and is
+`LoggingAspects` is a generic cross-cutting AOP aspect around any
+`@LogMethodArguments`/`@LogMethodResponse`-annotated method. It classifies the thrown exception's
+severity (see `isClientFacing`) and only calls `log.error` for genuinely unexpected,
+non-client-facing failures; `sentry-logback` then turns that single, severity-filtered ERROR log
+into the Sentry event for exceptions that occur outside an `ErrorReporter`-aware call site. It is
 the one documented, allow-listed exception in
 `AxonArchitectureTest.onlyErrorReporterMayLogAtErrorLevel`.
 
@@ -185,7 +188,7 @@ private boolean isClientFacing(Throwable exception) {
       || exception instanceof IllegalArgumentException
       || exception instanceof AccessDeniedException
       || exception instanceof MethodArgumentNotValidException
-      || CLIENT_FACING_FRAMEWORK_TYPE_NAMES.contains(exception.getClass().getName());
+      || exception instanceof EntityNotFoundException;
 }
 ```
 
@@ -197,7 +200,7 @@ An exception is treated as **client-facing** (expected) if **any** of the follow
 | 2 | Is (or subclasses) `IllegalArgumentException` | Common JDK idiom for "caller supplied a bad argument." |
 | 3 | Is (or subclasses) Spring Security's `AccessDeniedException` | Caller lacks permission — a 403, not a bug. |
 | 4 | Is (or subclasses) `MethodArgumentNotValidException` | Spring's `@Valid` request-body validation failure — a 400. |
-| 5 | Its **fully-qualified class name** matches an entry in `CLIENT_FACING_FRAMEWORK_TYPE_NAMES` | Covers third-party exceptions this shared module can't declare a compile-time dependency on (currently two Axon Framework exceptions: `EntityNotFoundException` and `EntityMissingForInstanceCommandHandlerException`). Matched **by name**, not `instanceof`, precisely because Axon isn't a dependency of `data-access-shared`. |
+| 5 | Is (or subclasses) Axon's `org.axonframework.modelling.repository.EntityNotFoundException` | Checked via `instanceof`, so it also matches subclasses — e.g. `EntityMissingForInstanceCommandHandlerException`, which extends it. No name-matching workaround is needed since `LoggingAspects` now lives in `data-access-service-axon`, which already depends on `axon-framework`. |
 
 If none of these match, the exception is treated as **unexpected/operator-actionable**.
 
@@ -209,7 +212,7 @@ flowchart TD
     B --> C["Read correlationId from MDC"]
     C --> D{"isClientFacing(exception)?"}
 
-    D -->|"implements ClientFacingException<br/>OR IllegalArgumentException<br/>OR AccessDeniedException<br/>OR MethodArgumentNotValidException<br/>OR matches CLIENT_FACING_FRAMEWORK_TYPE_NAMES<br/>(by class name, e.g. Axon EntityNotFoundException)"| E["log.warn(...)<br/>'Method rejected request'"]
+    D -->|"implements ClientFacingException<br/>OR IllegalArgumentException<br/>OR AccessDeniedException<br/>OR MethodArgumentNotValidException<br/>OR instanceof Axon EntityNotFoundException<br/>(covers subclasses, e.g. EntityMissingForInstanceCommandHandlerException)"| E["log.warn(...)<br/>'Method rejected request'"]
     D -->|"anything else<br/>(unexpected/operator-actionable)"| F["log.error(..., exception)<br/>'Method failed'"]
 
     E --> G["Breadcrumb only<br/>— NOT sent to Sentry"]
@@ -305,19 +308,15 @@ throw new AccessDeniedException("caller lacks APPLICATION_WRITE role");
 A controller method annotated with `@LogMethodArguments` whose `@RequestBody @Valid` argument
 fails validation → Spring throws `MethodArgumentNotValidException` → matches rule #4 → **WARN**.
 
-**Example 5 — Axon aggregate not found (client-facing, matched by name)**
+**Example 5 — Axon aggregate not found (client-facing, matched via `instanceof`)**
 
 ```java
 throw new org.axonframework.modelling.repository.EntityNotFoundException("aggregate missing");
 ```
 
-This class is **not** imported or checked via `instanceof` in `LoggingAspects` (no compile-time
-dependency on Axon from `data-access-shared`). Instead, `exception.getClass().getName()` is
-compared against the string `"org.axonframework.modelling.repository.EntityNotFoundException"` in
-the `CLIENT_FACING_FRAMEWORK_TYPE_NAMES` set → matches rule #5 → **WARN**.
-
-⚠️ *Caveat:* this match is exact-class-name based, not polymorphic — a subclass of this Axon
-exception would **not** match and would fall through to the ERROR path.
+`LoggingAspects` imports this type directly and checks it with `instanceof` → matches rule #5 →
+**WARN**. Because the check is polymorphic, it also matches
+`EntityMissingForInstanceCommandHandlerException`, which extends `EntityNotFoundException`.
 
 **Example 6 — Unexpected runtime failure (operator-actionable)**
 
@@ -351,14 +350,15 @@ this" signal the design intends.
 | `IllegalArgumentException` | #2 | WARN | No | No |
 | `AccessDeniedException` | #3 | WARN | No | No |
 | `MethodArgumentNotValidException` | #4 | WARN | No | No |
-| Axon `EntityNotFoundException` (exact class name) | #5 | WARN | No | No |
+| Axon `EntityNotFoundException` (and subclasses) | #5 | WARN | No | No |
 | Anything else (`RuntimeException`, `NullPointerException`, infra errors, etc.) | none | ERROR | **Yes** | Yes |
 
 **Test coverage:** `LoggingAspectsTest` — `givenClientFacingException_whenThrown_thenLogsAtWarn`,
 `givenIllegalArgumentException_whenThrown_thenLogsAtWarn`,
 `givenAccessDeniedException_whenThrown_thenLogsAtWarn`,
 `givenMethodArgumentNotValidException_whenThrown_thenLogsAtWarn`,
-`givenFrameworkClientFacingExceptionByName_whenThrown_thenLogsAtWarn`,
+`givenEntityNotFoundException_whenThrown_thenLogsAtWarn`,
+`givenEntityMissingForInstanceCommandHandlerException_whenThrown_thenLogsAtWarn`,
 `givenUnclassifiedRuntimeException_whenThrown_thenLogsAtError` — one test per branch of the
 classification logic.
 
