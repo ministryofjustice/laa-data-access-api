@@ -92,7 +92,7 @@ Explain why both Axon's stream concurrency and the public application version ex
 
 Call the application query and history endpoint. Identify which response fields came from:
 
-- the thin current-state/history projection;
+- the thin current-state projection and the lifecycle-stream pointer used by the history query;
 - the referenced `application_data` version;
 - Axon event metadata such as service name.
 
@@ -107,7 +107,7 @@ to the first. Inspect event metadata for:
 - the linked-group stream's `LinkedApplicationGroupCreatedEvent` or `MemberAddedToGroupEvent`;
 - the durable route updates for each application;
 - the group current-state projection;
-- lead and member history rows.
+- the entries returned when querying history for the lead and each member.
 
 Use [Linked applications](linked-applications.md) to explain why application creation succeeds
 without linking and why missing routes reject the explicit link request.
