@@ -13,12 +13,16 @@ flowchart LR
     GA --> ES
     AA <--> AD[(application_data)]
     ES --> AP[Application projection]
-    ES --> HP[History projection]
+    ES --> LP[Lifecycle stream projection]
     ES --> GP[Linked group projection]
     AP <--> AD
-    HP <--> AD
+    LP -->|event pointers| H[Application history query]
+    ES -->|referenced events| H
+    AD -->|note and decision descriptions| H
+    PA[(prior_authority_data)] -->|PA decision details| H
+    J[(linked_group_justification)] -->|group descriptions| H
     AP --> Query[Query controllers]
-    HP --> Query
+    H --> Query
     GP --> Query
 ```
 
@@ -58,8 +62,10 @@ designed consistency boundary rather than an identity registry.
 ## Read path
 
 Tracking event processors update database projections asynchronously. Queries read those
-projections rather than loading aggregates. The application and history projections contain thin
-state and hydrate sensitive fields from `application_data` when required.
+projections rather than loading aggregates. The application projection contains thin state.
+For [application history](projections-and-replay.md#application-history), only the event
+pointers are projected. The query loads the referenced events, maps them to public entries
+and hydrates descriptions when needed. There is no stored history response.
 
 Endpoints that need read-your-writes, such as application creation, dispatch the command and then
 use `ProjectionReadinessGateway` to poll a Boolean readiness query (for example

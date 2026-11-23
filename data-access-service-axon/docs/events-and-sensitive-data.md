@@ -145,5 +145,6 @@ When a new operation contains sensitive or free-text data:
 3. put only routing, concurrency, and non-sensitive control fields in the event;
 4. include `applicationId` and `applicationDataVersion` when consumers need hydration;
 5. update aggregate event-sourcing state;
-6. update current-state and history projections, including replay tests;
+6. update the current-state projection as needed, cover lifecycle-stream pointers on replay,
+   and update the history mapper if the event produces a public entry;
 7. verify the serialized event stored in PostgreSQL does not contain the sensitive fields.
