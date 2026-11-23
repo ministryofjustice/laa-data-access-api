@@ -30,8 +30,8 @@ subsequent calls. This means multiple boundaries in a call chain (e.g. a `*DataS
 HTTP handler) can both call `report(...)` defensively on the same exception instance without
 producing a duplicate Sentry event.
 
-Every path below funnels through this one method, with one documented exception
-(`LoggingAspects`, Path D), which cannot depend on it for module-layering reasons.
+Every path below that reports an unexpected failure does so through this one method, except Path D
+(`LoggingAspects`), which logs at `ERROR` directly.
 
 ## The eight error-reporting paths
 
