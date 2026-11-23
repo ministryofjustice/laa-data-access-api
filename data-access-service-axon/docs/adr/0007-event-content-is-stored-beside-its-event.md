@@ -28,6 +28,51 @@ Authorities), so aggregates and queries can read it from one place. That needs a
 content with its event while still being able to erase it, without weakening the guarantee that
 every aggregate loads and decides from what remains.
 
+### Why content moves out of the state stores
+
+Today events record what happened, but most content is not in them. It lives in stores that hold
+state, not events:
+
+- **Drafts are mutable current state.** `application_draft` and `prior_authority_draft` are
+  overwritten in place. A draft event says that something changed, but not what, and the earlier
+  content is lost.
+- **Submitted content is whole-body versions.** `application_data` and `prior_authority_data`
+  store a complete body per data version, and events point at a version instead of carrying the
+  facts they introduced.
+
+As a result:
+
+- **The event stream is not the source of truth for content.** Aggregates and read models cannot
+  be rebuilt from events alone; replay depends on the side store still holding the pinned version.
+- **Concurrency has several versions.** The stream version, the drafts' optimistic-lock versions
+  and the data version sequence are separate, alongside the public version.
+- **Every change rewrites the whole body.** Updates, decisions and notes each read and append a
+  complete new version.
+- **Personal data is copied into every version.** Erasure means finding and rewriting every
+  version.
+
+**Before:** content is held as state beside the events.
+
+```mermaid
+flowchart LR
+  cmd[Command handlers]
+  subgraph write[Written by commands]
+    events[(domain_event_entry<br/>control facts<br/>+ data version pointer)]
+    draft[(application_draft<br/>prior_authority_draft<br/>mutable, overwritten)]
+    data[(application_data<br/>prior_authority_data<br/>whole body per version)]
+  end
+  subgraph read[Projections]
+    cur[(application_current_state<br/>prior_authority_current_state)]
+    life[(lifecycle_stream)]
+  end
+  cmd -->|append| events
+  cmd -->|upsert| draft
+  cmd -->|read + append new version| data
+  events --> cur & life
+  data -.->|looked up by version| cur
+  api[GET details / history] --> cur & life
+```
+
 ADS is not in production. Changing how events are stored is cheap now and expensive after
 go-live, when stored formats become contracts.
 
@@ -37,6 +82,38 @@ Each stored event is split in two when appended. The event keeps only the fields
 lists; everything else is **content**, written to `axon.event_content` keyed by event identifier,
 inside Axon's append transaction. Erasure replaces the row's content and records when; the row
 and the event remain.
+
+The direction is that **each event carries the content it introduced**, beside it in
+`event_content` rather than inside it, so erasure can replace content without rewriting immutable
+events. The stream becomes the ordered history of content as well as control facts. This layer
+builds the mechanism and moves the content events already carry; later layers move drafts and
+submitted content onto it. Even then `application_data` and `prior_authority_data` are still
+written and GET details still read the current-state projections; removing them is later work.
+
+**After this stack:** events carry their content; the data stores remain until later work.
+
+```mermaid
+flowchart LR
+  cmd[Command handlers]
+  subgraph write[Written atomically per event]
+    events[(domain_event_entry<br/>kept fields)]
+    content[(event_content<br/>content per event<br/>erased_at)]
+  end
+  data[(application_data<br/>prior_authority_data<br/>until later work)]
+  agg[Aggregate fold<br/>events + content]
+  cur[(current-state projections)]
+  life[(lifecycle_stream<br/>kept fields only)]
+  cmd -->|append| events
+  cmd -->|append| content
+  cmd -.-> data
+  events & content --> agg
+  events & content --> cur
+  events --> life
+  api[GET details / history] --> cur & life
+```
+
+This has costs: reads must join the two tables consistently, content needs a schema-evolution
+policy like kept fields, and aggregates fold content at load time.
 
 ### Erasure keeps the row
 
