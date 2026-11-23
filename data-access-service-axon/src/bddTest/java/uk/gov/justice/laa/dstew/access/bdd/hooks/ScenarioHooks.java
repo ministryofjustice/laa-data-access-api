@@ -15,10 +15,12 @@ public final class ScenarioHooks {
   public void startScenario() {
     // Constructing the scenario-scoped client validates environment configuration and
     // authentication.
+    System.err.println("DEBUG: ScenarioHooks.startScenario() INVOKED");
   }
 
   @After
   public void stopScenario() {
+    System.err.println("DEBUG: ScenarioHooks.stopScenario() INVOKED");
     apiClient.close();
   }
 }
