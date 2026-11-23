@@ -15,8 +15,9 @@ import uk.gov.justice.laa.dstew.access.eventcontent.EventContentStore;
 import uk.gov.justice.laa.dstew.access.eventcontent.RegisteredContentReaders;
 
 /**
- * An event source that rejoins content for each streamed event. Only registered content readers may
- * have one; see {@link #forProcessor}.
+ * An event source that rejoins content for each streamed event, failing if an event whose type has
+ * content fields has no content row. Only registered content readers may have one; see {@link
+ * #forProcessor}.
  */
 public final class ContentReadingEventSource implements StreamableEventSource {
 
@@ -64,7 +65,11 @@ public final class ContentReadingEventSource implements StreamableEventSource {
         .get()
         .findByEventId(message.identifier())
         .map(content -> ContentJoin.join(message, content, separator, converter))
-        .orElse(message);
+        .orElseGet(
+            () -> {
+              separator.get().requireNoContentFields(message.type().name(), message.identifier());
+              return message;
+            });
   }
 
   @Override

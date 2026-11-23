@@ -9,7 +9,8 @@ import tools.jackson.databind.node.ObjectNode;
 
 /**
  * Port for storing event content apart from the event. Content must be written in the same
- * transaction as its event, so they commit or roll back together.
+ * transaction as its event, so they commit or roll back together. Rows are never deleted: erasure
+ * replaces their content.
  */
 public interface EventContentStore {
 
@@ -22,4 +23,11 @@ public interface EventContentStore {
   Map<String, ObjectNode> findByTags(Collection<String> tags);
 
   Optional<ObjectNode> findByEventId(String eventId);
+
+  /**
+   * Hard-erases the content of the given events: replaces it with {@code replacement}, an empty
+   * object or default content, and records when it was erased. The rows are kept, so a missing row
+   * is never mistaken for erased content. Content already erased is left unchanged.
+   */
+  void erase(Collection<String> eventIds, ObjectNode replacement);
 }

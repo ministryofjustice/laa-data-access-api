@@ -57,6 +57,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUp
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.draft.CreateApplicationDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.draft.SubmitApplicationDraftCommand;
+import uk.gov.justice.laa.dstew.access.eventcontent.EventContentStore;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
@@ -120,6 +121,8 @@ class PostgresAxonIntegrationTest {
   @Autowired private EventStorageEngine eventStorageEngine;
 
   @Autowired private JdbcTemplate jdbcTemplate;
+
+  @Autowired private EventContentStore eventContentStore;
 
   @Autowired private CommandGateway commandGateway;
 
@@ -363,6 +366,139 @@ class PostgresAxonIntegrationTest {
                 documentId.toString(),
                 applicationId))
         .isEqualTo("client-report.pdf");
+  }
+
+  @Test
+  void givenUploadedDocument_whenContentErased_thenRowIsKeptAndAggregateStillLoads() {
+    UUID applicationId = UUID.randomUUID();
+    createDocumentDraft(applicationId);
+    commandGateway.sendAndWait(uploadCommand(applicationId, "client-report.pdf"));
+    String eventId = uploadedEventIds(applicationId).getFirst();
+
+    eventContentStore.erase(List.of(eventId), objectMapper.createObjectNode());
+
+    Map<String, Object> erased = contentRow(eventId);
+    assertThat(erased.get("content")).isEqualTo("{}");
+    assertThat(erased.get("erased_at")).isNotNull();
+    eventContentStore.erase(
+        List.of(eventId), objectMapper.createObjectNode().put("documentType", "OTHER"));
+    assertThat(contentRow(eventId)).isEqualTo(erased);
+
+    commandGateway.sendAndWait(uploadCommand(applicationId, "another.pdf"));
+    assertThat(uploadedEventIds(applicationId)).hasSize(2);
+  }
+
+  @Test
+  void givenDefaultContent_whenErased_thenRowHoldsOnlyTheDefaults() {
+    UUID applicationId = UUID.randomUUID();
+    createDocumentDraft(applicationId);
+    commandGateway.sendAndWait(uploadCommand(applicationId, "client-report.pdf"));
+    String eventId = uploadedEventIds(applicationId).getFirst();
+
+    eventContentStore.erase(
+        List.of(eventId), objectMapper.createObjectNode().put("documentType", "OTHER"));
+
+    assertThat(contentRow(eventId).get("content")).isEqualTo("{\"documentType\": \"OTHER\"}");
+    commandGateway.sendAndWait(uploadCommand(applicationId, "another.pdf"));
+    assertThat(uploadedEventIds(applicationId)).hasSize(2);
+  }
+
+  @Test
+  void givenEventContentRow_whenChangedOtherThanByErasure_thenRejected() {
+    UUID applicationId = UUID.randomUUID();
+    createDocumentDraft(applicationId);
+    commandGateway.sendAndWait(uploadCommand(applicationId, "client-report.pdf"));
+    commandGateway.sendAndWait(uploadCommand(applicationId, "another.pdf"));
+    List<String> eventIds = uploadedEventIds(applicationId);
+    String eventId = eventIds.getFirst();
+
+    assertThat(
+            List.of(
+                "DELETE FROM axon.event_content WHERE event_id = ?",
+                "UPDATE axon.event_content SET content = '{}'::jsonb WHERE event_id = ?",
+                "UPDATE axon.event_content SET content = '{}'::jsonb, erased_at = now(),"
+                    + " tags = '{other=1}' WHERE event_id = ?",
+                "UPDATE axon.event_content SET content = '{}'::jsonb, erased_at = now(),"
+                    + " created_at = now() - interval '1 day' WHERE event_id = ?"))
+        .allSatisfy(
+            statement ->
+                assertThatThrownBy(() -> jdbcTemplate.update(statement, eventId))
+                    .hasStackTraceContaining("Event content is immutable except for erasure"));
+
+    eventContentStore.erase(List.of(eventId), objectMapper.createObjectNode());
+    assertThat(
+            List.of(
+                "DELETE FROM axon.event_content WHERE event_id = ?",
+                "UPDATE axon.event_content SET content = '{}'::jsonb, erased_at = now()"
+                    + " WHERE event_id = ?",
+                "UPDATE axon.event_content SET erased_at = NULL WHERE event_id = ?"))
+        .allSatisfy(
+            statement ->
+                assertThatThrownBy(() -> jdbcTemplate.update(statement, eventId))
+                    .hasStackTraceContaining("Event content is immutable except for erasure"));
+    assertThat(contentRow(eventIds.get(1)).get("erased_at")).isNull();
+  }
+
+  @Test
+  void givenContentRowLost_whenAggregateSourced_thenFailsInsteadOfLoadingAsErased() {
+    UUID applicationId = UUID.randomUUID();
+    createDocumentDraft(applicationId);
+    commandGateway.sendAndWait(uploadCommand(applicationId, "client-report.pdf"));
+    String eventId = uploadedEventIds(applicationId).getFirst();
+    Map<String, Object> row =
+        jdbcTemplate.queryForMap(
+            "SELECT tags::text AS tags, content::text AS content FROM axon.event_content"
+                + " WHERE event_id = ?",
+            eventId);
+    // Rows cannot be deleted, so bypass the guard to simulate a lost row.
+    jdbcTemplate.execute(
+        "ALTER TABLE axon.event_content DISABLE TRIGGER event_content_immutable;"
+            + " DELETE FROM axon.event_content WHERE event_id = '%s';".formatted(eventId)
+            + " ALTER TABLE axon.event_content ENABLE TRIGGER event_content_immutable");
+    try {
+      assertThatThrownBy(
+              () -> commandGateway.sendAndWait(uploadCommand(applicationId, "another.pdf")))
+          .hasStackTraceContaining(
+              "Event "
+                  + eventId
+                  + " of type access.ApplicationDocumentUploaded has no content row");
+    } finally {
+      // Restore the row so event processors that read content are not left stuck.
+      jdbcTemplate.update(
+          "INSERT INTO axon.event_content (event_id, tags, content)"
+              + " VALUES (?, ?::text[], ?::jsonb)",
+          eventId,
+          row.get("tags"),
+          row.get("content"));
+    }
+    assertThat(uploadedEventIds(applicationId)).hasSize(1);
+  }
+
+  private ApplicationDocumentUploadCommand uploadCommand(UUID applicationId, String filename) {
+    return new ApplicationDocumentUploadCommand(
+        applicationId,
+        UUID.randomUUID(),
+        "GATEWAY_EVIDENCE",
+        Instant.now(),
+        12L,
+        "application/pdf",
+        "checksum",
+        "CIVIL_APPLY",
+        filename);
+  }
+
+  private List<String> uploadedEventIds(UUID applicationId) {
+    return jdbcTemplate.queryForList(
+        "SELECT event_identifier FROM axon.domain_event_entry WHERE aggregate_identifier = ?"
+            + " AND payload_type = 'access.ApplicationDocumentUploaded' ORDER BY sequence_number",
+        String.class,
+        applicationId.toString());
+  }
+
+  private Map<String, Object> contentRow(String eventId) {
+    return jdbcTemplate.queryForMap(
+        "SELECT content::text AS content, erased_at FROM axon.event_content WHERE event_id = ?",
+        eventId);
   }
 
   private void createDocumentDraft(UUID applicationId) {

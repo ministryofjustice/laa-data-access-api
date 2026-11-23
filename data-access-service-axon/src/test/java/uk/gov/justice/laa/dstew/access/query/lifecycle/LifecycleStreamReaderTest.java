@@ -18,13 +18,11 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.axonframework.conversion.jackson.JacksonConverter;
 import org.axonframework.eventsourcing.eventstore.jpa.AggregateEventEntry;
-import org.axonframework.messaging.core.MessageType;
 import org.axonframework.messaging.core.annotation.AnnotationMessageTypeResolver;
 import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.GenericEventMessage;
@@ -37,6 +35,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import tools.jackson.databind.node.ObjectNode;
+import uk.gov.justice.laa.dstew.access.command.EventTypes;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
@@ -167,17 +166,6 @@ class LifecycleStreamReaderTest {
   }
 
   @Test
-  void givenCommandPackage_whenScanned_thenFindsEventClassesByStoredName() {
-    var types =
-        LifecycleStreamReader.eventTypesIn(
-            LifecycleStreamReader.EVENTS_PACKAGE, new AnnotationMessageTypeResolver());
-
-    assertThat(types)
-        .containsEntry(NOTE_TYPE, NoteCreatedEvent.class)
-        .containsEntry(UPDATED_TYPE, ApplicationUpdatedEvent.class);
-  }
-
-  @Test
   void givenCommandPackage_whenScanned_thenFindsEveryEventTheStreamRecords() {
     Set<Class<?>> recorded =
         Arrays.stream(LifecycleStreamProjection.class.getDeclaredMethods())
@@ -185,23 +173,10 @@ class LifecycleStreamReaderTest {
             .map(method -> method.getParameterTypes()[0])
             .collect(Collectors.toSet());
 
-    var types =
-        LifecycleStreamReader.eventTypesIn(
-            LifecycleStreamReader.EVENTS_PACKAGE, new AnnotationMessageTypeResolver());
+    var types = EventTypes.all();
 
     assertThat(recorded).isNotEmpty();
     assertThat(types.values()).containsAll(recorded);
-  }
-
-  @Test
-  void givenTwoEventClassesWithTheSameName_whenScanned_thenThrows() {
-    assertThatThrownBy(
-            () ->
-                LifecycleStreamReader.eventTypesIn(
-                    LifecycleStreamReader.EVENTS_PACKAGE,
-                    type -> Optional.of(new MessageType("access.Same", "1.0"))))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("access.Same");
   }
 
   @Test
@@ -221,7 +196,7 @@ class LifecycleStreamReaderTest {
             OCCURRED_AT);
     String type = eventName(PriorAuthorityDecisionMadeEvent.class);
     var kept =
-        new EventContentSeparator(json)
+        new EventContentSeparator(json, Map.of())
             .separate(type, (ObjectNode) json.mapper().valueToTree(written))
             .kept();
     when(repository.findAllByGenesisIdOrderByOccurredAtAscIdAsc(GENESIS))

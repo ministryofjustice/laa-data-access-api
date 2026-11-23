@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -28,6 +29,7 @@ public class InMemoryEventContentStoreConfig {
   static final class InMemoryEventContentStore implements EventContentStore {
 
     private final Map<String, ContentRow> rows = new ConcurrentHashMap<>();
+    private final Set<String> erased = ConcurrentHashMap.newKeySet();
 
     @Override
     public void save(List<ContentRow> newRows) {
@@ -44,6 +46,17 @@ public class InMemoryEventContentStoreConfig {
     @Override
     public Optional<ObjectNode> findByEventId(String eventId) {
       return Optional.ofNullable(rows.get(eventId)).map(row -> row.content().deepCopy());
+    }
+
+    @Override
+    public void erase(Collection<String> eventIds, ObjectNode replacement) {
+      eventIds.stream()
+          .filter(rows::containsKey)
+          .filter(erased::add)
+          .forEach(
+              id ->
+                  rows.computeIfPresent(
+                      id, (key, row) -> new ContentRow(key, row.tags(), replacement.deepCopy())));
     }
   }
 }

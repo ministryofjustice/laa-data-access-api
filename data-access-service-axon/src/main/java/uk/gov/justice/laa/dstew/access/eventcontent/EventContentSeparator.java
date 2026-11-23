@@ -9,6 +9,8 @@ import com.networknt.schema.SchemaRegistry;
 import com.networknt.schema.SpecificationVersion;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.RecordComponent;
+import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -41,8 +43,13 @@ public final class EventContentSeparator {
   private final SchemaRegistry registry =
       SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_7);
 
-  public EventContentSeparator(EventJson json) {
+  private final Map<String, Class<?>> eventTypes;
+  private final Map<String, Boolean> contentFields = new ConcurrentHashMap<>();
+
+  /** Creates a separator for the given event classes, keyed by stored event type name. */
+  public EventContentSeparator(EventJson json, Map<String, Class<?>> eventTypes) {
     this.mapper = json.mapper();
+    this.eventTypes = Map.copyOf(eventTypes);
   }
 
   /** Kept fields and content of one event payload. Content may be empty. */
@@ -99,6 +106,42 @@ public final class EventContentSeparator {
     @SuppressWarnings("unchecked")
     Class<T> type = (Class<T>) event.getClass();
     return mapper.treeToValue(separate(typeName, payload).kept(), type);
+  }
+
+  /**
+   * Whether events of this type have content fields: record components the kept-field schema does
+   * not list. Every such event has a content row, and erasure keeps it. A type without a schema
+   * cannot be appended, and one outside the separator's event classes is treated as having none.
+   *
+   * @throws IllegalStateException if the event class is not a record
+   */
+  public boolean hasContentFields(String typeName) {
+    return contentFields.computeIfAbsent(typeName, this::detectContentFields);
+  }
+
+  /**
+   * Accepts an event without a content row only if its type has no content fields.
+   *
+   * @throws MissingEventContentException if the type has content fields
+   */
+  public void requireNoContentFields(String typeName, String eventId) {
+    if (hasContentFields(typeName)) {
+      throw new MissingEventContentException(typeName, eventId);
+    }
+  }
+
+  private boolean detectContentFields(String typeName) {
+    Optional<KeptFieldSchema> schema = find(typeName);
+    Class<?> type = eventTypes.get(typeName);
+    if (schema.isEmpty() || type == null) {
+      return false;
+    }
+    if (!type.isRecord()) {
+      throw new IllegalStateException("Event " + typeName + " must be a record");
+    }
+    return Arrays.stream(type.getRecordComponents())
+        .map(RecordComponent::getName)
+        .anyMatch(name -> !schema.get().keptFields().contains(name));
   }
 
   /** Whether an event type has a kept-field schema. */

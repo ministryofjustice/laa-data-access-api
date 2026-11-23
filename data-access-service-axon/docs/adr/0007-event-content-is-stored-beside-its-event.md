@@ -35,7 +35,26 @@ go-live, when stored formats become contracts.
 
 Each stored event is split in two when appended. The event keeps only the fields its schema
 lists; everything else is **content**, written to `axon.event_content` keyed by event identifier,
-inside Axon's append transaction. Erasing content deletes the row; the event remains.
+inside Axon's append transaction. Erasure replaces the row's content and records when; the row
+and the event remain.
+
+### Erasure keeps the row
+
+Direction agreed on 2026-11-09:
+
+- **Soft deletion will be an event.** An erasure request will raise a soft deletion that folds
+  and read models treat as erased while the content stays stored.
+- **Hard erasure will run automatically** after a retention period. It replaces the row's content
+  with `{}` or default content and stamps `erased_at`, once. The row is kept.
+- **A missing row is an error, not erased,** whenever the event type has content fields: record
+  components its kept-field schema does not list. Readers that join content throw
+  `MissingEventContentException`. A field absent from an existing or erased row still reads as
+  erased.
+
+This layer adds only the store mechanism: `event_content.erased_at`, a trigger in
+`V36__create_event_content.sql` that rejects deletes and every update except that single erasure
+transition, and `EventContentStore.erase(eventIds, replacement)`. The soft deletion event,
+retention period, scheduler and any erasure endpoint are later work.
 
 ### Classification rule
 
@@ -55,7 +74,8 @@ is needed after erasure needs its own solution.
 
 Content fields are typed `Erasable<T>`. Erased is a real state: reading an erased value throws
 `ContentErasedException`, so every use of content is visible. Each event's compact constructor
-normalises a missing content field to erased, so an event whose content row is gone still loads.
+normalises an absent content field to erased, so an event loads whether its row holds the original
+content, defaults or `{}` after erasure, and when read with kept fields only.
 
 **Invariant:** with all content erased, every aggregate loads and every command decides as it
 would with content. `ErasureReplayTest` folds Application and Prior Authority histories through
@@ -105,13 +125,15 @@ thin adapters know about Axon (`eventcontent.axon`) or JDBC (`eventcontent.jdbc`
   through `registerDecorator`. On append it splits each event and writes content in the same
   transaction, so content and event commit or roll back together, including on append
   conflicts. On sourcing it fetches the aggregate's content in one query by tag and rejoins it
-  before conversion, so aggregates load whole.
+  before conversion, so aggregates load whole. The tag query runs before the events are read, so
+  an event committed in between can be missing from it; such an event's row is looked up by event
+  ID before sourcing fails.
 - **Registered content readers.** The event stream used by processors is passed through
   unchanged, so processors receive kept fields with content erased. Only processors on
   `RegisteredContentReaders` (`application-projection` and `prior-authority-projection`) get an
-  event source that rejoins content. Each one added must say what content it stores and how
-  erasure reaches it. Subscribing processors receive the published event with content, but do
-  not read it.
+  event source that rejoins content, and fails on a missing row as sourcing does. Each one added
+  must say what content it stores and how erasure reaches it. Subscribing processors receive the
+  published event with content, but do not read it.
 - **Lifecycle stream.** `lifecycle-stream` and application history need no content.
   `LifecycleStreamReader` decodes stored rows as Axon does, so content fields read as erased.
 
@@ -147,12 +169,17 @@ Snapshots require an erasure design first.
   together with one reset of each environment's `axon` schema: the event store, processor
   tokens, projections, lifecycle stream and the sensitive-data stores (`application_data`,
   drafts, Prior Authority data) are emptied together. Migrations contain no destructive SQL;
-  `V36__create_event_content.sql` only creates the content table.
+  `V36__create_event_content.sql` only creates the content table and its guard trigger. As V36
+  has not been deployed, the erasure column and trigger are part of it rather than a new
+  migration.
 - After go-live, every stored format becomes a contract needing upcasting or migration.
 - New event types need an explicit `@Event` name, a schema and a classification review; the build
   enforces the first two.
-- Every aggregate load runs one indexed content query, and each event streamed to a registered
-  content reader runs one. Batch these only if measurements show a need.
+- Every aggregate load runs one indexed content query, plus a lookup by event ID for any event of
+  a type with content fields that the query missed. Each event streamed to a registered content
+  reader runs one. Batch these only if measurements show a need.
+- A lost content row stops the aggregate loading and stalls a content-reading processor, rather
+  than silently reading as erased.
 - The design relies on Axon's decorator hook, its tags and sourcing criteria, and the observed
   behaviour that the JPA engine appends inside a Spring transaction. The framework-neutral port
   limits how much would move if that changed.
@@ -167,7 +194,8 @@ This layer moves no content into events that was not there already. Later layers
 2. move submitted content into events, read application details from the aggregate and remove
    `ApplicationDataStore`;
 3. do the same for Prior Authority drafts, submissions and decisions;
-4. define erasure and its recorded state.
+4. build erasure on the store mechanism: the soft deletion event, the retention period and the
+   automatic hard erasure.
 
 When the old stores are gone, ADR 0002 is superseded.
 

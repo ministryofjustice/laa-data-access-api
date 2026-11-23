@@ -29,12 +29,14 @@ import tools.jackson.databind.node.ObjectNode;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventContentSeparator;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventContentStore;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventContentStore.ContentRow;
+import uk.gov.justice.laa.dstew.access.eventcontent.MissingEventContentException;
 
 /**
  * Wraps Axon's storage engine. On append it keeps only schema-listed fields on the stored event and
  * writes everything else to the content store; on sourcing it rejoins content so aggregates load
- * whole. The event stream used by processors is passed through unchanged, so processors receive
- * kept fields only unless they are registered content readers.
+ * whole, and fails if an event whose type has content fields has no content row. The event stream
+ * used by processors is passed through unchanged, so processors receive kept fields only unless
+ * they are registered content readers.
  */
 final class ContentSeparatingStorageEngine implements EventStorageEngine {
 
@@ -114,8 +116,21 @@ final class ContentSeparatingStorageEngine implements EventStorageEngine {
         return message;
       }
       ObjectNode extra = content.get(message.identifier());
-      // No row: the event had no content, or its content has been erased.
-      return extra == null ? message : ContentJoin.join(message, extra, separator, converter);
+      if (extra == null) {
+        String typeName = message.type().name();
+        if (!separator.get().hasContentFields(typeName)) {
+          return message;
+        }
+        // Content was read by tag before the events, so an event committed in between has its
+        // row here. Content commits with its event and erasure keeps the row, so none means lost.
+        extra =
+            store
+                .get()
+                .findByEventId(message.identifier())
+                .orElseThrow(
+                    () -> new MissingEventContentException(typeName, message.identifier()));
+      }
+      return ContentJoin.join(message, extra, separator, converter);
     };
   }
 

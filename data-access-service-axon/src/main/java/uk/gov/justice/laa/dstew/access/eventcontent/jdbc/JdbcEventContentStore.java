@@ -82,6 +82,25 @@ public final class JdbcEventContentStore implements EventContentStore {
         .map(this::read);
   }
 
+  @Override
+  public void erase(Collection<String> eventIds, ObjectNode replacement) {
+    if (eventIds.isEmpty()) {
+      return;
+    }
+    jdbc.update(
+        connection -> {
+          var statement =
+              connection.prepareStatement(
+                  "UPDATE "
+                      + table
+                      + " SET content = ?::jsonb, erased_at = now()"
+                      + " WHERE event_id = ANY (?) AND erased_at IS NULL");
+          statement.setString(1, mapper.writeValueAsString(replacement));
+          statement.setArray(2, connection.createArrayOf("varchar", eventIds.toArray()));
+          return statement;
+        });
+  }
+
   private ObjectNode read(String json) {
     return (ObjectNode) mapper.readTree(json);
   }

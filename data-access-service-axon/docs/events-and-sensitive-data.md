@@ -85,11 +85,13 @@ historical sensitive-data versions. Application-level retention removes those ve
 The content events do carry is stored beside them rather than in them. Each stored event type has
 a kept-field schema in `src/main/resources/event-schemas/access.<Name>.json`; on append, fields the
 schema does not list are written to `event_content`, keyed by event identifier, in the same
-transaction. Content fields are `Erasable<T>`: erasing content deletes its row, and the event still
-loads with those fields erased. Aggregates load with content rejoined; only the processors listed
-in `RegisteredContentReaders` receive it. Every other processor, and application history, sees kept
-fields only. See [ADR 0007](adr/0007-event-content-is-stored-beside-its-event.md) for the
-classification rule and the content fields of each event.
+transaction. Content fields are `Erasable<T>`. Erasure keeps the row, replacing its content with
+`{}` or defaults and stamping `erased_at`, and the event still loads with those fields erased. A
+missing row for an event type with content fields is an error, not erased content. Aggregates load
+with content rejoined; only the processors listed in `RegisteredContentReaders` receive it. Every
+other processor, and application history, sees kept fields only. See
+[ADR 0007](adr/0007-event-content-is-stored-beside-its-event.md) for the classification rule and
+the content fields of each event.
 
 ## What is stored where
 

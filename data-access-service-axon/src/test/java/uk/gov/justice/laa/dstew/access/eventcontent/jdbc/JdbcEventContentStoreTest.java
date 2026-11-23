@@ -28,4 +28,13 @@ class JdbcEventContentStoreTest {
     assertThat(store.findByTags(List.of())).isEmpty();
     verifyNoInteractions(jdbc);
   }
+
+  @Test
+  void givenNoEventIds_whenErased_thenNoUpdateIsRun() {
+    var store = new JdbcEventContentStore(jdbc, new EventJson(), "axon");
+
+    store.erase(List.of(), new EventJson().mapper().createObjectNode());
+
+    verifyNoInteractions(jdbc);
+  }
 }

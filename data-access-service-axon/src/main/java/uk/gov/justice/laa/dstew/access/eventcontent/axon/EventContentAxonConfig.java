@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
+import uk.gov.justice.laa.dstew.access.command.EventTypes;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventContentSeparator;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventContentStore;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventJson;
@@ -34,7 +35,7 @@ public class EventContentAxonConfig {
 
   @Bean
   EventContentSeparator eventContentSeparator(EventJson json) {
-    return new EventContentSeparator(json);
+    return new EventContentSeparator(json, EventTypes.all());
   }
 
   @Bean

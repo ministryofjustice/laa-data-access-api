@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 import org.axonframework.messaging.eventhandling.annotation.Event;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
+import uk.gov.justice.laa.dstew.access.command.EventTypes;
 import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventContentSeparator;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventJson;
@@ -93,6 +94,8 @@ class EventContentArchitectureTest {
             .<Class<?>>map(javaClass -> javaClass.reflect())
             .toList();
     assertThat(events).isNotEmpty();
+    // The separator detects lost content rows only for the event classes it is given.
+    assertThat(EventTypes.all().values()).containsExactlyInAnyOrderElementsOf(events);
 
     EventJson json = new EventJson();
     for (Class<?> event : events) {

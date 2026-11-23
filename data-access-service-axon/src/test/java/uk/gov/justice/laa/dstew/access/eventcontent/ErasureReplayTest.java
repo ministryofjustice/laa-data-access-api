@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -48,7 +49,8 @@ class ErasureReplayTest {
 
   private static final Instant AT = Instant.parse("2026-11-02T10:00:00Z");
 
-  private final EventContentSeparator separator = new EventContentSeparator(new EventJson());
+  private final EventContentSeparator separator =
+      new EventContentSeparator(new EventJson(), Map.of());
 
   private final UUID applicationId = UUID.randomUUID();
   private final UUID priorAuthorityId = UUID.randomUUID();

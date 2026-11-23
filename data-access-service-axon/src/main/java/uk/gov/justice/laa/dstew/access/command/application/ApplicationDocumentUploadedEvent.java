@@ -23,7 +23,7 @@ public record ApplicationDocumentUploadedEvent(
     Erasable<String> fileSuffix)
     implements GenesisScoped {
 
-  /** Treats absent content as erased so a stored event without its content row still loads. */
+  /** Treats absent content as erased, as in an erased content row or a kept-fields-only read. */
   public ApplicationDocumentUploadedEvent {
     documentType = Erasable.orErased(documentType);
     size = Erasable.orErased(size);

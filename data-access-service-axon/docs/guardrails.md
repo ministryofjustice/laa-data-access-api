@@ -56,7 +56,8 @@ Do not add application content, individuals, proceedings, certificates, note tex
 requests, or free-text descriptions to events. Append them to `application_data` and reference the
 new version. Identifiers may still be personal data and also require review. A field the event's
 kept-field schema does not list is content: it must be `Erasable` and no decider rule may depend
-on it (see [ADR 0007](adr/0007-event-content-is-stored-beside-its-event.md)).
+on it. Never delete an `event_content` row: erasure replaces its content, and a missing row fails
+loading (see [ADR 0007](adr/0007-event-content-is-stored-beside-its-event.md)).
 
 ### Do not nest events inside events
 

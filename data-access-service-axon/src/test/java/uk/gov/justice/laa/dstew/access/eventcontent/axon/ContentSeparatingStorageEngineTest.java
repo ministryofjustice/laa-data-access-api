@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.eventcontent.axon;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
@@ -12,6 +13,7 @@ import static org.mockito.Mockito.when;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -35,21 +37,27 @@ import org.axonframework.messaging.eventstreaming.Tag;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import tools.jackson.databind.node.ObjectNode;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.eventcontent.ContentTestEvent;
 import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventContentSeparator;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventContentStore;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventContentStore.ContentRow;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventJson;
+import uk.gov.justice.laa.dstew.access.eventcontent.MissingEventContentException;
 
 class ContentSeparatingStorageEngineTest {
 
   private static final Tag TAG = Tag.of("applicationId", "a-1");
+  private static final String ASSIGNED = "access.WorkItemAssigned";
 
   private final EventJson json = new EventJson();
   private final EventConverter converter =
       new DelegatingEventConverter(new JacksonConverter(json.mapper()));
-  private final EventContentSeparator separator = new EventContentSeparator(json);
+  private final EventContentSeparator separator =
+      new EventContentSeparator(
+          json,
+          Map.of(ContentTestEvent.TYPE, ContentTestEvent.class, ASSIGNED, WorkItemAssigned.class));
   private final EventStorageEngine delegate = mock(EventStorageEngine.class);
   private final EventContentStore store = mock(EventContentStore.class);
   private final ContentSeparatingStorageEngine engine =
@@ -111,19 +119,65 @@ class ContentSeparatingStorageEngineTest {
     String id = UUID.randomUUID().toString();
     EventMessage withContent = keptOnly(new ContentTestEvent(id, Erasable.of("secret")));
     EventMessage erased = keptOnly(new ContentTestEvent(id, null));
+    EventMessage keptFieldsOnly = new GenericEventMessage(new MessageType(ASSIGNED), new byte[0]);
     EventMessage empty = new GenericEventMessage(new MessageType(ContentTestEvent.TYPE), null);
     ObjectNode content = json.mapper().createObjectNode().put("note", "secret");
     when(store.findByTags(Set.of("applicationId=a-1")))
-        .thenReturn(Map.of(withContent.identifier(), content, empty.identifier(), content));
+        .thenReturn(
+            Map.of(
+                withContent.identifier(),
+                content,
+                erased.identifier(),
+                json.mapper().createObjectNode(),
+                empty.identifier(),
+                content));
     SourcingCondition condition = SourcingCondition.conditionFor(EventCriteria.havingTags(TAG));
     when(delegate.source(condition, null))
-        .thenReturn(MessageStream.fromItems(withContent, erased, empty));
+        .thenReturn(MessageStream.fromItems(withContent, erased, keptFieldsOnly, empty));
 
     MessageStream<EventMessage> sourced = engine.source(condition, null);
 
     assertThat(note(sourced.next().orElseThrow().message())).isEqualTo(Erasable.of("secret"));
     assertThat(note(sourced.next().orElseThrow().message()).isErased()).isTrue();
+    assertThat(sourced.next().orElseThrow().message()).isSameAs(keptFieldsOnly);
     assertThat(sourced.next().orElseThrow().message().payload()).isNull();
+    verify(store, never()).findByEventId(any());
+  }
+
+  @Test
+  void givenEventCommittedAfterTheTagRead_whenSourced_thenItsContentIsFoundByEventId() {
+    EventMessage later =
+        keptOnly(new ContentTestEvent(UUID.randomUUID().toString(), Erasable.of("later")));
+    when(store.findByTags(Set.of("applicationId=a-1"))).thenReturn(Map.of());
+    when(store.findByEventId(later.identifier()))
+        .thenReturn(Optional.of(json.mapper().createObjectNode().put("note", "later")));
+    SourcingCondition condition = SourcingCondition.conditionFor(EventCriteria.havingTags(TAG));
+    when(delegate.source(condition, null)).thenReturn(MessageStream.fromItems(later));
+
+    MessageStream<EventMessage> sourced = engine.source(condition, null);
+
+    assertThat(note(sourced.next().orElseThrow().message())).isEqualTo(Erasable.of("later"));
+  }
+
+  @Test
+  void givenEventWithContentFieldsAndNoContentRow_whenSourced_thenFails() {
+    EventMessage lost =
+        keptOnly(new ContentTestEvent(UUID.randomUUID().toString(), Erasable.of("lost")));
+    when(store.findByTags(Set.of("applicationId=a-1"))).thenReturn(Map.of());
+    when(store.findByEventId(lost.identifier())).thenReturn(Optional.empty());
+    SourcingCondition condition = SourcingCondition.conditionFor(EventCriteria.havingTags(TAG));
+    when(delegate.source(condition, null)).thenReturn(MessageStream.fromItems(lost));
+
+    MessageStream<EventMessage> sourced = engine.source(condition, null);
+
+    assertThatThrownBy(sourced::next)
+        .isInstanceOf(MissingEventContentException.class)
+        .hasMessage(
+            "Event "
+                + lost.identifier()
+                + " of type "
+                + ContentTestEvent.TYPE
+                + " has no content row");
   }
 
   @Test

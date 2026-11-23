@@ -3,19 +3,26 @@ package uk.gov.justice.laa.dstew.access.eventcontent;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import tools.jackson.databind.node.ObjectNode;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventContentSeparator.KeptFieldViolationException;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventContentSeparator.UnclassifiedEventException;
 
 class EventContentSeparatorTest {
 
+  private static final String ASSIGNED = "access.WorkItemAssigned";
+
   private final EventJson json = new EventJson();
-  private final EventContentSeparator separator = new EventContentSeparator(json);
+  private final EventContentSeparator separator =
+      new EventContentSeparator(
+          json,
+          Map.of(ContentTestEvent.TYPE, ContentTestEvent.class, ASSIGNED, WorkItemAssigned.class));
 
   @Test
   void givenPayload_whenSeparated_thenUnlistedFieldsAreContentAndRejoinRestoresThem() {
@@ -37,6 +44,28 @@ class EventContentSeparatorTest {
 
     assertThat(erased.id()).isEqualTo(event.id());
     assertThat(erased.note().isErased()).isTrue();
+  }
+
+  @Test
+  void givenTypeWithContentFields_whenContentRowMissing_thenFails() {
+    assertThat(separator.hasContentFields(ContentTestEvent.TYPE)).isTrue();
+    assertThatThrownBy(() -> separator.requireNoContentFields(ContentTestEvent.TYPE, "event-1"))
+        .isInstanceOf(MissingEventContentException.class)
+        .hasMessage("Event event-1 of type test.Content has no content row");
+  }
+
+  @Test
+  void givenTypeWithOnlyKeptFields_whenContentRowMissing_thenAccepted() {
+    assertThat(separator.hasContentFields(ASSIGNED)).isFalse();
+    separator.requireNoContentFields(ASSIGNED, "event-2");
+  }
+
+  @Test
+  void givenTypeOutsideTheEventClasses_whenContentRowMissing_thenAccepted() {
+    var withoutClasses = new EventContentSeparator(json, Map.of());
+
+    assertThat(withoutClasses.hasContentFields(ContentTestEvent.TYPE)).isFalse();
+    assertThat(withoutClasses.hasContentFields("test.Missing")).isFalse();
   }
 
   @Test

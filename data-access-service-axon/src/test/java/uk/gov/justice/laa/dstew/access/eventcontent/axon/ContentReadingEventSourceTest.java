@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -24,6 +25,7 @@ import uk.gov.justice.laa.dstew.access.eventcontent.ContentTestEvent;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventContentSeparator;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventContentStore;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventJson;
+import uk.gov.justice.laa.dstew.access.eventcontent.MissingEventContentException;
 import uk.gov.justice.laa.dstew.access.eventcontent.RegisteredContentReaders;
 
 class ContentReadingEventSourceTest {
@@ -37,7 +39,9 @@ class ContentReadingEventSourceTest {
       ContentReadingEventSource.forProcessor(
           RegisteredContentReaders.PRIOR_AUTHORITY_PROJECTION,
           delegate,
-          () -> new EventContentSeparator(json),
+          () ->
+              new EventContentSeparator(
+                  json, Map.of(ContentTestEvent.TYPE, ContentTestEvent.class)),
           () -> store,
           () -> converter);
 
@@ -57,7 +61,8 @@ class ContentReadingEventSourceTest {
     EventMessage empty = message(null);
     when(store.findByEventId(withContent.identifier()))
         .thenReturn(Optional.of(json.mapper().createObjectNode().put("note", "secret")));
-    when(store.findByEventId(erased.identifier())).thenReturn(Optional.empty());
+    when(store.findByEventId(erased.identifier()))
+        .thenReturn(Optional.of(json.mapper().createObjectNode()));
     StreamingCondition condition = StreamingCondition.startingFrom(null);
     when(delegate.open(condition, null))
         .thenReturn(MessageStream.fromItems(withContent, erased, empty));
@@ -67,6 +72,20 @@ class ContentReadingEventSourceTest {
     assertThat(read(stream.next().orElseThrow().message()).note().value()).isEqualTo("secret");
     assertThat(read(stream.next().orElseThrow().message()).note().isErased()).isTrue();
     assertThat(stream.next().orElseThrow().message().payload()).isNull();
+  }
+
+  @Test
+  void givenEventWithContentFieldsAndNoContentRow_whenOpened_thenFails() {
+    EventMessage lost = message(json.mapper().createObjectNode().put("id", "3"));
+    when(store.findByEventId(lost.identifier())).thenReturn(Optional.empty());
+    StreamingCondition condition = StreamingCondition.startingFrom(null);
+    when(delegate.open(condition, null)).thenReturn(MessageStream.fromItems(lost));
+
+    MessageStream<EventMessage> stream = source.open(condition, null);
+
+    assertThatThrownBy(stream::next)
+        .isInstanceOf(MissingEventContentException.class)
+        .hasMessageContaining(lost.identifier());
   }
 
   @Test
@@ -88,7 +107,7 @@ class ContentReadingEventSourceTest {
         UUID.randomUUID().toString(),
         new MessageType(ContentTestEvent.TYPE),
         payload == null ? null : converter.convert(payload, byte[].class),
-        java.util.Map.of(),
+        Map.of(),
         Instant.now());
   }
 
