@@ -580,7 +580,11 @@ class PriorAuthorityDraftIntegrationTest {
                 String.class,
                 eventId))
         .isEqualTo("Interpreter costs");
-    assertThat(jdbcTemplate.update("DELETE FROM axon.event_content WHERE event_id = ?", eventId))
+    assertThat(
+            jdbcTemplate.update(
+                "UPDATE axon.event_content SET content = '{}'::jsonb, erased_at = now()"
+                    + " WHERE event_id = ?",
+                eventId))
         .isOne();
     assertThat(draftRow(id)).isNotEmpty();
     ResponseEntity<String> response =

@@ -87,8 +87,9 @@ The direction is that **each event carries the content it introduced**, beside i
 `event_content` rather than inside it, so erasure can replace content without rewriting immutable
 events. The stream becomes the ordered history of content as well as control facts. This layer
 builds the mechanism and moves the content events already carry; later layers move drafts and
-submitted content onto it. Even then `application_data` and `prior_authority_data` are still
-written and GET details still read the current-state projections; removing them is later work.
+submitted content onto it. Even then `application_data`, `prior_authority_data` and the
+`prior_authority_draft` read copy are still written and GET details still read the current-state
+projections; removing them is later work.
 
 **After this stack:** events carry their content; the data stores remain until later work.
 
@@ -99,7 +100,7 @@ flowchart LR
     events[(domain_event_entry<br/>kept fields)]
     content[(event_content<br/>content per event<br/>erased_at)]
   end
-  data[(application_data<br/>prior_authority_data<br/>until later work)]
+  data[(application_data<br/>prior_authority_data<br/>prior_authority_draft read copy<br/>until later work)]
   agg[Aggregate fold<br/>events + content]
   cur[(current-state projections)]
   life[(lifecycle_stream<br/>kept fields only)]
