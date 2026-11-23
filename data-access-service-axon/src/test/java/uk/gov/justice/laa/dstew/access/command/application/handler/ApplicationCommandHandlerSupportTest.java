@@ -13,6 +13,9 @@ import java.util.Map;
 import java.util.UUID;
 import org.axonframework.modelling.repository.EntityNotFoundException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
@@ -106,11 +109,14 @@ class ApplicationCommandHandlerSupportTest {
         .hasMessageContaining("No application draft found with Application ID: " + applicationId);
   }
 
-  @Test
-  void givenSubmittedApplicationWithErasedContent_whenRequireContentNotErased_thenNotFound() {
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(strings = "APPLICATION_SUBMITTED")
+  void givenSubmittedApplicationWithErasedContent_whenRequireContentNotErased_thenNotFound(
+      String status) {
     UUID applicationId = UUID.randomUUID();
     ApplicationState state = new ApplicationState();
-    ApplicationEvolve.apply(state, erasedCreated(applicationId));
+    ApplicationEvolve.apply(state, erasedCreated(applicationId, status));
 
     assertThatThrownBy(
             () ->
@@ -236,13 +242,13 @@ class ApplicationCommandHandlerSupportTest {
     return application;
   }
 
-  private static ApplicationCreatedEvent erasedCreated(UUID applicationId) {
+  private static ApplicationCreatedEvent erasedCreated(UUID applicationId, String status) {
     ApplicationCreatedEvent created = applicationCreatedEvent(applicationId);
     return new ApplicationCreatedEvent(
         created.applicationId(),
         created.applicationDataVersion(),
         created.requestFingerprint(),
-        created.status(),
+        status,
         created.schemaVersion(),
         created.occurredAt(),
         Erasable.erased(),

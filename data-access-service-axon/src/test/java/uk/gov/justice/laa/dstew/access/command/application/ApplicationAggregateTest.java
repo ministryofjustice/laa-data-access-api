@@ -445,14 +445,14 @@ class ApplicationAggregateTest {
   }
 
   @Test
-  void givenAlreadyManualApplication_whenMarkedReadyAgain_thenSucceedsWithoutAnotherEvent() {
+  void givenErasedManualApplication_whenMarkedReadyAgain_thenSucceedsWithoutAnotherEvent() {
     UUID applicationId = UUID.randomUUID();
     Instant firstOccurredAt = Instant.parse("2026-07-21T09:30:00Z");
 
     fixture
         .given()
         .events(
-            applicationCreatedEvent(applicationId),
+            erasedApplicationCreated(applicationId),
             new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, firstOccurredAt))
         .when()
         .command(
@@ -876,23 +876,9 @@ class ApplicationAggregateTest {
   @Test
   void givenErasedApplication_whenCreateNote_thenFailsAsIfMissing() {
     UUID applicationId = UUID.randomUUID();
-    ApplicationCreatedEvent created = applicationCreatedEvent(applicationId);
     fixture
         .given()
-        .events(
-            new ApplicationCreatedEvent(
-                created.applicationId(),
-                created.applicationDataVersion(),
-                created.requestFingerprint(),
-                created.status(),
-                created.schemaVersion(),
-                created.occurredAt(),
-                Erasable.erased(),
-                created.officeCode(),
-                created.laaReference(),
-                created.proceedingIds(),
-                Erasable.erased(),
-                Erasable.erased()))
+        .events(erasedApplicationCreated(applicationId))
         .when()
         .command(new CreateNoteCommand(applicationId, "My note", "{}", Instant.now()))
         .then()
@@ -1163,6 +1149,22 @@ class ApplicationAggregateTest {
   }
 
   @Test
+  void givenErasedAutoGrantedApplication_whenOutcomeRepeated_thenSucceedsWithoutAnotherEvent() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-19T10:15:00Z");
+    fixture
+        .given()
+        .events(
+            erasedApplicationCreated(applicationId), autoGrantedDecision(applicationId, occurredAt))
+        .when()
+        .command(new RecordAutoGrantedOutcomeCommand(applicationId, Map.of(), "{}", occurredAt))
+        .then()
+        .success()
+        .noEvents();
+    verify(applicationDataStore, never()).append(any(), anyLong(), any(), any(), any());
+  }
+
+  @Test
   void givenAutoGrantedApplicationWithMismatchedPayload_whenOutcomeRecorded_thenThrowsConflict() {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-19T10:15:00Z");
@@ -1170,7 +1172,7 @@ class ApplicationAggregateTest {
     fixture
         .given()
         .events(
-            applicationCreatedEvent(applicationId), autoGrantedDecision(applicationId, occurredAt))
+            erasedApplicationCreated(applicationId), autoGrantedDecision(applicationId, occurredAt))
         .when()
         .command(
             new RecordAutoGrantedOutcomeCommand(applicationId, Map.of(), "{different}", occurredAt))
@@ -1317,6 +1319,23 @@ class ApplicationAggregateTest {
     fixture.stop();
   }
 
+  private static ApplicationCreatedEvent erasedApplicationCreated(UUID applicationId) {
+    ApplicationCreatedEvent created = applicationCreatedEvent(applicationId);
+    return new ApplicationCreatedEvent(
+        applicationId,
+        created.applicationDataVersion(),
+        created.requestFingerprint(),
+        created.status(),
+        created.schemaVersion(),
+        created.occurredAt(),
+        Erasable.erased(),
+        created.officeCode(),
+        created.laaReference(),
+        created.proceedingIds(),
+        Erasable.erased(),
+        Erasable.erased());
+  }
+
   private static ApplicationDecisionMadeEvent autoGrantedDecision(
       UUID applicationId, Instant occurredAt) {
     return new ApplicationDecisionMadeEvent(
@@ -1326,7 +1345,7 @@ class ApplicationAggregateTest {
         "GRANTED",
         AutoGrantedState.AUTOGRANTED,
         occurredAt,
-        "fingerprint",
+        PayloadFingerprint.compute("{}"),
         Map.of(),
         null,
         "{}",

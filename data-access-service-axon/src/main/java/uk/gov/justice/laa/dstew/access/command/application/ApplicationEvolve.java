@@ -26,6 +26,7 @@ public final class ApplicationEvolve {
 
   /** Applies an {@link ApplicationCreatedEvent} to the given state. */
   public static void apply(ApplicationState state, ApplicationCreatedEvent event) {
+    state.submissionRecorded = true;
     state.applicationId = event.applicationId();
     state.schemaVersion = event.schemaVersion();
     state.requestFingerprint = event.requestFingerprint();

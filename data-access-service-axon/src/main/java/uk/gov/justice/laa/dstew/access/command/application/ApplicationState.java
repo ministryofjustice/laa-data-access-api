@@ -21,6 +21,7 @@ public class ApplicationState {
   UUID applicationId;
   int schemaVersion;
   String requestFingerprint;
+  boolean submissionRecorded;
   String status;
   String officeCode;
   AutoGrantedState autoGranted = AutoGrantedState.PENDING;

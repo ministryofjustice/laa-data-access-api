@@ -32,7 +32,7 @@ final class ApplicationCommandHandlerSupport {
    */
   static void requireContentNotErased(ApplicationAggregate application) {
     ApplicationState state = application.getState();
-    if (state.getStatus() != null && state.getContent().isErased()) {
+    if (state.isSubmissionRecorded() && state.getContent().isErased()) {
       throw new EntityNotFoundException(application.getApplicationId());
     }
   }

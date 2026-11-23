@@ -1822,6 +1822,35 @@ class PostgresAxonIntegrationTest {
   }
 
   @Test
+  void givenErasedSubmittedContent_whenCreateNote_thenReturns404WithoutWriting() {
+    UUID applicationId = UUID.randomUUID();
+    applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
+    projectionAwaiter.awaitApplication(applicationId);
+    assertThat(
+            jdbcTemplate.update(
+                "DELETE FROM axon.event_content WHERE event_id ="
+                    + " (SELECT event_identifier FROM axon.domain_event_entry"
+                    + " WHERE aggregate_identifier = ? AND sequence_number = 0)",
+                applicationId.toString()))
+        .isOne();
+
+    ResponseEntity<Void> response =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/applications/" + applicationId + "/notes",
+            HttpMethod.POST,
+            new HttpEntity<>(new CreateNoteRequest("Should fail"), headers()),
+            Void.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM axon.application_data WHERE application_id = ?",
+                Integer.class,
+                applicationId))
+        .isOne();
+  }
+
+  @Test
   void givenNoApplication_whenCreateNote_thenReturns404() {
     ResponseEntity<Void> response =
         restTemplate.exchange(

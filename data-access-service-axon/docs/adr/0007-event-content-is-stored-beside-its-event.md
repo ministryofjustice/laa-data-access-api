@@ -162,11 +162,12 @@ The one deliberate exception is an Application draft: its content is what submit
 Application, so a draft whose content is erased counts as no draft and submit and upload return
 not found.
 
-Command handlers add one rule on top of the deciders: a command on a submitted Application whose
-content is erased fails as if the Application did not exist (`EntityNotFoundException`, a 404).
-Note, decision, auto-grant outcome, update and mark-ready commands all build the next
-`application_data` version from the aggregate's content, so they cannot proceed without it. A
-read that returns the record with the erased attributes redacted may replace this later.
+Note, decision, auto-grant outcome, update and mark-ready commands that need to write a new
+`application_data` version treat erased submitted content as missing (`EntityNotFoundException`,
+HTTP 404). If a manual or automatic outcome was already recorded, no new version is needed:
+matching retries still succeed without writing, and conflicting outcomes still return 409.
+The guard recognises submission by the `ApplicationCreated` event, not by a non-null status;
+an open draft has no submitted payload to erase.
 
 | Event | Content |
 |---|---|

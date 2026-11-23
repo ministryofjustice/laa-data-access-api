@@ -26,12 +26,12 @@ public class RecordAutoGrantedOutcomeCommandHandler {
       @InjectEntity(idProperty = "applicationId") ApplicationAggregate application,
       ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
-    ApplicationCommandHandlerSupport.requireContentNotErased(application);
     validateAutomaticOutcome(command, application);
     if (application.getState().getAutoGranted() == AutoGrantedState.AUTOGRANTED) {
       return;
     }
 
+    ApplicationCommandHandlerSupport.requireContentNotErased(application);
     var current = ApplicationCommandHandlerSupport.currentContent(application);
     MakeApplicationDecisionCommand decision = automaticGrantDecision(command, application);
     MakeApplicationDecisionCommandHandler.recordDecision(

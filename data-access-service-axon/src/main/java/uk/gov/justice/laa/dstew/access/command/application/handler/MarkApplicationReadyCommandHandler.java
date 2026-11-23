@@ -10,6 +10,7 @@ import org.axonframework.modelling.annotation.InjectEntity;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDecider;
+import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDecider;
@@ -32,8 +33,11 @@ public class MarkApplicationReadyCommandHandler {
       EventAppender eventAppender,
       StateManager stateManager,
       ProcessingContext context) {
-    ApplicationCommandHandlerSupport.requireContentNotErased(application);
-    ReadyApplicationResult result = ApplicationDecider.decideReady(application.getState(), command);
+    var state = application.getState();
+    if (state.getAutoGranted() == AutoGrantedState.PENDING) {
+      ApplicationCommandHandlerSupport.requireContentNotErased(application);
+    }
+    ReadyApplicationResult result = ApplicationDecider.decideReady(state, command);
     if (result == ReadyApplicationResult.ALREADY_RECORDED) {
       return result;
     }
