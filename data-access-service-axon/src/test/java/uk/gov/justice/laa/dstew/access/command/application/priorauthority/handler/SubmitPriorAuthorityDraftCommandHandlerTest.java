@@ -110,7 +110,9 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
                 0L,
                 3L,
                 OCCURRED_AT,
-                null));
+                null,
+                Erasable.of(content),
+                Erasable.of("{}")));
   }
 
   @Test
@@ -175,7 +177,9 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
                 0L,
                 4L,
                 OCCURRED_AT,
-                null));
+                null,
+                Erasable.of(content),
+                Erasable.of("{}")));
     verify(jsonSchemaValidator).validate(content, "PriorAuthority.json", 4);
   }
 
@@ -231,7 +235,9 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
                 0L,
                 3L,
                 OCCURRED_AT,
-                BillingType.HOURLY.name()));
+                BillingType.HOURLY.name(),
+                Erasable.of(content),
+                Erasable.of("{}")));
   }
 
   @ParameterizedTest

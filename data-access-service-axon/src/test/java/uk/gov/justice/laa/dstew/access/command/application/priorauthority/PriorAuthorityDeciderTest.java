@@ -12,12 +12,14 @@ import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.MakePriorAuthorityDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.BillingType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
+import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityVersionConflictException;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
@@ -31,6 +33,8 @@ class PriorAuthorityDeciderTest {
       new AuthenticatedCaller(Optional.empty(), Set.of(), Set.of("1A001B"), Set.of());
 
   private static final Instant OCCURRED_AT = Instant.parse("2026-08-01T10:00:00Z");
+  private static final PriorAuthorityContent SUBMITTED_CONTENT =
+      new PriorAuthorityContent(PriorAuthorityType.COUNSEL, null, null, null, null);
 
   @Test
   void givenCommand_whenDecideStartDraft_thenReturnsEventWithExpectedFields() {
@@ -81,7 +85,7 @@ class PriorAuthorityDeciderTest {
   }
 
   @Test
-  void givenSubmitCommand_whenDecideSubmit_thenAlwaysUsesDataVersionZero() {
+  void givenSubmitCommand_whenDecideSubmit_thenUsesDataVersionZeroAndCarriesSubmittedContent() {
     UUID priorAuthorityId = UUID.randomUUID();
     PriorAuthorityState state = new PriorAuthorityState();
     state.applicationId = UUID.randomUUID();
@@ -91,7 +95,13 @@ class PriorAuthorityDeciderTest {
         new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT, CALLER);
 
     PriorAuthoritySubmittedEvent event =
-        PriorAuthorityDecider.decideSubmit(command, state, 4L, "FIXED_RATE");
+        PriorAuthorityDecider.decideSubmit(
+            command,
+            state,
+            4L,
+            "FIXED_RATE",
+            new PriorAuthorityDataPayload(
+                priorAuthorityId, state.applicationId, SUBMITTED_CONTENT, "{\"submit\":1}", null));
 
     assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(event.applicationId()).isEqualTo(state.applicationId);
@@ -101,6 +111,8 @@ class PriorAuthorityDeciderTest {
     assertThat(event.applicationDataVersion()).isEqualTo(4L);
     assertThat(event.occurredAt()).isEqualTo(OCCURRED_AT);
     assertThat(event.billingType()).isEqualTo("FIXED_RATE");
+    assertThat(event.content()).isEqualTo(Erasable.of(SUBMITTED_CONTENT));
+    assertThat(event.serialisedRequest()).isEqualTo(Erasable.of("{\"submit\":1}"));
   }
 
   @Test
@@ -132,6 +144,9 @@ class PriorAuthorityDeciderTest {
     assertThat(result.get().priorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT.name());
     assertThat(result.get().dataVersion()).isEqualTo(5L);
     assertThat(result.get().overallDecision()).isEqualTo("GRANTED");
+    assertThat(result.get().decisionJustification()).isEqualTo(Erasable.of("Recorded"));
+    assertThat(result.get().serialisedRequest())
+        .isEqualTo(Erasable.of("{\"decision\":\"GRANTED\"}"));
   }
 
   @Test

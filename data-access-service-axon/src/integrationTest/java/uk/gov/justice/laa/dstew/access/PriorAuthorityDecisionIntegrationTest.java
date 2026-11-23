@@ -22,6 +22,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.eventcontent.EventContentStore;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
@@ -54,6 +55,8 @@ class PriorAuthorityDecisionIntegrationTest extends BaseIntegrationTest {
   @Autowired private ObjectMapper objectMapper;
 
   @Autowired private QueryGateway queryGateway;
+
+  @Autowired private EventContentStore eventContentStore;
 
   private ProjectionAwaiter projectionAwaiter;
 
@@ -136,6 +139,76 @@ class PriorAuthorityDecisionIntegrationTest extends BaseIntegrationTest {
         .isEqualTo(HttpStatus.NO_CONTENT);
     assertThat(patchDecision(priorAuthorityId, refuse).getStatusCode())
         .isEqualTo(HttpStatus.CONFLICT);
+  }
+
+  @Test
+  void givenDecision_whenStored_thenSubmissionAndDecisionDetailsAreEventContent() {
+    var priorAuthorityId = submittedAndAssigned(expertDraft(hourlyCosts()));
+    var request =
+        decisionRequest(DecisionStatus.GRANTED, "Granted for Jane Doe", BigDecimal.valueOf(200))
+            .expert(
+                new ExpertMakePriorAuthorityDecisionRequest()
+                    .grantedTime(DecisionTimeRequested.builder().hours(3).minutes(15).build()));
+
+    assertThat(patchDecision(priorAuthorityId, request).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+
+    var submitted = storedEvent(priorAuthorityId, "access.PriorAuthoritySubmitted");
+    assertThat(submitted.get("payload").toString())
+        .contains("\"dataVersion\":0", "\"billingType\":\"HOURLY\"")
+        .doesNotContain("Jane Smith", "Expert witness for case", "serialisedRequest");
+    assertThat(submitted.get("content").toString())
+        .contains("Jane Smith", "Expert witness for case");
+
+    var decided = storedEvent(priorAuthorityId, "access.PriorAuthorityDecisionMade");
+    assertThat(decided.get("payload").toString())
+        .contains("\"overallDecision\":\"GRANTED\"")
+        .doesNotContain("Jane Doe", "grantedTime", "serialisedRequest");
+    assertThat(decided.get("content").toString())
+        .contains("Jane Doe", "grantedTime", "serialisedRequest");
+
+    projectionAwaiter.awaitDecidedPriorAuthority(priorAuthorityId);
+    var response = getPriorAuthority(priorAuthorityId);
+    assertThat(response.getDecisionJustification()).isEqualTo("Granted for Jane Doe");
+    assertThat(response.getDecisionDetails().getExpert().getGrantedTime().getHours()).isEqualTo(3);
+    assertOriginalTimeRequested(response);
+  }
+
+  @Test
+  void givenErasedSubmittedContent_whenDecided_thenReturnsNotFoundWithoutWriting() {
+    var priorAuthorityId = submittedAndAssigned(disbursementDraft());
+    eraseContent(priorAuthorityId, "access.PriorAuthoritySubmitted");
+
+    var request = decisionRequest(DecisionStatus.GRANTED, "Granted", BigDecimal.valueOf(150));
+
+    assertThat(patchDecision(priorAuthorityId, request).getStatusCode())
+        .isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(decisionDataVersionCount(priorAuthorityId)).isZero();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?"
+                    + " AND payload_type = 'access.PriorAuthorityDecisionMade'",
+                Integer.class,
+                priorAuthorityId.toString()))
+        .isZero();
+  }
+
+  @Test
+  void givenDecidedPriorAuthorityWithErasedContent_whenDecidedAgain_thenStillConflicts() {
+    var priorAuthorityId = submittedAndAssigned(disbursementDraft());
+    var grant = decisionRequest(DecisionStatus.GRANTED, "Granted", BigDecimal.valueOf(150));
+    assertThat(patchDecision(priorAuthorityId, grant).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+    eraseContent(priorAuthorityId, "access.PriorAuthoritySubmitted");
+    eraseContent(priorAuthorityId, "access.PriorAuthorityDecisionMade");
+
+    var refuse =
+        decisionRequest(DecisionStatus.REFUSED, "Refused", BigDecimal.ZERO)
+            .priorAuthorityVersion(1L);
+
+    assertThat(patchDecision(priorAuthorityId, refuse).getStatusCode())
+        .isEqualTo(HttpStatus.CONFLICT);
+    assertThat(decisionDataVersionCount(priorAuthorityId)).isOne();
   }
 
   @Test
@@ -281,6 +354,30 @@ class PriorAuthorityDecisionIntegrationTest extends BaseIntegrationTest {
     var timeRequested = response.getExpertDetails().getExpertCosts().getTimeRequested();
     assertThat(timeRequested.getHours()).isEqualTo(2);
     assertThat(timeRequested.getMinutes()).isEqualTo(30);
+  }
+
+  private Map<String, Object> storedEvent(UUID priorAuthorityId, String payloadType) {
+    return jdbcTemplate.queryForMap(
+        "SELECT convert_from(e.payload, 'UTF8') AS payload, c.content::text AS content"
+            + " FROM axon.domain_event_entry e"
+            + " JOIN axon.event_content c ON c.event_id = e.event_identifier"
+            + " WHERE e.aggregate_identifier = ? AND e.payload_type = ?",
+        priorAuthorityId.toString(),
+        payloadType);
+  }
+
+  private void eraseContent(UUID priorAuthorityId, String payloadType) {
+    var eventIds =
+        jdbcTemplate.queryForList(
+            "SELECT event_identifier FROM axon.domain_event_entry"
+                + " WHERE aggregate_identifier = ? AND payload_type = ?",
+            String.class,
+            priorAuthorityId.toString(),
+            payloadType);
+    assertThat(eventIds).hasSize(1);
+    eventContentStore.erase(eventIds, objectMapper.createObjectNode());
+    assertThat(storedEvent(priorAuthorityId, payloadType).get("content").toString())
+        .isEqualTo("{}");
   }
 
   private Integer decisionDataVersionCount(UUID priorAuthorityId) {

@@ -227,7 +227,11 @@ class LifecycleStreamReaderTest {
                           Erasable.erased(),
                           Erasable.erased(),
                           Erasable.erased(),
-                          OCCURRED_AT));
+                          OCCURRED_AT,
+                          Erasable.erased(),
+                          Erasable.erased(),
+                          Erasable.erased(),
+                          Erasable.erased()));
               assertThat(event.metadata()).containsEntry("X-Service-Name", "CIVIL_APPLY");
             });
   }
