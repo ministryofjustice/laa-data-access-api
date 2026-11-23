@@ -1828,8 +1828,8 @@ class PostgresAxonIntegrationTest {
     projectionAwaiter.awaitApplication(applicationId);
     assertThat(
             jdbcTemplate.update(
-                "DELETE FROM axon.event_content WHERE event_id ="
-                    + " (SELECT event_identifier FROM axon.domain_event_entry"
+                "UPDATE axon.event_content SET content = '{}'::jsonb, erased_at = now()"
+                    + " WHERE event_id = (SELECT event_identifier FROM axon.domain_event_entry"
                     + " WHERE aggregate_identifier = ? AND sequence_number = 0)",
                 applicationId.toString()))
         .isOne();
