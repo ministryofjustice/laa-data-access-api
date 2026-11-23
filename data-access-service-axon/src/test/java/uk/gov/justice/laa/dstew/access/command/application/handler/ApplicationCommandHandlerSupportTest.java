@@ -11,8 +11,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.axonframework.modelling.repository.EntityNotFoundException;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationEvolve;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
@@ -102,6 +104,37 @@ class ApplicationCommandHandlerSupportTest {
                     mockApplication(applicationId, state), applicationId))
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessageContaining("No application draft found with Application ID: " + applicationId);
+  }
+
+  @Test
+  void givenSubmittedApplicationWithErasedContent_whenRequireContentNotErased_thenNotFound() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationState state = new ApplicationState();
+    ApplicationEvolve.apply(state, erasedCreated(applicationId));
+
+    assertThatThrownBy(
+            () ->
+                ApplicationCommandHandlerSupport.requireContentNotErased(
+                    mockApplication(applicationId, state)))
+        .isInstanceOf(EntityNotFoundException.class);
+  }
+
+  @Test
+  void givenSubmittedApplicationWithContent_whenRequireContentNotErased_thenDoesNotThrow() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationState state = new ApplicationState();
+    ApplicationEvolve.apply(state, applicationCreatedEvent(applicationId));
+
+    ApplicationCommandHandlerSupport.requireContentNotErased(mockApplication(applicationId, state));
+  }
+
+  @Test
+  void givenDraft_whenRequireContentNotErased_thenLeavesItToTheCommand() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationState state = new ApplicationState();
+    ApplicationEvolve.apply(state, draftStarted(applicationId, Erasable.of(Map.of())));
+
+    ApplicationCommandHandlerSupport.requireContentNotErased(mockApplication(applicationId, state));
   }
 
   @Test
@@ -201,6 +234,23 @@ class ApplicationCommandHandlerSupportTest {
     when(application.getApplicationId()).thenReturn(applicationId);
     when(application.getState()).thenReturn(state);
     return application;
+  }
+
+  private static ApplicationCreatedEvent erasedCreated(UUID applicationId) {
+    ApplicationCreatedEvent created = applicationCreatedEvent(applicationId);
+    return new ApplicationCreatedEvent(
+        created.applicationId(),
+        created.applicationDataVersion(),
+        created.requestFingerprint(),
+        created.status(),
+        created.schemaVersion(),
+        created.occurredAt(),
+        Erasable.erased(),
+        created.officeCode(),
+        created.laaReference(),
+        created.proceedingIds(),
+        Erasable.erased(),
+        Erasable.erased());
   }
 
   private static ApplicationDraftStartedEvent draftStarted(

@@ -22,6 +22,7 @@ public class UpdateApplicationCommandHandler {
       ApplicationDataStore applicationDataStore,
       ApplicationUpdateDetailsFactory detailsFactory,
       EventAppender eventAppender) {
+    ApplicationCommandHandlerSupport.requireContentNotErased(application);
     var current = ApplicationCommandHandlerSupport.currentContent(application);
     var parsed = detailsFactory.parse(command);
     var event = ApplicationDecider.decideUpdate(application.getState(), command, parsed);

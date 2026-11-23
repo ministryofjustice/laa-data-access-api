@@ -32,6 +32,7 @@ public class MarkApplicationReadyCommandHandler {
       EventAppender eventAppender,
       StateManager stateManager,
       ProcessingContext context) {
+    ApplicationCommandHandlerSupport.requireContentNotErased(application);
     ReadyApplicationResult result = ApplicationDecider.decideReady(application.getState(), command);
     if (result == ReadyApplicationResult.ALREADY_RECORDED) {
       return result;

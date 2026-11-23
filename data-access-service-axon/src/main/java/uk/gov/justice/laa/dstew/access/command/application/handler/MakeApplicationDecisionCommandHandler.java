@@ -29,6 +29,7 @@ public class MakeApplicationDecisionCommandHandler {
       ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
     ApplicationCommandHandlerSupport.requireApplicationExists(application, command.applicationId());
+    ApplicationCommandHandlerSupport.requireContentNotErased(application);
     ApplicationState state = application.getState();
     ApplicationDecider.validateManualDecisionAssignment(state, command);
     var current = ApplicationCommandHandlerSupport.currentContent(application);

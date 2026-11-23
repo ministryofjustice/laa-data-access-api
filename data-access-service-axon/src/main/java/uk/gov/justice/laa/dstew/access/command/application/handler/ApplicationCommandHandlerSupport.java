@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.axonframework.modelling.repository.EntityNotFoundException;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
@@ -21,6 +22,18 @@ final class ApplicationCommandHandlerSupport {
     if (application.getApplicationId() == null) {
       throw new ResourceNotFoundException(
           "No application found with Application ID: " + requestedApplicationId);
+    }
+  }
+
+  /**
+   * Treats a submitted Application whose content has been erased as missing: commands on it fail
+   * with the same not-found error Axon raises for an Application that does not exist. A draft has
+   * no submitted content yet and is left to the command's own rules.
+   */
+  static void requireContentNotErased(ApplicationAggregate application) {
+    ApplicationState state = application.getState();
+    if (state.getStatus() != null && state.getContent().isErased()) {
+      throw new EntityNotFoundException(application.getApplicationId());
     }
   }
 
@@ -82,7 +95,8 @@ final class ApplicationCommandHandlerSupport {
    * Returns the Application's current submitted content, folded from its events. Used only to keep
    * writing {@code application_data} until the readers move to events.
    *
-   * @throws IllegalStateException if the content has been erased
+   * @throws IllegalStateException if there is no content; handlers call {@link
+   *     #requireContentNotErased} first, so this means a draft reached a submitted-only command
    */
   static ApplicationDataPayload currentContent(ApplicationAggregate application) {
     var content = application.getState().getContent();

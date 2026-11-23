@@ -307,13 +307,7 @@ class ApplicationAggregateTest {
         .given()
         .events(
             applicationCreatedEvent(applicationId, details),
-            new ApplicationDecisionMadeEvent(
-                applicationId,
-                1L,
-                1L,
-                "GRANTED",
-                AutoGrantedState.AUTOGRANTED,
-                Instant.parse("2026-07-19T10:00:00Z")))
+            autoGrantedDecision(applicationId, Instant.parse("2026-07-19T10:00:00Z")))
         .when()
         .command(decisionCommand(applicationId, 1L, proceedingId, "REFUSED", "justification", null))
         .then()
@@ -477,13 +471,7 @@ class ApplicationAggregateTest {
         .given()
         .events(
             applicationCreatedEvent(applicationId),
-            new ApplicationDecisionMadeEvent(
-                applicationId,
-                1L,
-                1L,
-                "GRANTED",
-                AutoGrantedState.AUTOGRANTED,
-                Instant.parse("2026-07-21T09:00:00Z")))
+            autoGrantedDecision(applicationId, Instant.parse("2026-07-21T09:00:00Z")))
         .when()
         .command(
             new MarkApplicationReadyCommand(
@@ -512,17 +500,21 @@ class ApplicationAggregateTest {
   @Test
   void givenApplicationInProgress_whenMarkedReady_thenRejectsInvalidState() {
     UUID applicationId = UUID.randomUUID();
+    ApplicationCreatedEvent created = applicationCreatedEvent(applicationId);
     ApplicationCreatedEvent inProgress =
         new ApplicationCreatedEvent(
             applicationId,
-            0L,
-            "fingerprint",
+            created.applicationDataVersion(),
+            created.requestFingerprint(),
             "APPLICATION_IN_PROGRESS",
-            1,
-            Instant.parse("2026-07-21T09:00:00Z"),
-            Erasable.erased(),
-            null,
-            "LAA-123");
+            created.schemaVersion(),
+            created.occurredAt(),
+            created.potentialDuplicates(),
+            created.officeCode(),
+            created.laaReference(),
+            created.proceedingIds(),
+            created.content(),
+            created.serialisedRequest());
 
     fixture
         .given()
@@ -846,13 +838,7 @@ class ApplicationAggregateTest {
         .given()
         .events(
             applicationCreatedEvent(applicationId),
-            new ApplicationDecisionMadeEvent(
-                applicationId,
-                1L,
-                1L,
-                "GRANTED",
-                AutoGrantedState.AUTOGRANTED,
-                Instant.parse("2026-07-21T09:00:00Z")))
+            autoGrantedDecision(applicationId, Instant.parse("2026-07-21T09:00:00Z")))
         .when()
         .command(new ValidateApplicationGrantedCommand(applicationId))
         .then()
@@ -882,6 +868,33 @@ class ApplicationAggregateTest {
         .noPriorActivity()
         .when()
         .command(new ValidateApplicationGrantedCommand(UUID.randomUUID()))
+        .then()
+        .exception(EntityNotFoundException.class)
+        .noEvents();
+  }
+
+  @Test
+  void givenErasedApplication_whenCreateNote_thenFailsAsIfMissing() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationCreatedEvent created = applicationCreatedEvent(applicationId);
+    fixture
+        .given()
+        .events(
+            new ApplicationCreatedEvent(
+                created.applicationId(),
+                created.applicationDataVersion(),
+                created.requestFingerprint(),
+                created.status(),
+                created.schemaVersion(),
+                created.occurredAt(),
+                Erasable.erased(),
+                created.officeCode(),
+                created.laaReference(),
+                created.proceedingIds(),
+                Erasable.erased(),
+                Erasable.erased()))
+        .when()
+        .command(new CreateNoteCommand(applicationId, "My note", "{}", Instant.now()))
         .then()
         .exception(EntityNotFoundException.class)
         .noEvents();
@@ -1157,9 +1170,7 @@ class ApplicationAggregateTest {
     fixture
         .given()
         .events(
-            applicationCreatedEvent(applicationId),
-            new ApplicationDecisionMadeEvent(
-                applicationId, 1L, 1L, "GRANTED", AutoGrantedState.AUTOGRANTED, occurredAt))
+            applicationCreatedEvent(applicationId), autoGrantedDecision(applicationId, occurredAt))
         .when()
         .command(
             new RecordAutoGrantedOutcomeCommand(applicationId, Map.of(), "{different}", occurredAt))
@@ -1304,5 +1315,21 @@ class ApplicationAggregateTest {
   @AfterEach
   void tearDown() {
     fixture.stop();
+  }
+
+  private static ApplicationDecisionMadeEvent autoGrantedDecision(
+      UUID applicationId, Instant occurredAt) {
+    return new ApplicationDecisionMadeEvent(
+        applicationId,
+        1L,
+        1L,
+        "GRANTED",
+        AutoGrantedState.AUTOGRANTED,
+        occurredAt,
+        "fingerprint",
+        Map.of(),
+        null,
+        "{}",
+        "Auto-granted");
   }
 }
