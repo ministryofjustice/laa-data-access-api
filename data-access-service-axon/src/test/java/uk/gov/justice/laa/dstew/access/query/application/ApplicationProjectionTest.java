@@ -699,7 +699,13 @@ class ApplicationProjectionTest {
 
     projection.on(
         new WorkItemAssigned(
-            applicationId, WorkItemType.APPLICATION, 1L, 1L, caseworkerId, occurredAt));
+            applicationId,
+            WorkItemType.APPLICATION,
+            applicationId,
+            1L,
+            1L,
+            caseworkerId,
+            occurredAt));
 
     assertThat(existing.getCaseworkerId()).isEqualTo(caseworkerId);
     assertThat(existing.getAssignmentVersion()).isEqualTo(1L);
@@ -724,7 +730,8 @@ class ApplicationProjectionTest {
     when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
 
     projection.on(
-        new WorkItemUnassigned(applicationId, WorkItemType.APPLICATION, 1L, 2L, occurredAt));
+        new WorkItemUnassigned(
+            applicationId, WorkItemType.APPLICATION, applicationId, 1L, 2L, occurredAt));
 
     assertThat(existing.getCaseworkerId()).isNull();
     assertThat(existing.getAssignmentVersion()).isEqualTo(2L);

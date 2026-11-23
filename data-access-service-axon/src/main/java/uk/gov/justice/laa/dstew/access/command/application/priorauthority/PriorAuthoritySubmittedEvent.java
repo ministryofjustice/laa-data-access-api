@@ -1,9 +1,11 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
 import java.time.Instant;
+import java.util.Set;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
+import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 
 /**
  * Thin-pointer event emitted when a Prior Authority draft is submitted. Contains no personal data —
@@ -25,12 +27,18 @@ public record PriorAuthoritySubmittedEvent(
     long dataVersion,
     Long applicationDataVersion,
     Instant occurredAt,
-    String billingType) {
+    String billingType)
+    implements GenesisScoped {
 
   /** Normalises a missing (pre-field) {@code applicationDataVersion} to {@code 0L}. */
   public PriorAuthoritySubmittedEvent {
     if (applicationDataVersion == null) {
       applicationDataVersion = 0L;
     }
+  }
+
+  @Override
+  public Set<UUID> genesisIds() {
+    return GenesisScoped.ids(applicationId);
   }
 }

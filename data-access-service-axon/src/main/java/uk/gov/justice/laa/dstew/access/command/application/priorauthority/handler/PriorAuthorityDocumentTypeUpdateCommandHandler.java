@@ -45,7 +45,9 @@ public class PriorAuthorityDocumentTypeUpdateCommandHandler {
         updatedPayload,
         command.serialisedRequest(),
         command.occurredAt());
-    eventAppender.append(PriorAuthorityDecider.decideDocumentTypeUpdated(command));
+    eventAppender.append(
+        PriorAuthorityDecider.decideDocumentTypeUpdated(
+            command, priorAuthority.getApplicationId()));
     return command.documentId();
   }
 

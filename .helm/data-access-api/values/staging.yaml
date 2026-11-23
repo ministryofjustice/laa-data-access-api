@@ -58,6 +58,7 @@ sentry:
   enabled: true
   environment: staging
   tracesSampleRate: 1
+  minimumBreadcrumbLevel: warn
 
 alerting:
   environment: staging

@@ -1,9 +1,11 @@
 package uk.gov.justice.laa.dstew.access.command.application.decision;
 
 import java.time.Instant;
+import java.util.Set;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
+import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 
 /** Thin event recording that an Application decision was stored in an immutable data version. */
@@ -14,4 +16,11 @@ public record ApplicationDecisionMadeEvent(
     long applicationDataVersion,
     String overallDecision,
     AutoGrantedState autoGranted,
-    Instant occurredAt) {}
+    Instant occurredAt)
+    implements GenesisScoped {
+
+  @Override
+  public Set<UUID> genesisIds() {
+    return GenesisScoped.ids(applicationId);
+  }
+}

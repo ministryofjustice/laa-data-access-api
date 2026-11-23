@@ -58,7 +58,13 @@ class DirectPriorAuthorityWorkItemAssignmentCommandHandlerTest {
     verify(eventAppender)
         .append(
             new WorkItemAssigned(
-                workItemId, WorkItemType.PRIOR_AUTHORITY, 2L, 1L, caseworkerId, OCCURRED_AT));
+                workItemId,
+                WorkItemType.PRIOR_AUTHORITY,
+                parentApplicationId,
+                2L,
+                1L,
+                caseworkerId,
+                OCCURRED_AT));
     assertThat(result.items())
         .containsExactly(new AssignedWorkItems.AssignedItem(workItemId, "LAA-PARENT"));
   }

@@ -72,7 +72,7 @@ Controller → mapper / use case
 | Consumer | Annotation / config | Timing | May do I/O? | Replayed? | Examples |
 |---|---|---|---|---|---|
 | Aggregate fold | `@EventSourcingHandler` → `*Evolve` | Every aggregate load | **No** | On every load | `ApplicationAggregate.on(...)` |
-| Read projection | `@EventHandler` on a `@Namespace` bound to a **pooled streaming** processor (`AxonEventProcessingConfig`) | Async, after commit; may lag | Yes (DB) | Yes — reset + replay | `ApplicationProjection`, `ApplicationHistoryProjection`, `ApplicationListIndexProjection`, `LinkedApplicationGroupProjection`, `WorkListProjection`, `PriorAuthorityProjection`, `PriorAuthorityHistoryProjection` |
+| Read projection | `@EventHandler` on a `@Namespace` bound to a **pooled streaming** processor (`AxonEventProcessingConfig`) | Async, after commit; may lag | Yes (DB) | Yes — reset + replay | `ApplicationProjection`, `LifecycleStreamProjection`, `ApplicationListIndexProjection`, `LinkedApplicationGroupProjection`, `WorkListProjection`, `PriorAuthorityProjection` |
 | Synchronous reaction | `@EventHandler` on a **subscribing** processor with `PropagatingErrorHandler` | Inside the command's unit of work; failure rolls the command back | Deliberately | No | `ApplicationGroupRouteProjection` (`application-group-route`), `WorkItemRouteProjection` (`work-item-route`), `ApplicationSubmittedEventRouter` (`application-submitted-publisher`, SNS on `AFTER_COMMIT`) |
 
 Processor wiring is in `config/AxonEventProcessingConfig`. A new `@Namespace` that is not declared
@@ -105,7 +105,7 @@ Legend: **A** = aggregate state/Evolve (+ `@EventSourcingHandler`), **D** = Deci
 | Rule depends on data that is not aggregate state (e.g. content in `application_data`) | **H** (load via the store, pass to decider) + **D** | A, E, P | Aggregates must not query projections or do I/O. The handler loads command-side data and passes it in, as `decideDecision` receives `ApplicationDataPayload`. |
 | Rule needs new aggregate state (e.g. "can't decide if a review flag is set") | **A**: add field to `*State`, update `*Evolve`; existing events must still fold; **D**; **H** if input is new | P usually | Old events won't set the new field → define a default for history. Tests: replay an old event stream. |
 | New command that produces an **existing** event (new entry point, same fact) | **C/UC**, **H**, **D**; controller/OpenAPI | A, E, P | Precedent: `decideSubmitDraft` emits the same `ApplicationCreatedEvent` as direct create, so "the projection requires no changes". |
-| New command / business fact → **new event type** | **C/UC/controller**, **H**, **D**, **E**, **A** (new `@EventSourcingHandler` + `Evolve.apply`), **P** (each projection that needs it), maybe **R** | — | Mandatory for the aggregate: an unhandled event is silently not folded. Decide per projection (current-state, list-index, history, work-list) whether it reacts. History projection needs a mapped `eventType` string. |
+| New command / business fact → **new event type** | **C/UC/controller**, **H**, **D**, **E**, **A** (new `@EventSourcingHandler` + `Evolve.apply`), **P**, maybe **R** | — | An unhandled event is not folded into the aggregate. Every event must name its genesis IDs and have a `LifecycleStreamProjection` handler. Decide separately whether current-state, list-index or work-list reacts, and whether `ApplicationHistoryMapper` emits a public entry. |
 | Change what an existing **event carries** (add field) | **E**, **D/H** (populate), **A** if used for state, **P** if used for read | — | Must be backward compatible with persisted JSON (absent ⇒ default). Do not reuse a field with a new meaning. See [Event evolution](event-evolution.md); add an old-JSON fixture test. |
 | Rename/move/retype/remove an event or field | **E** + compat strategy (alias/upcaster/new event) | — | Treat as a breaking, migration-style change; no upcasters exist yet. Needs an ADR. |
 | Change **meaning** of an existing event | New event type (+ keep old handlers in A and P) | — | Old events remain in the store forever and are re-folded. |
@@ -113,7 +113,7 @@ Legend: **A** = aggregate state/Evolve (+ `@EventSourcingHandler`), **D** = Deci
 | New **read** field or filter/sort on an existing list/detail endpoint | **P** (`@QueryHandler`, read model, repository/specification), **M** (read table), response mapper/OpenAPI, **Replay** if populated from historical events | A, D, H, E | Pure query-side change if the data is already in an event or `application_data`. If a historical event lacks the value, replay cannot recover it. |
 | New read model / report / endpoint over existing events | New projection class + `@Namespace` + processor bean + `@ResetHandler`, **M**, query record + use case + controller | Command side | Needs a first-time replay to backfill. Must be idempotent and I/O-free apart from its own DB and data store. |
 | Change how an existing projection interprets an event (bug fix / new derived column) | **P**, **M** if schema, **Replay** | Command side | Reset only clears its own table; verify counts/spot values afterwards. See [Projections and replay](projections-and-replay.md). |
-| Add event to the audit history | `ApplicationHistoryProjection` `@EventHandler` + assembler (+ hydrate description from the data version) | A, D | Needs history replay to be complete for old events. |
+| Add event to the audit history | `ApplicationHistoryMapper` case + assembler (+ hydrate description from the data version) | A, D | No replay: history is read from the lifecycle stream, which already points to every event. |
 | Change who may perform an action / access scope | **UC** security annotation, `query/utils/security/*`, `SecurityConfig` | A, D, E, P (unless read filtering) | Authorisation sits outside the aggregate. Actor identity arrives as the authenticated Entra `oid`, mapped in the controller. |
 | New optimistic-locking requirement | **C** (expected version), **D** (compare), **E**/**A** if a new version counter | — | Follow `applicationVersion` / `assignmentVersion` / group version-token precedent. Map conflict exception in `ApplicationExceptionHandler`. |
 | Change HTTP error/status mapping | `ApplicationExceptionHandler`, exception class | Everything else | Aggregate/Axon wording must not leak to clients. |
@@ -183,7 +183,7 @@ bean in `AxonEventProcessingConfig`. No change to aggregate or existing projecti
 ## 8. Things to be aware of in the current code
 
 * **Multiple projections consume the same events independently** (`application-projection`,
-  `application-list-index-projection`, `application-history-projection`, `work-list-projection`,
+  `application-list-index-projection`, `lifecycle-stream`, `work-list-projection`,
   group, prior authority). A new/changed event usually needs to be considered for all of them;
   they can lag one another.
 * **`@SequencingPolicy`** on `ApplicationProjection` and `ApplicationListIndexProjection` serialises

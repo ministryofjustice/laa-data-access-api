@@ -1,8 +1,14 @@
 package uk.gov.justice.laa.dstew.access.shared.logging.aspects;
 
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZonedDateTime;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;
@@ -10,7 +16,6 @@ import org.aspectj.lang.annotation.AfterReturning;
 import org.aspectj.lang.annotation.AfterThrowing;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
-import org.slf4j.MDC;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -21,8 +26,6 @@ import uk.gov.justice.laa.dstew.access.shared.logging.ClientFacingException;
 @Component
 @Slf4j
 public class LoggingAspects {
-
-  private static final String CORRELATION_ID_KEY = "correlationId";
 
   /**
    * Fully-qualified names of third-party exception types that represent expected, client-caused
@@ -135,18 +138,7 @@ public class LoggingAspects {
   }
 
   /**
-   * Gets the correlation ID from the MDC (Mapped Diagnostic Context). This allows the aspect to
-   * include correlation IDs in logs without tight coupling to LoggingContext.
-   *
-   * @return the correlation ID, or null if not set
-   */
-  private String getCorrelationId() {
-    return MDC.get(CORRELATION_ID_KEY);
-  }
-
-  /**
-   * Sanitizes objects for logging to prevent logging sensitive information. This method should be
-   * extended to mask PII and sensitive fields.
+   * Sanitizes objects for logging with a strict type allowlist.
    *
    * @param obj the object to sanitize
    * @return sanitized string representation
@@ -156,13 +148,29 @@ public class LoggingAspects {
       return "null";
     }
 
-    // Convert to string and truncate if too long to avoid massive log entries
-    String str = obj.toString();
-    final int maxLength = 500;
-    if (str.length() > maxLength) {
-      return str.substring(0, maxLength) + "... (truncated)";
+    if (isAllowlistedValueType(obj)) {
+      return String.valueOf(obj);
     }
 
-    return str;
+    if (obj instanceof Collection<?> collection) {
+      return obj.getClass().getSimpleName() + "(size=" + collection.size() + ")";
+    }
+
+    if (obj instanceof Map<?, ?> map) {
+      return obj.getClass().getSimpleName() + "(size=" + map.size() + ")";
+    }
+
+    String simpleName = obj.getClass().getSimpleName();
+    return simpleName.isBlank() ? obj.getClass().getName() : simpleName;
+  }
+
+  private boolean isAllowlistedValueType(Object obj) {
+    return obj instanceof UUID
+        || obj instanceof Enum<?>
+        || obj instanceof Number
+        || obj instanceof Boolean
+        || obj instanceof Instant
+        || obj instanceof OffsetDateTime
+        || obj instanceof ZonedDateTime;
   }
 }

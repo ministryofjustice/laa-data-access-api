@@ -91,7 +91,7 @@ public class SecondaryAuthorizationFilter extends OncePerRequestFilter {
     try {
       authorizationJwt = secondaryAuthorizationJwtDecoder.decode(token);
     } catch (JwtException e) {
-      log.warn("X-Authorization token invalid: {}", e.getMessage());
+      log.warn("X-Authorization token invalid: {}", e.getClass().getSimpleName());
       response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
       return;
     }

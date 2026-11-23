@@ -27,13 +27,12 @@ erDiagram
         uuid caseworker_id
         uuid linked_group_id
     }
-    APPLICATION_HISTORY {
-        string event_id PK
-        uuid application_id
-        string event_type
-        bigint data_version
-        string service_name
-        uuid caseworker_id
+    LIFECYCLE_STREAM {
+        bigint id PK
+        uuid genesis_id
+        string source
+        string event_identifier
+        string event_name
         timestamptz occurred_at
     }
     LINKED_APPLICATION_GROUP_CURRENT_STATE {
@@ -60,7 +59,7 @@ erDiagram
 
     DOMAIN_EVENT_ENTRY o|--o| APPLICATION_DATA : "may point to version"
     APPLICATION_CURRENT_STATE o|--o| APPLICATION_DATA : "current version may exist"
-    APPLICATION_HISTORY o|--o| APPLICATION_DATA : "details may be hydrated"
+    DOMAIN_EVENT_ENTRY ||--o{ LIFECYCLE_STREAM : "referenced by source and event identifier"
     CASEWORKERS ||--o{ APPLICATION_CURRENT_STATE : "assigned by ID"
 ```
 
@@ -77,7 +76,7 @@ data, and retention must be able to delete application rows while thin events re
 | `snapshot_event_entry` | Optional aggregate snapshots | No; optimization only | Replaceable | Rebuilt/discarded | Must not be the only source |
 | `application_data` | Complete sensitive payload versions | Yes, for detailed content | Append-only | Not a projection | Deleted only through retention function |
 | `application_current_state` | Current application query model | No | Yes | Yes | Pointer may outlive deleted payload |
-| `application_history` | Public audit query model | No | Append during handling | Yes | Thin row may outlive deleted payload |
+| `lifecycle_stream` | Event pointers per genesis application, read by application history | No | Append during handling | Yes | Pointer may outlive deleted payload |
 | `linked_application_group_current_state` | Group query model | No | Yes | Yes | Rebuilt from group events |
 | `token_entry` | Tracking processor positions and claims | Operational state | Yes, via Axon | Reset through processor APIs | Not application retention data |
 | `caseworkers` | Caseworker reference directory | Yes for caseworker existence | Yes | No | Requires its own policy |
@@ -98,11 +97,10 @@ remain aligned.
 ## Projection data
 
 `application_current_state` deliberately excludes most detailed application content. Query handlers
-hydrate it from the referenced `application_data` row. `application_history` stores event
-identity/type, metadata, occurrence time, and a nullable `data_version` pointer; it does not store a
-serialized request payload. Decision and note descriptions are hydrated from the referenced
-`application_data` version when queried. Events without application data (including group and
-assignment events) have no version pointer.
+hydrate it from the referenced `application_data` row. Application history is read from the
+events named by `lifecycle_stream`, which stores only event pointers. Decision and note
+descriptions are hydrated from the `application_data` version the event references when queried.
+Events without application data (including group and assignment events) have no version pointer.
 
 Group events are stored on their own event stream and projected into
 `linked_application_group_current_state`. Application queries use
@@ -110,9 +108,11 @@ Group events are stored on their own event stream and projected into
 derived from that row rather than using the group's lead as a lookup key. The group read-model row
 contains the public group version and is deleted when a dissolution event is projected.
 
-The history projection fans group events out into application-specific history rows. Lead changes
-create a row for both old and new leads; member removal records the departing application, and
-dissolution records the departing application and the remaining former lead.
+`LifecycleStreamProjection` writes one pointer per root application named by the event,
+unique on `(genesis_id, source, event_identifier)`. The link to the event is logical, not a
+foreign key. For example, a member removal names the departing and remaining members. Each
+gets a pointer to the same event; the history query maps it to a different entry for the
+departing member than for those who stayed. It does not consult today's group membership.
 
 ## Database controls
 

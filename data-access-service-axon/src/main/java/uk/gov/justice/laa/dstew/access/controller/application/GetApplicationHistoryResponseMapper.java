@@ -6,6 +6,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEventResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityEventResponse;
+import uk.gov.justice.laa.dstew.access.model.PriorAuthorityEventType;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityHistoryGroup;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryEventResult;
@@ -38,7 +39,7 @@ public class GetApplicationHistoryResponseMapper {
 
   private PriorAuthorityEventResponse toPaEvent(PriorAuthorityHistoryEventResult event) {
     return PriorAuthorityEventResponse.builder()
-        .eventType(event.eventType())
+        .eventType(PriorAuthorityEventType.fromValue(event.eventType()))
         .createdAt(event.occurredAt().atOffset(ZoneOffset.UTC))
         .createdBy(event.serviceName() == null ? "UNKNOWN" : event.serviceName())
         .caseworkerId(event.caseworkerId())

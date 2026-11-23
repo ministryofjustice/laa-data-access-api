@@ -56,18 +56,18 @@ public class SdsRestClientConfig {
 
       long startTime = System.currentTimeMillis();
       String method = request.getMethod().name();
-      String uri = request.getURI().toString();
+      String sanitizedUri = stripQueryString(request.getURI().toString());
 
       if (log.isDebugEnabled()) {
         log.atDebug()
             .addKeyValue("http.request.method", method)
-            .addKeyValue("url.full", uri)
+            .addKeyValue("url.full", sanitizedUri)
             .addKeyValue("http.request.headers", sanitizeHeaders(request))
             .log("Outbound SDS request");
       } else {
         log.atInfo()
             .addKeyValue("http.request.method", method)
-            .addKeyValue("url.full", uri)
+            .addKeyValue("url.full", sanitizedUri)
             .log("Outbound SDS request");
       }
 
@@ -80,21 +80,21 @@ public class SdsRestClientConfig {
         if (statusCode >= 200 && statusCode < 300) {
           log.atInfo()
               .addKeyValue("http.request.method", method)
-              .addKeyValue("url.full", uri)
+              .addKeyValue("url.full", sanitizedUri)
               .addKeyValue("http.response.status_code", statusCode)
               .addKeyValue("event.duration", duration)
               .log("Outbound SDS response");
         } else if (statusCode >= 400 && statusCode < 500) {
           log.atWarn()
               .addKeyValue("http.request.method", method)
-              .addKeyValue("url.full", uri)
+              .addKeyValue("url.full", sanitizedUri)
               .addKeyValue("http.response.status_code", statusCode)
               .addKeyValue("event.duration", duration)
               .log("Outbound SDS client error");
         } else if (statusCode >= 500) {
           log.atError()
               .addKeyValue("http.request.method", method)
-              .addKeyValue("url.full", uri)
+              .addKeyValue("url.full", sanitizedUri)
               .addKeyValue("http.response.status_code", statusCode)
               .addKeyValue("event.duration", duration)
               .log("Outbound SDS server error");
@@ -106,13 +106,18 @@ public class SdsRestClientConfig {
         long duration = System.currentTimeMillis() - startTime;
         log.atError()
             .addKeyValue("http.request.method", method)
-            .addKeyValue("url.full", uri)
+            .addKeyValue("url.full", sanitizedUri)
             .addKeyValue("event.duration", duration)
             .addKeyValue("error.message", e.getMessage())
             .setCause(e)
             .log("Outbound SDS request failed");
         throw e;
       }
+    }
+
+    private String stripQueryString(String uri) {
+      int queryIndex = uri.indexOf('?');
+      return queryIndex >= 0 ? uri.substring(0, queryIndex) : uri;
     }
 
     private Map<String, String> sanitizeHeaders(HttpRequest request) {

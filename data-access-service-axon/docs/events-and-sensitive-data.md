@@ -87,7 +87,7 @@ historical sensitive-data versions. Application-level retention removes those ve
 | Axon event store | IDs, timestamps, status/type, version pointers, decision outcome, group membership | Durable business timeline and aggregate control state |
 | `application_data` | Application content, individuals, proceedings, certificates, notes, request JSON, free-text descriptions | Immutable versioned sensitive payloads |
 | `application_current_state` | IDs, status, timestamps, versions, caseworker ID and other thin query state | Disposable current-state projection |
-| `application_history` | Event type, service/caseworker metadata, timestamp, nullable application-data version | Disposable audit projection; descriptions are hydrated when queried |
+| `lifecycle_stream` | Genesis application ID, event identifier and name, timestamp | Disposable pointers from which history is read; descriptions are hydrated when queried |
 
 “Thin” means data minimisation, not a guarantee that an event contains no personal data. Stable
 identifiers, including application and caseworker IDs, may still be personal data depending on how
@@ -128,8 +128,8 @@ Aggregates rebuild identifiers, versions, assignment state, and other control fi
 events. They do not query `application_data` during event replay. A command handler queries it only
 when the new decision needs the complete current payload.
 
-Projections are different: replaying `ApplicationProjection` or `ApplicationHistoryProjection` may
-need the referenced `application_data` versions to return fully hydrated results. See
+Projections and history are different: replaying `ApplicationProjection`, or reading application
+history, may need the referenced `application_data` versions to return fully hydrated results. See
 [Projections and replay](projections-and-replay.md).
 
 The command bus and JPA event store share Spring transaction management. The implementation writes
@@ -145,5 +145,6 @@ When a new operation contains sensitive or free-text data:
 3. put only routing, concurrency, and non-sensitive control fields in the event;
 4. include `applicationId` and `applicationDataVersion` when consumers need hydration;
 5. update aggregate event-sourcing state;
-6. update current-state and history projections, including replay tests;
+6. update the current-state projection as needed, cover lifecycle-stream pointers on replay,
+   and update the history mapper if the event produces a public entry;
 7. verify the serialized event stored in PostgreSQL does not contain the sensitive fields.
