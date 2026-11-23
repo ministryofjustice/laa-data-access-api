@@ -65,7 +65,8 @@ public class SubmitPriorAuthorityDraftCommandHandler {
             command,
             priorAuthority.getState(),
             applicationDataVersion,
-            billingTypeOf(payload.content())));
+            billingTypeOf(payload.content()),
+            payload));
     draftStore.delete(command.priorAuthorityId());
   }
 

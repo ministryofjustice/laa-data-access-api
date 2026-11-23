@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
@@ -33,12 +34,17 @@ public final class PriorAuthorityEvolve {
     state.draftModifiedAt = event.occurredAt();
   }
 
-  /** Applies a {@link PriorAuthoritySubmittedEvent} to the given state. */
+  /**
+   * Applies a {@link PriorAuthoritySubmittedEvent}: the submitted content replaces the draft,
+   * keeping the retained draft document filenames, as version 0 of {@code prior_authority_data}
+   * does.
+   */
   public static void apply(PriorAuthorityState state, PriorAuthoritySubmittedEvent event) {
     state.priorAuthorityId = event.priorAuthorityId();
     state.applicationId = event.applicationId();
     state.priorAuthorityType = event.priorAuthorityType();
     state.billingType = event.billingType();
+    state.submission = submittedContent(state, event);
     state.draftContent = Erasable.erased();
     state.draftSerialisedRequest = Erasable.erased();
     state.draftModifiedAt = null;
@@ -57,6 +63,24 @@ public final class PriorAuthorityEvolve {
     state.dataVersion = event.dataVersion();
     state.submitted = true;
     state.decided = true;
+    // The request is always present with decision content; the other parts may be null.
+    state.submission =
+        state.submission.isErased() || event.serialisedRequest().isErased()
+            ? Erasable.erased()
+            : Erasable.of(
+                state
+                    .submission
+                    .value()
+                    .withDecision(
+                        new PriorAuthorityDataPayload.DecisionDetails(
+                            event.overallDecision(),
+                            event.decisionJustification().orElse(null),
+                            event.amountGranted().orElse(null),
+                            event.dateGranted().orElse(null),
+                            event.expertFee().orElse(null),
+                            event.disbursementInformation().orElse(null),
+                            event.apportionmentInformation().orElse(null),
+                            event.serialisedRequest().value())));
   }
 
   /** Applies a generic direct PA assignment. */
@@ -107,5 +131,22 @@ public final class PriorAuthorityEvolve {
             document.documentId().equals(event.documentId())
                 ? document.withDocumentType(event.documentType().orElse(null))
                 : document);
+  }
+
+  private static Erasable<PriorAuthorityDataPayload> submittedContent(
+      PriorAuthorityState state, PriorAuthoritySubmittedEvent event) {
+    if (event.content().isErased() || event.serialisedRequest().isErased()) {
+      return Erasable.erased();
+    }
+    return Erasable.of(
+        new PriorAuthorityDataPayload(
+            event.priorAuthorityId(),
+            event.applicationId(),
+            event.content().value(),
+            event.serialisedRequest().value(),
+            event.occurredAt(),
+            null,
+            state.officeCode,
+            state.retainedFilenames()));
   }
 }
