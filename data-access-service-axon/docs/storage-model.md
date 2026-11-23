@@ -27,13 +27,12 @@ erDiagram
         uuid caseworker_id
         uuid linked_group_id
     }
-    APPLICATION_HISTORY {
-        string event_id PK
-        uuid application_id
-        string event_type
-        bigint data_version
-        string service_name
-        uuid caseworker_id
+    LIFECYCLE_STREAM {
+        bigint id PK
+        uuid genesis_id
+        string source
+        string event_identifier
+        string event_name
         timestamptz occurred_at
     }
     LINKED_APPLICATION_GROUP_CURRENT_STATE {
@@ -60,7 +59,7 @@ erDiagram
 
     DOMAIN_EVENT_ENTRY o|--o| APPLICATION_DATA : "may point to version"
     APPLICATION_CURRENT_STATE o|--o| APPLICATION_DATA : "current version may exist"
-    APPLICATION_HISTORY o|--o| APPLICATION_DATA : "details may be hydrated"
+    DOMAIN_EVENT_ENTRY ||--o{ LIFECYCLE_STREAM : "referenced by source and event identifier"
     CASEWORKERS ||--o{ APPLICATION_CURRENT_STATE : "assigned by ID"
 ```
 
@@ -109,9 +108,11 @@ Group events are stored on their own event stream and projected into
 derived from that row rather than using the group's lead as a lookup key. The group read-model row
 contains the public group version and is deleted when a dissolution event is projected.
 
-The history projection fans group events out into application-specific history rows. Lead changes
-create a row for both old and new leads; member removal records the departing application, and
-dissolution records the departing application and the remaining former lead.
+`LifecycleStreamProjection` writes one pointer per root application named by the event,
+unique on `(genesis_id, source, event_identifier)`. The link to the event is logical, not a
+foreign key. For example, a member removal names the departing and remaining members. Each
+gets a pointer to the same event; the history query maps it to a different entry for the
+departing member than for those who stayed. It does not consult today's group membership.
 
 ## Database controls
 
