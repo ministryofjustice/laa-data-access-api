@@ -133,7 +133,8 @@ class LegacyGenesisPayloadCompatibilityTest {
     PriorAuthorityDocumentTypeUpdatedEvent current =
         new PriorAuthorityDocumentTypeUpdatedEvent(
             ITEM_ID, DOCUMENT_ID, "INVOICE", OCCURRED_AT, PARENT_ID);
-    assertIsLegacyShapeOf(LEGACY_DOCUMENT_TYPE_UPDATED, current, "parentApplicationId");
+    assertIsLegacyShapeOf(
+        LEGACY_DOCUMENT_TYPE_UPDATED, current, "parentApplicationId", "serialisedRequest");
 
     PriorAuthorityDocumentTypeUpdatedEvent legacy =
         read(LEGACY_DOCUMENT_TYPE_UPDATED, PriorAuthorityDocumentTypeUpdatedEvent.class);
@@ -156,11 +157,14 @@ class LegacyGenesisPayloadCompatibilityTest {
     return converter.convert(json.getBytes(StandardCharsets.UTF_8), type);
   }
 
-  /** Proves the fixture is what the converter wrote before the field existed. */
-  private static void assertIsLegacyShapeOf(String legacyJson, Object current, String newField) {
+  /** Proves the fixture is what the converter wrote before the added fields existed. */
+  private static void assertIsLegacyShapeOf(
+      String legacyJson, Object current, String... newFields) {
     ObjectNode written =
         (ObjectNode) objectMapper.readTree(converter.convert(current, byte[].class));
-    written.remove(newField);
+    for (String field : newFields) {
+      written.remove(field);
+    }
     JsonNode legacy = objectMapper.readTree(legacyJson);
     assertThat(written).isEqualTo(legacy);
   }

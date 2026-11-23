@@ -77,7 +77,7 @@ public class GenesisIdsTest {
             APP),
         scoped(new NoteCreatedEvent(APP, 1L, OCCURRED_AT), APP),
         scoped(new PriorAuthorityDraftStartedEvent(ID, APP, "T", 1, OCCURRED_AT), APP),
-        scoped(new PriorAuthorityDraftUpdatedEvent(ID, APP, OCCURRED_AT), APP),
+        scoped(new PriorAuthorityDraftUpdatedEvent(ID, APP, OCCURRED_AT, null, null), APP),
         scoped(new PriorAuthoritySubmittedEvent(ID, APP, "T", 1, 1L, null, OCCURRED_AT, "B"), APP),
         scoped(
             new PriorAuthorityDecisionMadeEvent(

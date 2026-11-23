@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecider;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentTypeUpdateCommand;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerResource;
@@ -27,22 +26,27 @@ public class PriorAuthorityDocumentTypeUpdateCommandHandler {
   @RequireWriteAccess(resolver = OfficeCodeResourceWriteAccessResolver.class)
   public UUID handle(
       @AuthenticatedCallerResource PriorAuthorityDocumentTypeUpdateCommand command,
-      PriorAuthorityDraftStore draftStore,
       @InjectEntity(idProperty = "priorAuthorityId") @WriteAccessResolverResource
           PriorAuthorityAggregate priorAuthority,
+      PriorAuthorityDraftStore draftStore,
       EventAppender eventAppender) {
 
     requireDraftLifecycle(priorAuthority);
-    PriorAuthorityDataPayload existingDraft = requireDraft(command.priorAuthorityId(), draftStore);
+    var existingDraft =
+        priorAuthority
+            .getState()
+            .draft()
+            .orElseThrow(
+                () ->
+                    new ResourceNotFoundException(
+                        "Prior Authority draft not found: " + command.priorAuthorityId()));
     requireActiveDocument(command, priorAuthority);
-    PriorAuthorityDataPayload updatedPayload =
-        existingDraft
-            .withSerialisedRequest(command.serialisedRequest())
-            .withSubmittedAt(command.occurredAt());
     draftStore.upsert(
         command.priorAuthorityId(),
         existingDraft.applicationId(),
-        updatedPayload,
+        existingDraft
+            .withSerialisedRequest(command.serialisedRequest())
+            .withSubmittedAt(command.occurredAt()),
         command.serialisedRequest(),
         command.occurredAt());
     eventAppender.append(
@@ -69,15 +73,5 @@ public class PriorAuthorityDocumentTypeUpdateCommandHandler {
                 new ResourceNotFoundException(
                     "Document %s not found for Prior Authority %s"
                         .formatted(command.documentId(), command.priorAuthorityId())));
-  }
-
-  private static PriorAuthorityDataPayload requireDraft(
-      UUID priorAuthorityId, PriorAuthorityDraftStore draftStore) {
-    return draftStore
-        .find(priorAuthorityId)
-        .orElseThrow(
-            () ->
-                new ResourceNotFoundException(
-                    "Prior Authority draft not found: " + priorAuthorityId));
   }
 }

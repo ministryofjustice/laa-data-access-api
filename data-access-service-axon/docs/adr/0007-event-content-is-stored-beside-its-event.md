@@ -158,9 +158,9 @@ content, defaults or `{}` after erasure, and when read with kept fields only.
 **Invariant:** with all content erased, every aggregate loads and every command decides as it
 would with content. `ErasureReplayTest` folds Application and Prior Authority histories through
 the real evolve functions with and without content and compares the states and decider outcomes.
-The one deliberate exception is an Application draft: its content is what submit turns into the
-Application, so a draft whose content is erased counts as no draft and submit and upload return
-not found.
+A draft is an exception: its content is what submit turns into an Application or Prior Authority.
+If the current draft body or required request is erased, commands needing that draft return not
+found. PA commands never rebuild a missing draft from a read-side copy.
 
 Note, decision, auto-grant outcome, update and mark-ready commands that need to write a new
 `application_data` version treat erased submitted content as missing (`EntityNotFoundException`,
@@ -177,10 +177,11 @@ an open draft has no submitted payload to erase.
 | `ApplicationDecisionMade` | `meritsDecisions`, `certificate`, `serialisedRequest`, `eventDescription`. Gains the kept `decisionRequestFingerprint` and `proceedingDecisions`. |
 | `ApplicationDraftStarted` | `applicationContent`, `serialisedRequest`, `potentialDuplicates`. Gains the kept `status` and `laaReference`. |
 | `ApplicationDocumentUploaded` | `documentType`, `size`, `contentType`, `sourceService`, `fileSuffix`, `originalFilename` |
-| `PriorAuthorityDocumentUploaded` | `size`, `contentType`, `sourceService`, `fileSuffix` |
-| `PriorAuthorityDocumentTypeUpdated` | `documentType` |
+| `PriorAuthorityDraftStarted`, `PriorAuthorityDraftUpdated` | `content`, `serialisedRequest` |
+| `PriorAuthorityDocumentUploaded` | `size`, `contentType`, `sourceService`, `fileSuffix`, `originalFilename` |
+| `PriorAuthorityDocumentTypeUpdated` | `documentType`, `serialisedRequest` (the last raw request carried forward at submit) |
 | `PriorAuthorityDecisionMade` | `decisionJustification`, `amountGranted`, `dateGranted` |
-| The other 12 event types | None |
+| Other event types | None |
 
 `fileSuffix` can hold part of a filename, so it is content. Once erased, deleting a Prior
 Authority document cannot build the SDS filename; that clean-up is best-effort and logged, and
@@ -252,8 +253,9 @@ thin adapters know about Axon (`eventcontent.axon`) or JDBC (`eventcontent.jdbc`
   `LifecycleStreamReader` decodes stored rows as Axon does, so content fields read as erased.
 
 `EventContentArchitectureTest` enforces that every event has a schema matching its kept record
-components; only `eventcontent`, `*Evolve`, `ApplicationProjection` and `PriorAuthorityProjection`
-read `Erasable` values; only `eventcontent` adapters and processor configuration use the content
+components; only `eventcontent`, `*Evolve`, the two registered projections and the command-side
+draft readers (`ApplicationCommandHandlerSupport`, `PriorAuthorityState`) read `Erasable` values;
+only `eventcontent` adapters and processor configuration use the content
 store and Axon adapter; and nothing declares snapshots.
 
 ### No snapshots
@@ -319,11 +321,20 @@ This layer moves no content into events that was not there already. Later layers
    `application_data` is still written and still serves API reads, projections and history
    descriptions); reading application details from the aggregate and removing
    `ApplicationDataStore` is later work;
-3. do the same for Prior Authority drafts, submissions and decisions;
+3. PA drafts and document mutations now fold from event content. Create, replace, upload, type
+   change and delete still maintain `prior_authority_draft` in the command transaction so existing
+   projection-backed GETs see the same content and immediate draft-body updates. Submitting reads
+   the aggregate, writes the existing immutable `prior_authority_data` version and deletes the
+   draft read copy. The public GETs and submission readiness wait have not moved. There is no new
+   migration here: retiring the draft table requires a replacement with equivalent read semantics.
+   PA submitted/decision content adoption remains separate;
 4. build erasure on the store mechanism: the soft deletion event, the retention period and the
    automatic hard erasure.
 
 When the old stores are gone, ADR 0002 is superseded.
+
+Erasing event-content rows alone is **not** PA hard erasure. A retention design must also reach
+the draft read copy, submitted versions, projections and SDS. No historical event is rewritten.
 
 ## Reconsider when
 

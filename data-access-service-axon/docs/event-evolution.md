@@ -75,17 +75,17 @@ PostgreSQL tests verify persisted suffixes and absence of full filenames from ev
 
 ### Prior Authority draft-update stream tagging
 
-`PriorAuthorityDraftUpdatedEvent` retains its original three fields and JSON meaning:
+`PriorAuthorityDraftUpdatedEvent` retains its original three kept fields:
 `priorAuthorityId`, `parentApplicationId`, and `occurredAt`. Its owner ID is now annotated
 with `@EventTag(key = "PriorAuthorityAggregate")`, and the aggregate explicitly handles
-the event without changing business state. This associates new draft saves with the
+the event, replacing the draft body and raw request from erasable event content. This associates new draft saves with the
 same optimistic-concurrency stream as document mutations. A stale append rolls back
 its draft write, allowing the existing bounded dispatcher retry to reload current state.
 
 No event rename, revision, upcaster, or JSON migration is required. Historical JSON
 still deserializes and can be folded without altering identity, lifecycle, or documents.
 Previously persisted events are not retagged by changing the Java annotation, and
-already lost content cannot be reconstructed from this thin event. Any historical
+missing content cannot be reconstructed from the kept fields. Any historical
 store remediation needs a separate decision; do not rewrite persisted metadata here.
 
 Like every event, the record declares `@Event(namespace = "access", name = ...)`, so tooling that

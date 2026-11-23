@@ -1,18 +1,13 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority.handler;
 
-import java.util.UUID;
 import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.axonframework.modelling.annotation.InjectEntity;
-import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecider;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.UpdatePriorAuthorityDraftCommand;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerResource;
 import uk.gov.justice.laa.dstew.access.security.OfficeCodeResourceWriteAccessResolver;
@@ -28,43 +23,30 @@ public class UpdatePriorAuthorityDraftCommandHandler {
   @RequireWriteAccess(resolver = OfficeCodeResourceWriteAccessResolver.class)
   void handle(
       @AuthenticatedCallerResource UpdatePriorAuthorityDraftCommand command,
-      PriorAuthorityDraftStore draftStore,
       @InjectEntity(idProperty = "priorAuthorityId") @WriteAccessResolverResource
           PriorAuthorityAggregate priorAuthority,
+      PriorAuthorityDraftStore draftStore,
       EventAppender eventAppender) {
 
-    PriorAuthorityDataPayload existingDraft = requireDraft(command.priorAuthorityId(), draftStore);
-    PriorAuthorityDataPayload payload =
-        buildUpdatedDraftPayload(command, existingDraft, priorAuthority.getPriorAuthorityType());
+    var existingDraft =
+        priorAuthority
+            .getState()
+            .draft()
+            .orElseThrow(
+                () ->
+                    new ResourceNotFoundException(
+                        "Prior Authority %s not found".formatted(command.priorAuthorityId())));
+    var content = PriorAuthorityDecider.updatedDraftContent(command, priorAuthority.getState());
     draftStore.upsert(
         command.priorAuthorityId(),
-        priorAuthority.getApplicationId(),
-        payload,
+        existingDraft.applicationId(),
+        existingDraft
+            .withContent(content)
+            .withSerialisedRequest(command.serialisedRequest())
+            .withSubmittedAt(command.occurredAt()),
         command.serialisedRequest(),
         command.occurredAt());
     eventAppender.append(
-        PriorAuthorityDecider.decideDraftUpdated(command, priorAuthority.getApplicationId()));
-  }
-
-  private static @NonNull PriorAuthorityDataPayload requireDraft(
-      UUID priorAuthorityId, PriorAuthorityDraftStore draftStore) {
-    return draftStore
-        .find(priorAuthorityId)
-        .orElseThrow(
-            () ->
-                new ResourceNotFoundException(
-                    "Prior Authority %s not found".formatted(priorAuthorityId)));
-  }
-
-  private PriorAuthorityDataPayload buildUpdatedDraftPayload(
-      UpdatePriorAuthorityDraftCommand command,
-      PriorAuthorityDataPayload existingDraft,
-      String priorAuthorityType) {
-    PriorAuthorityContent updatedContent =
-        command.content().withPriorAuthorityType(PriorAuthorityType.valueOf(priorAuthorityType));
-    return existingDraft
-        .withContent(updatedContent)
-        .withSerialisedRequest(command.serialisedRequest())
-        .withSubmittedAt(command.occurredAt());
+        PriorAuthorityDecider.decideDraftUpdated(command, priorAuthority.getState(), content));
   }
 }

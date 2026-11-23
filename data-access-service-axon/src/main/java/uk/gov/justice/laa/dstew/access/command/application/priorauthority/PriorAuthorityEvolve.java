@@ -6,6 +6,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decisi
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
+import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 
 /** Event-fold functions for {@link PriorAuthorityState}. */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -20,6 +21,16 @@ public final class PriorAuthorityEvolve {
     state.schemaVersion = event.schemaVersion();
     state.submitted = false;
     state.decided = false;
+    state.draftContent = event.content();
+    state.draftSerialisedRequest = event.serialisedRequest();
+    state.draftModifiedAt = event.occurredAt();
+  }
+
+  /** Applies a {@link PriorAuthorityDraftUpdatedEvent}, replacing the draft content. */
+  public static void apply(PriorAuthorityState state, PriorAuthorityDraftUpdatedEvent event) {
+    state.draftContent = event.content();
+    state.draftSerialisedRequest = event.serialisedRequest();
+    state.draftModifiedAt = event.occurredAt();
   }
 
   /** Applies a {@link PriorAuthoritySubmittedEvent} to the given state. */
@@ -28,6 +39,10 @@ public final class PriorAuthorityEvolve {
     state.applicationId = event.applicationId();
     state.priorAuthorityType = event.priorAuthorityType();
     state.billingType = event.billingType();
+    state.draftContent = Erasable.erased();
+    state.draftSerialisedRequest = Erasable.erased();
+    state.draftModifiedAt = null;
+    state.documentFilenames.clear();
     state.schemaVersion = event.schemaVersion();
     state.dataVersion = event.dataVersion();
     state.submitted = true;
@@ -69,6 +84,7 @@ public final class PriorAuthorityEvolve {
             event.sourceService().orElse(null),
             false,
             event.fileSuffix().orElse(null)));
+    state.documentFilenames.put(event.documentId(), event.originalFilename());
   }
 
   /** Applies a {@link PriorAuthorityDocumentDeletedEvent} to the given state. */
@@ -78,11 +94,14 @@ public final class PriorAuthorityEvolve {
             document.documentId().equals(event.documentId())
                 ? document.withDeleted(true)
                 : document);
+    state.documentFilenames.remove(event.documentId());
   }
 
   /** Applies a {@link PriorAuthorityDocumentTypeUpdatedEvent} to the given state. */
   public static void apply(
       PriorAuthorityState state, PriorAuthorityDocumentTypeUpdatedEvent event) {
+    state.draftSerialisedRequest = event.serialisedRequest();
+    state.draftModifiedAt = event.occurredAt();
     state.uploadedDocuments.replaceAll(
         document ->
             document.documentId().equals(event.documentId())

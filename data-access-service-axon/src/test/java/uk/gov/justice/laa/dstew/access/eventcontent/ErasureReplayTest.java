@@ -210,7 +210,12 @@ class ErasureReplayTest {
             uploaded(documentId),
             uploaded(deletedDocumentId),
             new PriorAuthorityDocumentTypeUpdatedEvent(
-                priorAuthorityId, documentId, Erasable.of("GATEWAY_EVIDENCE"), AT, applicationId),
+                priorAuthorityId,
+                documentId,
+                Erasable.of("GATEWAY_EVIDENCE"),
+                AT,
+                applicationId,
+                Erasable.of("{}")),
             new PriorAuthorityDocumentDeletedEvent(
                 priorAuthorityId, deletedDocumentId, AT, applicationId),
             new PriorAuthoritySubmittedEvent(
@@ -340,7 +345,8 @@ class ErasureReplayTest {
         "checksum",
         applicationId,
         Erasable.of("CIVIL_APPLY"),
-        Erasable.of(".pdf"));
+        Erasable.of(".pdf"),
+        Erasable.of("evidence.pdf"));
   }
 
   private Object decidePriorAuthority(PriorAuthorityState state, UUID actor, long version) {

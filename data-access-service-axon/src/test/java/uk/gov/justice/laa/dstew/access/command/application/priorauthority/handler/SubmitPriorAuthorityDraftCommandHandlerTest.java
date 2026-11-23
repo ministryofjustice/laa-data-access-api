@@ -39,6 +39,7 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertDetails;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
+import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
@@ -51,11 +52,11 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
 
   private static final Instant OCCURRED_AT = Instant.parse("2026-09-01T10:00:00Z");
 
-  @Mock private PriorAuthorityDraftStore draftStore;
   @Mock private PriorAuthorityDataStore dataStore;
   @Mock private ApplicationDataStore applicationDataStore;
   @Mock private JsonSchemaValidator jsonSchemaValidator;
   @Mock private PriorAuthorityAggregate priorAuthority;
+  @Mock private PriorAuthorityDraftStore draftStore;
   @Mock private EventAppender eventAppender;
 
   @Captor private ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor;
@@ -73,9 +74,8 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
     SubmitPriorAuthorityDraftCommand command =
         new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT, CALLER);
     PriorAuthorityState state =
-        startedState(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT, 1);
+        startedState(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT, 1, payload);
 
-    when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(payload));
     when(priorAuthority.getApplicationId()).thenReturn(applicationId);
     when(priorAuthority.getState()).thenReturn(state);
     when(applicationDataStore.latestVersion(applicationId)).thenReturn(3L);
@@ -83,11 +83,11 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
     new SubmitPriorAuthorityDraftCommandHandler()
         .handle(
             command,
-            draftStore,
             dataStore,
             applicationDataStore,
             jsonSchemaValidator,
             priorAuthority,
+            draftStore,
             eventAppender);
 
     verify(jsonSchemaValidator).validate(content, "PriorAuthority.json", 1);
@@ -111,7 +111,6 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
                 3L,
                 OCCURRED_AT,
                 null));
-    verify(draftStore).delete(priorAuthorityId);
   }
 
   @Test
@@ -120,23 +119,22 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
     SubmitPriorAuthorityDraftCommand command =
         new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT, CALLER);
 
-    when(draftStore.find(priorAuthorityId)).thenReturn(Optional.empty());
+    when(priorAuthority.getState()).thenReturn(new PriorAuthorityState());
 
     assertThatThrownBy(
             () ->
                 new SubmitPriorAuthorityDraftCommandHandler()
                     .handle(
                         command,
-                        draftStore,
                         dataStore,
                         applicationDataStore,
                         jsonSchemaValidator,
                         priorAuthority,
+                        draftStore,
                         eventAppender))
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage("Prior Authority draft not found: " + priorAuthorityId);
 
-    verify(draftStore).find(priorAuthorityId);
     verifyNoInteractions(dataStore, applicationDataStore, jsonSchemaValidator, eventAppender);
   }
 
@@ -151,9 +149,8 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
     SubmitPriorAuthorityDraftCommand command =
         new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT, CALLER);
     PriorAuthorityState state =
-        startedState(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT, 4);
+        startedState(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT, 4, payload);
 
-    when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(payload));
     when(priorAuthority.getApplicationId()).thenReturn(applicationId);
     when(priorAuthority.getState()).thenReturn(state);
     when(applicationDataStore.latestVersion(applicationId)).thenReturn(4L);
@@ -161,11 +158,11 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
     new SubmitPriorAuthorityDraftCommandHandler()
         .handle(
             command,
-            draftStore,
             dataStore,
             applicationDataStore,
             jsonSchemaValidator,
             priorAuthority,
+            draftStore,
             eventAppender);
 
     verify(eventAppender)
@@ -208,9 +205,8 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
     SubmitPriorAuthorityDraftCommand command =
         new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT, CALLER);
     PriorAuthorityState state =
-        startedState(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT, 1);
+        startedState(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT, 1, payload);
 
-    when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(payload));
     when(priorAuthority.getApplicationId()).thenReturn(applicationId);
     when(priorAuthority.getState()).thenReturn(state);
     when(applicationDataStore.latestVersion(applicationId)).thenReturn(3L);
@@ -218,11 +214,11 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
     new SubmitPriorAuthorityDraftCommandHandler()
         .handle(
             command,
-            draftStore,
             dataStore,
             applicationDataStore,
             jsonSchemaValidator,
             priorAuthority,
+            draftStore,
             eventAppender);
 
     verify(eventAppender)
@@ -249,9 +245,8 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
     SubmitPriorAuthorityDraftCommand command =
         new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT, CALLER);
     PriorAuthorityState state =
-        startedState(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT, 1);
+        startedState(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT, 1, payload);
 
-    when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(payload));
     when(priorAuthority.getApplicationId()).thenReturn(applicationId);
     when(priorAuthority.getState()).thenReturn(state);
     when(applicationDataStore.latestVersion(applicationId)).thenReturn(3L);
@@ -259,11 +254,11 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
     new SubmitPriorAuthorityDraftCommandHandler()
         .handle(
             command,
-            draftStore,
             dataStore,
             applicationDataStore,
             jsonSchemaValidator,
             priorAuthority,
+            draftStore,
             eventAppender);
     var eventCaptor = ArgumentCaptor.forClass(PriorAuthoritySubmittedEvent.class);
     verify(eventAppender).append(eventCaptor.capture());
@@ -272,7 +267,6 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
 
   private static Stream<Arguments> contentsWithoutExpertBillingType() {
     return Stream.of(
-        Arguments.of((PriorAuthorityContent) null),
         Arguments.of(
             new PriorAuthorityContent(
                 PriorAuthorityType.EXPERT,
@@ -303,7 +297,8 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
       UUID priorAuthorityId,
       UUID applicationId,
       PriorAuthorityType priorAuthorityType,
-      int schemaVersion) {
+      int schemaVersion,
+      PriorAuthorityDataPayload payload) {
     PriorAuthorityState state = new PriorAuthorityState();
     PriorAuthorityEvolve.apply(
         state,
@@ -312,7 +307,10 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
             applicationId,
             priorAuthorityType == null ? null : priorAuthorityType.name(),
             schemaVersion,
-            OCCURRED_AT));
+            OCCURRED_AT,
+            payload.officeCode(),
+            Erasable.of(payload.content()),
+            Erasable.of(payload.serialisedRequest())));
     return state;
   }
 }
