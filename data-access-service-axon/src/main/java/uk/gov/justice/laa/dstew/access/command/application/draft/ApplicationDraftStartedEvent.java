@@ -9,6 +9,7 @@ import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
 import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
+import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 
 /**
@@ -17,13 +18,13 @@ import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
  */
 @Event(namespace = "access", name = "ApplicationDraftStarted")
 public record ApplicationDraftStartedEvent(
-    @EventTag(key = "ApplicationAggregate") UUID applicationId,
-    int schemaVersion,
-    String requestFingerprint,
-    Instant occurredAt,
-    String officeCode,
-    String status,
-    String laaReference,
+    @RetainedField @EventTag(key = "ApplicationAggregate") UUID applicationId,
+    @RetainedField int schemaVersion,
+    @RetainedField String requestFingerprint,
+    @RetainedField Instant occurredAt,
+    @RetainedField String officeCode,
+    @RetainedField String status,
+    @RetainedField String laaReference,
     Erasable<Map<String, Object>> applicationContent,
     Erasable<String> serialisedRequest,
     Erasable<List<PotentialDuplicate>> potentialDuplicates)

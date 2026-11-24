@@ -8,6 +8,7 @@ import org.axonframework.messaging.eventhandling.annotation.Event;
 import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
+import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 
 /**
  * Persisted event emitted on every prior-authority draft-body update. Carries the full replacement
@@ -16,9 +17,9 @@ import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
  */
 @Event(namespace = "access", name = "PriorAuthorityDraftUpdated")
 public record PriorAuthorityDraftUpdatedEvent(
-    @EventTag(key = "PriorAuthorityAggregate") UUID priorAuthorityId,
-    UUID parentApplicationId,
-    Instant occurredAt,
+    @RetainedField @EventTag(key = "PriorAuthorityAggregate") UUID priorAuthorityId,
+    @RetainedField UUID parentApplicationId,
+    @RetainedField Instant occurredAt,
     Erasable<PriorAuthorityContent> content,
     Erasable<String> serialisedRequest)
     implements GenesisScoped {

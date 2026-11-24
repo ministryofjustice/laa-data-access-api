@@ -8,17 +8,18 @@ import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
 import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
+import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 
 /** Emitted when a non-lead application leaves a linked group that remains active. */
 @Event(namespace = "access", name = "MemberRemovedFromGroup")
 public record MemberRemovedFromGroupEvent(
-    @EventTag(key = "LinkedApplicationGroupAggregate") UUID groupId,
-    UUID leadApplicationId,
-    UUID memberId,
-    long groupVersion,
-    Instant occurredAt,
-    List<UUID> memberApplicationIds,
-    UUID justificationId)
+    @RetainedField @EventTag(key = "LinkedApplicationGroupAggregate") UUID groupId,
+    @RetainedField UUID leadApplicationId,
+    @RetainedField UUID memberId,
+    @RetainedField long groupVersion,
+    @RetainedField Instant occurredAt,
+    @RetainedField List<UUID> memberApplicationIds,
+    @RetainedField UUID justificationId)
     implements LinkedGroupMemberRemoval, GenesisScoped {
 
   /** Preserves historical events whose full membership was not recorded. */

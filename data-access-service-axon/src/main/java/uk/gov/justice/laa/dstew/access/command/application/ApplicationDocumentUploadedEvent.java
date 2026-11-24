@@ -7,19 +7,20 @@ import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
 import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
+import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 
 /** Persisted event emitted after an application document upload completes. */
 @Event(namespace = "access", name = "ApplicationDocumentUploaded")
 public record ApplicationDocumentUploadedEvent(
-    @EventTag(key = "ApplicationAggregate") UUID applicationId,
-    UUID documentId,
+    @RetainedField @EventTag(key = "ApplicationAggregate") UUID applicationId,
+    @RetainedField UUID documentId,
     Erasable<String> documentType,
-    Instant uploadedAt,
+    @RetainedField Instant uploadedAt,
     Erasable<Long> size,
     Erasable<String> contentType,
-    String checksum,
+    @RetainedField String checksum,
     Erasable<String> sourceService,
-    Long applicationDataVersion,
+    @RetainedField Long applicationDataVersion,
     Erasable<String> fileSuffix,
     Erasable<String> originalFilename)
     implements GenesisScoped {

@@ -7,13 +7,14 @@ import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
 import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
+import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 
 /** Records that a note was added to an Application. The note text is erasable content. */
 @Event(namespace = "access", name = "NoteCreated")
 public record NoteCreatedEvent(
-    @EventTag(key = "ApplicationAggregate") UUID applicationId,
-    long applicationDataVersion,
-    Instant occurredAt,
+    @RetainedField @EventTag(key = "ApplicationAggregate") UUID applicationId,
+    @RetainedField long applicationDataVersion,
+    @RetainedField Instant occurredAt,
     Erasable<String> noteText)
     implements GenesisScoped {
 

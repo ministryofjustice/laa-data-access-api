@@ -7,15 +7,16 @@ import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
 import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
+import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 
 /** Persisted event emitted when a Prior Authority document type is set or replaced. */
 @Event(namespace = "access", name = "PriorAuthorityDocumentTypeUpdated")
 public record PriorAuthorityDocumentTypeUpdatedEvent(
-    @EventTag(key = "PriorAuthorityAggregate") UUID priorAuthorityId,
-    UUID documentId,
+    @RetainedField @EventTag(key = "PriorAuthorityAggregate") UUID priorAuthorityId,
+    @RetainedField UUID documentId,
     Erasable<String> documentType,
-    Instant occurredAt,
-    UUID parentApplicationId,
+    @RetainedField Instant occurredAt,
+    @RetainedField UUID parentApplicationId,
     Erasable<String> serialisedRequest)
     implements GenesisScoped {
 

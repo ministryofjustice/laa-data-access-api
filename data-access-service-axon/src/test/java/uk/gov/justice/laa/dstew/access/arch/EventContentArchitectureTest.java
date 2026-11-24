@@ -24,6 +24,7 @@ import uk.gov.justice.laa.dstew.access.command.EventTypes;
 import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventContentSeparator;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventJson;
+import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 
 /** Rules that keep event content readable only where erasure has been accounted for. */
 class EventContentArchitectureTest {
@@ -132,6 +133,31 @@ class EventContentArchitectureTest {
       assertThat(new HashSet<>(schema.get("properties").propertyNames()))
           .as(typeName + " schema properties")
           .isEqualTo(kept);
+    }
+  }
+
+  @Test
+  void givenEvents_whenRetainedFieldsRead_thenTheyEqualSchemaProperties() throws IOException {
+    EventJson json = new EventJson();
+    for (var event : EventTypes.all().entrySet()) {
+      String typeName = event.getKey();
+      Set<String> retained =
+          Arrays.stream(event.getValue().getRecordComponents())
+              .filter(component -> component.isAnnotationPresent(RetainedField.class))
+              .map(RecordComponent::getName)
+              .collect(Collectors.toSet());
+
+      JsonNode schema;
+      try (InputStream in =
+          getClass()
+              .getClassLoader()
+              .getResourceAsStream(EventContentSeparator.SCHEMA_ROOT + typeName + ".json")) {
+        assertThat(in).as("schema for " + typeName).isNotNull();
+        schema = json.mapper().readTree(in);
+      }
+      assertThat(new HashSet<>(schema.get("properties").propertyNames()))
+          .as(typeName + " @RetainedField components")
+          .isEqualTo(retained);
     }
   }
 }

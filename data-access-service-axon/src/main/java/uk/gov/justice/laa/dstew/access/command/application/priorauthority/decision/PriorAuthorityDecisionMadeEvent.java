@@ -10,6 +10,7 @@ import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.DisbursementInformation;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ExpertFeeInformation;
 import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
+import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 
 /**
  * Event raised when a terminal decision is made against a PriorAuthority submission. The decision
@@ -17,15 +18,15 @@ import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
  */
 @Event(namespace = "access", name = "PriorAuthorityDecisionMade")
 public record PriorAuthorityDecisionMadeEvent(
-    @EventTag(key = "PriorAuthorityAggregate") UUID priorAuthorityId,
-    UUID applicationId,
-    String priorAuthorityType,
-    long dataVersion,
-    String overallDecision,
+    @RetainedField @EventTag(key = "PriorAuthorityAggregate") UUID priorAuthorityId,
+    @RetainedField UUID applicationId,
+    @RetainedField String priorAuthorityType,
+    @RetainedField long dataVersion,
+    @RetainedField String overallDecision,
     Erasable<String> decisionJustification,
     Erasable<BigDecimal> amountGranted,
     Erasable<Instant> dateGranted,
-    Instant occurredAt,
+    @RetainedField Instant occurredAt,
     Erasable<ExpertFeeInformation> expertFee,
     Erasable<DisbursementInformation> disbursementInformation,
     Erasable<ApportionmentInformation> apportionmentInformation,

@@ -10,6 +10,7 @@ import org.axonframework.messaging.eventhandling.annotation.Event;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetails;
 import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
+import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 
 /**
@@ -18,16 +19,16 @@ import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
  */
 @Event(namespace = "access", name = "ApplicationCreated")
 public record ApplicationCreatedEvent(
-    @EventTag(key = "ApplicationAggregate") UUID applicationId,
-    long applicationDataVersion,
-    String requestFingerprint,
-    String status,
-    int schemaVersion,
-    Instant occurredAt,
+    @RetainedField @EventTag(key = "ApplicationAggregate") UUID applicationId,
+    @RetainedField long applicationDataVersion,
+    @RetainedField String requestFingerprint,
+    @RetainedField String status,
+    @RetainedField int schemaVersion,
+    @RetainedField Instant occurredAt,
     Erasable<List<PotentialDuplicate>> potentialDuplicates,
-    String officeCode,
-    String laaReference,
-    List<UUID> proceedingIds,
+    @RetainedField String officeCode,
+    @RetainedField String laaReference,
+    @RetainedField List<UUID> proceedingIds,
     Erasable<ParsedAppContentDetails> content,
     Erasable<String> serialisedRequest)
     implements GenesisScoped {

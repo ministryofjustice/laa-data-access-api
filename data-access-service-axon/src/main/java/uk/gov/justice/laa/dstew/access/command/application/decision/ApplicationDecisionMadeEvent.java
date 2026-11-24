@@ -12,6 +12,7 @@ import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
 import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
+import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 
 /**
  * Records an Application decision. The merits decisions for the proceedings it covers, the
@@ -22,14 +23,14 @@ import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
  */
 @Event(namespace = "access", name = "ApplicationDecisionMade")
 public record ApplicationDecisionMadeEvent(
-    @EventTag(key = "ApplicationAggregate") UUID applicationId,
-    long applicationVersion,
-    long applicationDataVersion,
-    String overallDecision,
-    AutoGrantedState autoGranted,
-    Instant occurredAt,
-    String decisionRequestFingerprint,
-    Map<UUID, String> proceedingDecisions,
+    @RetainedField @EventTag(key = "ApplicationAggregate") UUID applicationId,
+    @RetainedField long applicationVersion,
+    @RetainedField long applicationDataVersion,
+    @RetainedField String overallDecision,
+    @RetainedField AutoGrantedState autoGranted,
+    @RetainedField Instant occurredAt,
+    @RetainedField String decisionRequestFingerprint,
+    @RetainedField Map<UUID, String> proceedingDecisions,
     Erasable<Map<UUID, ApplicationMeritsDecision>> meritsDecisions,
     Erasable<Map<String, Object>> certificate,
     Erasable<String> serialisedRequest,

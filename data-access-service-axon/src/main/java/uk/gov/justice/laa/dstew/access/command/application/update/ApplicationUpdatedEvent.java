@@ -10,6 +10,7 @@ import org.axonframework.messaging.eventhandling.annotation.Event;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetails;
 import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
+import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 
 /**
  * Replaces an Application's content. The replacement content and request are erasable content;
@@ -17,13 +18,13 @@ import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
  */
 @Event(namespace = "access", name = "ApplicationUpdated")
 public record ApplicationUpdatedEvent(
-    @EventTag(key = "ApplicationAggregate") UUID applicationId,
-    long applicationVersion,
-    long applicationDataVersion,
-    String previousStatus,
-    String status,
-    Instant occurredAt,
-    List<UUID> proceedingIds,
+    @RetainedField @EventTag(key = "ApplicationAggregate") UUID applicationId,
+    @RetainedField long applicationVersion,
+    @RetainedField long applicationDataVersion,
+    @RetainedField String previousStatus,
+    @RetainedField String status,
+    @RetainedField Instant occurredAt,
+    @RetainedField List<UUID> proceedingIds,
     Erasable<ParsedAppContentDetails> content,
     Erasable<String> serialisedRequest)
     implements GenesisScoped {

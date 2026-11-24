@@ -8,6 +8,7 @@ import org.axonframework.messaging.eventhandling.annotation.Event;
 import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
+import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 
 /**
  * Event emitted when a Prior Authority draft is submitted. It carries the submitted content and raw
@@ -23,14 +24,14 @@ import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
  */
 @Event(namespace = "access", name = "PriorAuthoritySubmitted")
 public record PriorAuthoritySubmittedEvent(
-    @EventTag(key = "PriorAuthorityAggregate") UUID priorAuthorityId,
-    UUID applicationId,
-    String priorAuthorityType,
-    int schemaVersion,
-    long dataVersion,
-    Long applicationDataVersion,
-    Instant occurredAt,
-    String billingType,
+    @RetainedField @EventTag(key = "PriorAuthorityAggregate") UUID priorAuthorityId,
+    @RetainedField UUID applicationId,
+    @RetainedField String priorAuthorityType,
+    @RetainedField int schemaVersion,
+    @RetainedField long dataVersion,
+    @RetainedField Long applicationDataVersion,
+    @RetainedField Instant occurredAt,
+    @RetainedField String billingType,
     Erasable<PriorAuthorityContent> content,
     Erasable<String> serialisedRequest)
     implements GenesisScoped {
