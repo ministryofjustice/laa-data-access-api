@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -127,6 +128,23 @@ public final class PriorAuthorityDecider {
     if (!DecisionValue.GRANTED.name().equals(command.overallDecision())
         && !DecisionValue.REFUSED.name().equals(command.overallDecision())) {
       throw new ValidationException(List.of("overallDecision must be one of: GRANTED, REFUSED"));
+    }
+    boolean granted = DecisionValue.GRANTED.name().equals(command.overallDecision());
+    var errors = new ArrayList<String>();
+    if (granted && command.amountGranted() == null) {
+      errors.add("amountGranted is required when decision is GRANTED");
+    }
+    if (granted && command.dateGranted() == null) {
+      errors.add("dateGranted is required when decision is GRANTED");
+    }
+    if (!granted && command.amountGranted() != null) {
+      errors.add("amountGranted must not be provided when decision is REFUSED");
+    }
+    if (!granted && command.dateGranted() != null) {
+      errors.add("dateGranted must not be provided when decision is REFUSED");
+    }
+    if (!errors.isEmpty()) {
+      throw new ValidationException(errors);
     }
   }
 

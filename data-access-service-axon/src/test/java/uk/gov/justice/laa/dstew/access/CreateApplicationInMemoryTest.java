@@ -278,6 +278,30 @@ class CreateApplicationInMemoryTest {
     assertThat(openApi.at("/paths/~1api~1v0~1individuals").isMissingNode()).isTrue();
   }
 
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "SubmitPriorAuthorityDraftValidationRequest",
+        "MakePriorAuthorityDecisionValidationRequest"
+      })
+  void givenDocumentationOnlySchema_whenOpenApiRequested_thenSchemaIsPublished(String name)
+      throws Exception {
+    ResponseEntity<String> response = restTemplate.getForEntity("/v3/api-docs", String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    JsonNode schemas = new ObjectMapper().readTree(response.getBody()).at("/components/schemas");
+    assertThat(schemas.at("/" + name + "/oneOf").size()).isGreaterThan(1);
+    assertThat(schemas.at("/" + name + "/oneOf/0/required").size()).isPositive();
+    schemas
+        .at("/" + name)
+        .findValues("$ref")
+        .forEach(
+            ref ->
+                assertThat(schemas.has(ref.asText().replace("#/components/schemas/", "")))
+                    .as("referenced schema %s is published", ref.asText())
+                    .isTrue());
+  }
+
   @Test
   void givenAuthorizedCaseworker_whenCallingRemovedIndividualsEndpoint_thenReturnsNotFound() {
     ResponseEntity<String> response =
