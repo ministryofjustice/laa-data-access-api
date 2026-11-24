@@ -184,6 +184,28 @@ mode. Schema changes change what is kept permanently and need data stewardship r
 Event metadata has the same kind of allowlist: `causationId`, `correlationId`, `X-Service-Name`
 and `authenticatedUserId`. The last two identify the actor, not the data subject.
 
+### What has a schema
+
+This design adds one schema per event type: the kept-field allowlist. Content has no schema of
+its own; it is whatever the event carries that the allowlist does not list. The other shapes
+already existed and change under their own rules.
+
+| Shape | Defined by | Depended on by | How it changes |
+|---|---|---|---|
+| API requests and responses | OpenAPI under `data-access-api/` | Clients | Coordinated with clients, or deprecated before removal |
+| Pact contracts | Consumers' tests, verified in `pactTest` | Clients | Follows the API; Pact never sees events |
+| Commands and domain classes | Java | This service only | Refactored freely, unless serialised into events or state stores |
+| Kept event fields | `event-schemas/access.<Name>.json` | Stored history, forever | Additive where possible; otherwise an upcaster, with data stewardship review |
+| Event content | The event class, minus kept fields | Aggregates and content readers | An upcaster when a field is renamed or retyped; erasure blanks it |
+| Read models | Projections | API reads | Rebuilt by replay; no compatibility promise |
+
+The API and event shapes are deliberately separate, so a client-facing rename need not rewrite
+stored history, and an event change need not break clients. The risk to watch is a domain class
+used directly in both a request and an event: renaming one of its fields changes stored data
+too. Kept schemas are strict on purpose, because they are the permanent record. Content is loose
+by default, but a renamed content field in old events reads as erased unless an upcaster maps
+it.
+
 ### One mapper
 
 `EventJson` is the one JSON mapper for event payloads and content, and Axon's `EventConverter` is
@@ -237,6 +259,13 @@ Snapshots require an erasure design first.
   own, so Axon and the split cannot disagree.
 - **A report-only mode for unclassified events:** rejected. Every type is classified from the
   data reset.
+- **Encrypt content in the event and destroy the key (crypto-shredding):** rejected, as in ADR
+  0002. Destroying a key is a recognised way to put data beyond use, but the ciphertext stays in
+  the event store and every backup indefinitely, so erasure depends on the key never resurfacing
+  from a backup, a leak or future cryptanalysis. It needs per-subject key ownership, rotation,
+  backup, audit and partial decryption, and it does not reach the plaintext copies in
+  projections, read models and SDS, which need erasing anyway. Crypto-shredding is usually chosen
+  because events cannot be changed; keeping content in its own row lets us blank it directly.
 
 ## Consequences
 
