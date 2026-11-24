@@ -306,8 +306,9 @@ Snapshots require an erasure design first.
   has not been deployed, the erasure column and trigger are part of it rather than a new
   migration.
 - After go-live, every stored format becomes a contract needing upcasting or migration. Both
-  rows of every event type are pinned by a stored-event fixture that is never edited; a changed
-  shape needs an upcaster and a new fixture version (see
+  rows of every event type are pinned by a stored-event fixture that is never edited. Adding a
+  field needs nothing more; a renamed, removed, retyped or reclassified field needs an upcaster
+  and a new fixture version (see
   [Stored event fixtures](../event-evolution.md#stored-event-fixtures)). Decoding alone would not
   notice: unknown fields are ignored and missing ones load as null or erased.
 - New event types need an explicit `@Event` name, a schema and a classification review; the build
