@@ -1,0 +1,12 @@
+{
+  "kept": {
+    "workItemId": "00000000-0000-0000-0000-000000000012",
+    "workItemType": "PRIOR_AUTHORITY",
+    "applicationId": "00000000-0000-0000-0000-000000000001",
+    "itemVersion": 0,
+    "assignmentVersion": 1,
+    "caseworkerId": "00000000-0000-0000-0000-000000000015",
+    "occurredAt": "2026-11-24T09:48:25.410802Z"
+  },
+  "content": null
+}

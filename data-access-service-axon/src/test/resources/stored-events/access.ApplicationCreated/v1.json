@@ -1,0 +1,88 @@
+{
+  "kept": {
+    "applicationId": "00000000-0000-0000-0000-000000000001",
+    "applicationDataVersion": 0,
+    "requestFingerprint": "7860d8c032bbd540f5a0a017e0b57bbb66551026ff74d1f0b9cf3b76cd22feb4",
+    "status": "APPLICATION_SUBMITTED",
+    "schemaVersion": 1,
+    "occurredAt": "2026-11-24T09:48:23.727094Z",
+    "officeCode": "1A001B",
+    "laaReference": "LAA-FIXTURE-1",
+    "proceedingIds": [ "00000000-0000-0000-0000-000000000002" ]
+  },
+  "content": {
+    "content": {
+      "client": {
+        "lastName": "Client",
+        "addresses": [ {
+          "city": "Testtown",
+          "careOf": null,
+          "county": null,
+          "location": "home",
+          "postcode": "AA1 1AA",
+          "lookupUsed": null,
+          "countryCode": "GBR",
+          "countryName": "United Kingdom",
+          "organisation": null,
+          "addressLineOne": "1 Fixture Street",
+          "addressLineTwo": null,
+          "careOfLastName": null,
+          "careOfFirstName": null,
+          "addressLineThree": null,
+          "buildingNumberName": null,
+          "careOfOrganisationName": null
+        } ],
+        "firstName": "Fixture",
+        "dateOfBirth": "2000-01-01",
+        "lastNameAtBirth": null,
+        "appliedPreviously": false,
+        "previousApplicationId": null,
+        "nationalInsuranceNumber": null,
+        "hasNationalInsuranceNumber": null,
+        "relationshipToInvolvedChildren": null
+      },
+      "provider": {
+        "officeCode": "1A001B",
+        "contactEmail": "provider@example.com"
+      },
+      "opponents": [ ],
+      "matterType": "special children act (SCA)",
+      "proceedings": [ {
+        "id": "00000000-0000-0000-0000-000000000002",
+        "code": "SE003",
+        "meaning": "Care order",
+        "matterType": "special children act (SCA)",
+        "description": "Care order",
+        "categoryOfLaw": "Family",
+        "leadProceeding": true,
+        "matterTypeCode": "KPBLW",
+        "involvedChildren": null,
+        "scopeLimitations": [ {
+          "id": "00000000-0000-0000-0000-000000000003",
+          "code": "FM062",
+          "type": "SUBSTANTIVE",
+          "meaning": "Final hearing",
+          "description": "Limited to all steps up to and including the final hearing"
+        } ],
+        "categoryOfLawCode": "MAT",
+        "clientInvolvementType": "Respondent",
+        "delegatedFunctionsDate": null,
+        "usedDelegatedFunctions": false,
+        "clientInvolvementTypeCode": "A",
+        "substantiveCostLimitation": 2500,
+        "emergencyLevelOfServiceCode": 3,
+        "emergencyLevelOfServiceName": "Full Representation",
+        "substantiveLevelOfServiceCode": 3,
+        "substantiveLevelOfServiceName": "Full Representation",
+        "delegatedFunctionsCostLimitation": 0
+      } ],
+      "submittedAt": "2026-07-14T12:30:00Z",
+      "categoryOfLaw": "Family",
+      "matterTypeCode": "KPBLW",
+      "categoryOfLawCode": "MAT",
+      "usedDelegatedFunctions": false
+    },
+    "serialisedRequest": "{\"status\":\"APPLICATION_SUBMITTED\",\"applicationContent\":{\"createdAt\":\"2026-07-14T12:00:00Z\",\"client\":{\"lastName\":\"Client\",\"appliedPreviously\":false,\"firstName\":\"Fixture\",\"addresses\":[{\"postcode\":\"AA1 1AA\",\"city\":\"Testtown\",\"countryName\":\"United Kingdom\",\"addressLineOne\":\"1 Fixture Street\",\"countryCode\":\"GBR\",\"location\":\"home\"}],\"dateOfBirth\":\"2000-01-01\"},\"proceedings\":[{\"categoryOfLaw\":\"Family\",\"description\":\"Care order\",\"scopeLimitations\":[{\"code\":\"FM062\",\"id\":\"00000000-0000-0000-0000-000000000003\",\"meaning\":\"Final hearing\",\"description\":\"Limited to all steps up to and including the final hearing\",\"type\":\"SUBSTANTIVE\"}],\"id\":\"00000000-0000-0000-0000-000000000002\",\"categoryOfLawCode\":\"MAT\",\"clientInvolvementTypeCode\":\"A\",\"leadProceeding\":true,\"emergencyLevelOfServiceCode\":3,\"emergencyLevelOfServiceName\":\"Full Representation\",\"matterType\":\"special children act (SCA)\",\"substantiveLevelOfServiceCode\":3,\"substantiveLevelOfServiceName\":\"Full Representation\",\"code\":\"SE003\",\"substantiveCostLimitation\":\"2500\",\"meaning\":\"Care order\",\"clientInvolvementType\":\"Respondent\",\"matterTypeCode\":\"KPBLW\",\"delegatedFunctionsCostLimitation\":\"0\",\"usedDelegatedFunctions\":false}],\"submittedAt\":\"2026-07-14T12:30:00Z\",\"provider\":{\"officeCode\":\"1A001B\",\"contactEmail\":\"provider@example.com\"}},\"laaReference\":\"LAA-FIXTURE-1\",\"id\":\"00000000-0000-0000-0000-000000000001\",\"potentialDuplicates\":[]}",
+    "potentialDuplicates": [ ]
+  }
+}

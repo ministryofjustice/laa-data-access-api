@@ -305,7 +305,11 @@ Snapshots require an erasure design first.
   `V36__create_event_content.sql` only creates the content table and its guard trigger. As V36
   has not been deployed, the erasure column and trigger are part of it rather than a new
   migration.
-- After go-live, every stored format becomes a contract needing upcasting or migration.
+- After go-live, every stored format becomes a contract needing upcasting or migration. Both
+  rows of every event type are pinned by a stored-event fixture that is never edited; a changed
+  shape needs an upcaster and a new fixture version (see
+  [Stored event fixtures](../event-evolution.md#stored-event-fixtures)). Decoding alone would not
+  notice: unknown fields are ignored and missing ones load as null or erased.
 - New event types need an explicit `@Event` name, a schema and a classification review; the build
   enforces the first two.
 - Every aggregate load runs one indexed content query, plus a lookup by event ID for any event of
@@ -344,7 +348,12 @@ This layer moves no content into events that was not there already. Later layers
    public GETs, projections and history descriptions; reading Prior Authority details from the
    aggregate and removing `PriorAuthorityDataStore` is later work;
 4. build erasure on the store mechanism: the soft deletion event, the retention period and the
-   automatic hard erasure.
+   automatic hard erasure;
+5. pin the stored form (done: `stored-events/<type>/v1.json` holds the kept row and content row
+   of every event type, captured from real appends; `StoredEventCompatibilityTest` checks each
+   still separates, decodes and re-serialises unchanged, loads with an erased content row, and
+   that the Prior Authority and Application histories fold to a decided aggregate). The first
+   upcaster, and a decoder chosen by `payload_revision`, come with the first changed shape.
 
 When the old stores are gone, ADR 0002 is superseded.
 
