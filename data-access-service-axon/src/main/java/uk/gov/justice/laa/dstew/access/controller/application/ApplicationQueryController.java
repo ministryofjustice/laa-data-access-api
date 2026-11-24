@@ -19,13 +19,13 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.AutoGranted;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
+import uk.gov.justice.laa.dstew.access.observability.logging.aspects.LogMethodArguments;
+import uk.gov.justice.laa.dstew.access.observability.logging.aspects.LogMethodResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationDetailResult;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
-import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
-import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 import uk.gov.justice.laa.dstew.access.usecase.application.ApplicationQueryUseCase;
 
 /** HTTP query adapter for Application reads. */

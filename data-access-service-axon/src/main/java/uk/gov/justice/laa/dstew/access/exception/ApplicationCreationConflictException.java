@@ -2,7 +2,7 @@ package uk.gov.justice.laa.dstew.access.exception;
 
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
-import uk.gov.justice.laa.dstew.access.shared.logging.ClientFacingException;
+import uk.gov.justice.laa.dstew.access.observability.logging.ClientFacingException;
 
 /** Thrown when an application ID is reused with a different creation payload or schema version. */
 @ExcludeFromGeneratedCodeCoverage

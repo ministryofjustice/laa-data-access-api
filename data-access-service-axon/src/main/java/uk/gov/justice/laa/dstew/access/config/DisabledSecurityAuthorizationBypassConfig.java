@@ -6,7 +6,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
-import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
+import uk.gov.justice.laa.dstew.access.security.EffectiveAuthorizationProvider;
 
 /**
  * Provides a permissive method-authorization helper only when security is explicitly disabled. HTTP

@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
-import uk.gov.justice.laa.dstew.access.shared.logging.ClientFacingException;
+import uk.gov.justice.laa.dstew.access.observability.logging.ClientFacingException;
 
 /**
  * Validation exception that holds violations (errors). excluded from code coverage as
