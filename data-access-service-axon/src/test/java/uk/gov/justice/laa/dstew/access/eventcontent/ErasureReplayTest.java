@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetails;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
+import uk.gov.justice.laa.dstew.access.command.EventTypes;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDecider;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
@@ -61,7 +62,7 @@ class ErasureReplayTest {
   private static final String DECISION_REQUEST = "{\"overallDecision\":\"GRANTED\"}";
 
   private final EventContentSeparator separator =
-      new EventContentSeparator(new EventJson(), Map.of());
+      new EventContentSeparator(new EventJson(), EventTypes.all());
 
   private final UUID applicationId = UUID.randomUUID();
   private final UUID priorAuthorityId = UUID.randomUUID();

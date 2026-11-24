@@ -157,9 +157,8 @@ class StoredEventCompatibilityTest {
         .containsAll(whole.propertyNames());
 
     Object event = mapper.treeToValue(whole, type);
-    // Re-splitting the loaded event checks each stored field is still kept or content as stored,
-    // and that a kept field added since is nullable in its schema. Re-read both sides so number
-    // node types (int or long) do not affect equality.
+    // Re-splitting the loaded event checks each stored field is still kept or content as stored.
+    // Re-read both sides so number node types (int or long) do not affect equality.
     ObjectNode loaded = (ObjectNode) mapper.readTree(mapper.writeValueAsString(event));
     EventContentSeparator.Split split = separator.separate(fixture.typeName(), loaded);
     assertPreserved(fixture + " kept", mapper.readTree(fixture.kept().toString()), split.kept());

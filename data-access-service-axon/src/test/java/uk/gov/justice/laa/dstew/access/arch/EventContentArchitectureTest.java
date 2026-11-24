@@ -10,20 +10,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
-import java.io.IOException;
-import java.io.InputStream;
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.RecordComponent;
+import java.lang.reflect.Type;
 import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.Collection;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Stream;
 import org.axonframework.messaging.eventhandling.annotation.Event;
 import org.junit.jupiter.api.Test;
-import tools.jackson.databind.JsonNode;
 import uk.gov.justice.laa.dstew.access.command.EventTypes;
 import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
-import uk.gov.justice.laa.dstew.access.eventcontent.EventContentSeparator;
-import uk.gov.justice.laa.dstew.access.eventcontent.EventJson;
 import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 
 /** Rules that keep event content readable only where erasure has been accounted for. */
@@ -95,69 +93,84 @@ class EventContentArchitectureTest {
   }
 
   @Test
-  void everyEventIsNamedInAccessAndItsSchemaListsExactlyTheKeptFields() throws IOException {
+  void givenEventClasses_whenScanned_thenEachIsRecordNamedInAccess() {
     var events =
         classes.stream()
             .filter(javaClass -> javaClass.isAnnotatedWith(Event.class))
             .<Class<?>>map(javaClass -> javaClass.reflect())
             .toList();
     assertThat(events).isNotEmpty();
-    // The separator detects lost content rows only for the event classes it is given.
+    // The separator keeps fields only for the event classes it is given.
     assertThat(EventTypes.all().values()).containsExactlyInAnyOrderElementsOf(events);
 
-    EventJson json = new EventJson();
     for (Class<?> event : events) {
       Event annotation = event.getAnnotation(Event.class);
       assertThat(annotation.namespace()).as(event.getName()).isEqualTo("access");
       assertThat(annotation.name()).as(event.getName()).isNotBlank();
       assertThat(event.isRecord()).as(event.getName() + " is a record").isTrue();
-
-      String typeName = annotation.namespace() + "." + annotation.name();
-      Set<String> kept =
-          Arrays.stream(event.getRecordComponents())
-              .filter(component -> component.getType() != Erasable.class)
-              .map(RecordComponent::getName)
-              .collect(Collectors.toSet());
-
-      JsonNode schema;
-      try (InputStream in =
-          getClass()
-              .getClassLoader()
-              .getResourceAsStream(EventContentSeparator.SCHEMA_ROOT + typeName + ".json")) {
-        assertThat(in).as("schema for " + typeName).isNotNull();
-        schema = json.mapper().readTree(in);
-      }
-      assertThat(schema.get("additionalProperties").asBoolean(true))
-          .as(typeName + " additionalProperties")
-          .isFalse();
-      assertThat(new HashSet<>(schema.get("properties").propertyNames()))
-          .as(typeName + " schema properties")
-          .isEqualTo(kept);
     }
   }
 
   @Test
-  void givenEvents_whenRetainedFieldsRead_thenTheyEqualSchemaProperties() throws IOException {
-    EventJson json = new EventJson();
-    for (var event : EventTypes.all().entrySet()) {
-      String typeName = event.getKey();
-      Set<String> retained =
-          Arrays.stream(event.getValue().getRecordComponents())
-              .filter(component -> component.isAnnotationPresent(RetainedField.class))
-              .map(RecordComponent::getName)
-              .collect(Collectors.toSet());
+  void givenRetainedFields_whenInspected_thenEachHasSupportedType() {
+    var unsupported =
+        retainedComponents()
+            .filter(component -> !isSupported(component.getGenericType()))
+            .map(EventContentArchitectureTest::nameOf)
+            .toList();
 
-      JsonNode schema;
-      try (InputStream in =
-          getClass()
-              .getClassLoader()
-              .getResourceAsStream(EventContentSeparator.SCHEMA_ROOT + typeName + ".json")) {
-        assertThat(in).as("schema for " + typeName).isNotNull();
-        schema = json.mapper().readTree(in);
-      }
-      assertThat(new HashSet<>(schema.get("properties").propertyNames()))
-          .as(typeName + " @RetainedField components")
-          .isEqualTo(retained);
+    assertThat(unsupported).as("retained fields with an unsupported type").isEmpty();
+  }
+
+  @Test
+  void givenRetainedFields_whenInspected_thenNoneIsErasable() {
+    var erasable =
+        retainedComponents()
+            .filter(component -> component.getType() == Erasable.class)
+            .map(EventContentArchitectureTest::nameOf)
+            .toList();
+
+    assertThat(erasable).as("retained fields declared Erasable").isEmpty();
+  }
+
+  private static Stream<RecordComponent> eventComponents() {
+    return EventTypes.all().values().stream()
+        .filter(Class::isRecord)
+        .flatMap(event -> Arrays.stream(event.getRecordComponents()));
+  }
+
+  private static Stream<RecordComponent> retainedComponents() {
+    return eventComponents()
+        .filter(component -> component.isAnnotationPresent(RetainedField.class));
+  }
+
+  /**
+   * Retained fields are kept forever, so they hold only identifiers, enums, numbers, booleans,
+   * times, strings, and collections or maps of those.
+   */
+  private static boolean isSupported(Type type) {
+    if (type instanceof ParameterizedType parameterized
+        && parameterized.getRawType() instanceof Class<?> container
+        && (Collection.class.isAssignableFrom(container)
+            || Map.class.isAssignableFrom(container))) {
+      return Arrays.stream(parameterized.getActualTypeArguments())
+          .allMatch(EventContentArchitectureTest::isSupported);
     }
+    return type instanceof Class<?> simple
+        && (simple.isPrimitive()
+            || simple.isEnum()
+            || simple == UUID.class
+            || simple == String.class
+            || simple == Boolean.class
+            || Number.class.isAssignableFrom(simple)
+            || "java.time".equals(simple.getPackageName()));
+  }
+
+  private static String nameOf(RecordComponent component) {
+    return component.getDeclaringRecord().getSimpleName()
+        + "."
+        + component.getName()
+        + " "
+        + component.getGenericType().getTypeName();
   }
 }

@@ -1,35 +1,23 @@
 package uk.gov.justice.laa.dstew.access.eventcontent;
 
-import com.networknt.schema.AbsoluteIri;
-import com.networknt.schema.Error;
-import com.networknt.schema.InputFormat;
-import com.networknt.schema.Schema;
-import com.networknt.schema.SchemaLocation;
-import com.networknt.schema.SchemaRegistry;
-import com.networknt.schema.SpecificationVersion;
-import java.io.IOException;
-import java.io.InputStream;
 import java.lang.reflect.RecordComponent;
 import java.util.Arrays;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
 
 /**
- * Splits event payloads into kept fields and content using one JSON Schema of kept fields per event
- * type. Fail-safe: only fields a schema lists stay on the stored event, everything else is content,
- * and an event type without a schema is rejected.
+ * Splits event payloads into retained fields and content. A field stays on the stored event only
+ * when its record component is marked {@link RetainedField}; every other field is content.
+ * Fail-safe: an unmarked field is content, and an event type outside the separator's event classes
+ * is rejected.
  */
 public final class EventContentSeparator {
-
-  /** Classpath folder holding one {@code <event type name>.json} schema per event type. */
-  public static final String SCHEMA_ROOT = "event-schemas/";
 
   /**
    * The only metadata keys an event may carry. The calling service and the acting user's id are
@@ -39,12 +27,8 @@ public final class EventContentSeparator {
       Set.of("causationId", "correlationId", "X-Service-Name", "authenticatedUserId");
 
   private final ObjectMapper mapper;
-  private final Map<String, Optional<KeptFieldSchema>> cache = new ConcurrentHashMap<>();
-  private final SchemaRegistry registry =
-      SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_7);
-
   private final Map<String, Class<?>> eventTypes;
-  private final Map<String, Boolean> contentFields = new ConcurrentHashMap<>();
+  private final Map<String, Fields> fields = new ConcurrentHashMap<>();
 
   /** Creates a separator for the given event classes, keyed by stored event type name. */
   public EventContentSeparator(EventJson json, Map<String, Class<?>> eventTypes) {
@@ -56,25 +40,21 @@ public final class EventContentSeparator {
   public record Split(ObjectNode kept, ObjectNode content) {}
 
   /**
-   * Splits a payload, validating the kept fields against the event type's schema.
+   * Splits a payload into the fields its event class marks {@link RetainedField} and content.
    *
-   * @throws UnclassifiedEventException if the event type has no schema
-   * @throws KeptFieldViolationException if the kept fields break the schema
+   * @throws UnclassifiedEventException if the event type is not one of the separator's classes
+   * @throws IllegalStateException if the event class is not a record
    */
   public Split separate(String typeName, ObjectNode payload) {
-    KeptFieldSchema schema = require(typeName);
+    Set<String> retained = fields(typeName).retained();
     ObjectNode kept = mapper.createObjectNode();
     ObjectNode content = mapper.createObjectNode();
     for (Map.Entry<String, JsonNode> field : payload.properties()) {
-      if (schema.keptFields().contains(field.getKey())) {
+      if (retained.contains(field.getKey())) {
         kept.set(field.getKey(), field.getValue());
       } else {
         content.set(field.getKey(), field.getValue());
       }
-    }
-    List<String> violations = schema.violations(kept);
-    if (!violations.isEmpty()) {
-      throw new KeptFieldViolationException(typeName, violations);
     }
     return new Split(kept, content);
   }
@@ -109,14 +89,14 @@ public final class EventContentSeparator {
   }
 
   /**
-   * Whether events of this type have content fields: record components the kept-field schema does
-   * not list. Every such event has a content row, and erasure keeps it. A type without a schema
-   * cannot be appended, and one outside the separator's event classes is treated as having none.
+   * Whether events of this type have content fields: record components not marked {@link
+   * RetainedField}. Every such event has a content row, and erasure keeps it. A type outside the
+   * separator's event classes cannot be appended, and is treated as having none when read.
    *
    * @throws IllegalStateException if the event class is not a record
    */
   public boolean hasContentFields(String typeName) {
-    return contentFields.computeIfAbsent(typeName, this::detectContentFields);
+    return eventTypes.containsKey(typeName) && fields(typeName).hasContent();
   }
 
   /**
@@ -130,80 +110,40 @@ public final class EventContentSeparator {
     }
   }
 
-  private boolean detectContentFields(String typeName) {
-    Optional<KeptFieldSchema> schema = find(typeName);
+  private Fields fields(String typeName) {
+    return fields.computeIfAbsent(typeName, this::classify);
+  }
+
+  private Fields classify(String typeName) {
     Class<?> type = eventTypes.get(typeName);
-    if (schema.isEmpty() || type == null) {
-      return false;
+    if (type == null) {
+      throw new UnclassifiedEventException(typeName);
     }
     if (!type.isRecord()) {
       throw new IllegalStateException("Event " + typeName + " must be a record");
     }
-    return Arrays.stream(type.getRecordComponents())
-        .map(RecordComponent::getName)
-        .anyMatch(name -> !schema.get().keptFields().contains(name));
+    RecordComponent[] components = type.getRecordComponents();
+    Set<String> retained =
+        Arrays.stream(components)
+            .filter(component -> component.isAnnotationPresent(RetainedField.class))
+            .map(RecordComponent::getName)
+            .collect(Collectors.toUnmodifiableSet());
+    return new Fields(retained, retained.size() < components.length);
   }
 
-  /** Whether an event type has a kept-field schema. */
-  public boolean isClassified(String typeName) {
-    return find(typeName).isPresent();
-  }
+  private record Fields(Set<String> retained, boolean hasContent) {}
 
-  private KeptFieldSchema require(String typeName) {
-    return find(typeName).orElseThrow(() -> new UnclassifiedEventException(typeName));
-  }
-
-  private Optional<KeptFieldSchema> find(String typeName) {
-    return cache.computeIfAbsent(typeName, this::load);
-  }
-
-  private Optional<KeptFieldSchema> load(String typeName) {
-    String path = SCHEMA_ROOT + typeName + ".json";
-    JsonNode definition;
-    try (InputStream in = EventContentSeparator.class.getClassLoader().getResourceAsStream(path)) {
-      if (in == null) {
-        return Optional.empty();
-      }
-      definition = mapper.readTree(in);
-    } catch (IOException e) {
-      throw new IllegalStateException("Cannot read kept-field schema " + path, e);
-    }
-    JsonNode additional = definition.get("additionalProperties");
-    if (additional == null || !additional.isBoolean() || additional.booleanValue()) {
-      throw new IllegalStateException(path + " must set additionalProperties to false");
-    }
-    JsonNode properties = definition.get("properties");
-    if (properties == null || !properties.isObject()) {
-      throw new IllegalStateException(path + " must list its kept fields under properties");
-    }
-    Set<String> kept = new LinkedHashSet<>(properties.propertyNames());
-    Schema schema = registry.getSchema(new SchemaLocation(new AbsoluteIri("classpath:" + path)));
-    return Optional.of(new KeptFieldSchema(kept, schema));
-  }
-
-  private record KeptFieldSchema(Set<String> keptFields, Schema schema) {
-
-    List<String> violations(JsonNode kept) {
-      List<Error> errors =
-          schema.validate(
-              kept.toString(),
-              InputFormat.JSON,
-              context -> context.executionConfig(config -> config.formatAssertionsEnabled(true)));
-      return errors.stream().map(Error::toString).toList();
-    }
-  }
-
-  /** Thrown when an event type has no kept-field schema. */
+  /** Thrown when an event type is not one of the separator's event classes. */
   public static final class UnclassifiedEventException extends IllegalStateException {
     public UnclassifiedEventException(String typeName) {
-      super("No kept-field schema for event type " + typeName);
+      super("Unknown event type " + typeName);
     }
   }
 
-  /** Thrown when an event's kept fields or metadata break its schema. */
+  /** Thrown when an event carries metadata keys outside {@link #ALLOWED_METADATA_KEYS}. */
   public static final class KeptFieldViolationException extends IllegalStateException {
     public KeptFieldViolationException(String typeName, List<String> violations) {
-      super("Kept fields of " + typeName + " violate schema: " + violations);
+      super("Event " + typeName + " keeps fields that are not allowed: " + violations);
     }
   }
 }

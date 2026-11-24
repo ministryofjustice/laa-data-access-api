@@ -32,11 +32,11 @@ import uk.gov.justice.laa.dstew.access.eventcontent.EventContentStore.ContentRow
 import uk.gov.justice.laa.dstew.access.eventcontent.MissingEventContentException;
 
 /**
- * Wraps Axon's storage engine. On append it keeps only schema-listed fields on the stored event and
- * writes everything else to the content store; on sourcing it rejoins content so aggregates load
- * whole, and fails if an event whose type has content fields has no content row. The event stream
- * used by processors is passed through unchanged, so processors receive kept fields only unless
- * they are registered content readers.
+ * Wraps Axon's storage engine. On append it keeps only {@code @RetainedField} fields on the stored
+ * event and writes everything else to the content store; on sourcing it rejoins content so
+ * aggregates load whole, and fails if an event whose type has content fields has no content row.
+ * The event stream used by processors is passed through unchanged, so processors receive kept
+ * fields only unless they are registered content readers.
  */
 final class ContentSeparatingStorageEngine implements EventStorageEngine {
 

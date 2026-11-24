@@ -196,7 +196,7 @@ class LifecycleStreamReaderTest {
             OCCURRED_AT);
     String type = eventName(PriorAuthorityDecisionMadeEvent.class);
     var kept =
-        new EventContentSeparator(json, Map.of())
+        new EventContentSeparator(json, EventTypes.all())
             .separate(type, (ObjectNode) json.mapper().valueToTree(written))
             .kept();
     when(repository.findAllByGenesisIdOrderByOccurredAtAscIdAsc(GENESIS))

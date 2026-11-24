@@ -6,6 +6,7 @@ import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequest
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -27,13 +28,18 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.annotation.DirtiesContext;
+import uk.gov.justice.laa.dstew.access.command.EventTypes;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadCommand;
 import uk.gov.justice.laa.dstew.access.command.application.draft.SubmitApplicationDraftCommand;
+import uk.gov.justice.laa.dstew.access.eventcontent.EventContentSeparator;
+import uk.gov.justice.laa.dstew.access.eventcontent.EventJson;
+import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
@@ -295,11 +301,11 @@ class EventProcessorRecoveryInMemoryTest {
     return processor;
   }
 
-  record RecoveryTestEvent(UUID eventId) {}
+  record RecoveryTestEvent(@RetainedField UUID eventId) {}
 
-  record PermanentFailureTestEvent(UUID eventId) {}
+  record PermanentFailureTestEvent(@RetainedField UUID eventId) {}
 
-  record EventAfterPermanentFailure(UUID eventId) {}
+  record EventAfterPermanentFailure(@RetainedField UUID eventId) {}
 
   @Namespace("recovering-projection")
   static class FailOnceProjection {
@@ -352,6 +358,21 @@ class EventProcessorRecoveryInMemoryTest {
 
   @TestConfiguration
   static class RecoveryConfig {
+
+    /** Lets the test's own event types be appended alongside the application's events. */
+    @Bean
+    @Primary
+    EventContentSeparator recoveryEventContentSeparator(EventJson json) {
+      var eventTypes = new HashMap<String, Class<?>>(EventTypes.all());
+      for (Class<?> type :
+          List.of(
+              RecoveryTestEvent.class,
+              PermanentFailureTestEvent.class,
+              EventAfterPermanentFailure.class)) {
+        eventTypes.put(new MessageType(type).name(), type);
+      }
+      return new EventContentSeparator(json, eventTypes);
+    }
 
     @Bean
     FailOnceProjection failOnceProjection() {
