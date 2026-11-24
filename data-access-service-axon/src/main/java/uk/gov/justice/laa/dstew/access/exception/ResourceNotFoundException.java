@@ -1,7 +1,7 @@
 package uk.gov.justice.laa.dstew.access.exception;
 
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
-import uk.gov.justice.laa.dstew.access.shared.logging.ClientFacingException;
+import uk.gov.justice.laa.dstew.access.observability.logging.ClientFacingException;
 
 /** Raised when a command references an aggregate that does not exist. */
 @ExcludeFromGeneratedCodeCoverage

@@ -9,7 +9,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
+import uk.gov.justice.laa.dstew.access.security.EffectiveAuthorizationProvider;
 
 /** Enables Spring method-level security for secured use-case unit tests. */
 @TestConfiguration

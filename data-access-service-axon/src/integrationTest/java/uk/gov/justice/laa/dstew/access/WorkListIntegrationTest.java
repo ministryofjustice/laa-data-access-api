@@ -277,13 +277,10 @@ class WorkListIntegrationTest extends BaseIntegrationTest {
         WorkListItemType.PRIOR_AUTHORITY);
     awaitPriorAuthorityDetailsAssignmentVersion(priorAuthorityId, 1L);
 
-    OffsetDateTime decidedAt = OffsetDateTime.now();
     MakePriorAuthorityDecisionRequest decision =
         new MakePriorAuthorityDecisionRequest()
             .decision(DecisionStatus.REFUSED)
             .decisionJustification("Does not meet policy guidelines")
-            .amountGranted(BigDecimal.ZERO)
-            .dateGranted(decidedAt)
             .eventHistory(new EventHistoryRequest())
             .priorAuthorityVersion(0L);
     ResponseEntity<Void> decided =

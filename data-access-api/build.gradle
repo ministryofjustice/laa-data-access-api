@@ -1,3 +1,5 @@
+import io.swagger.v3.parser.core.models.ParseOptions
+
 plugins {
     id 'org.openapi.generator'
     id 'uk.gov.justice.service.laa.laa-spring-boot-gradle-plugin'
@@ -61,6 +63,35 @@ tasks.named('openApiGenerate') {
 }
 
 compileJava.dependsOn('openApiGenerate')
+
+// Bundles the multi-file spec into one resolved document on the classpath so the service can
+// publish documentation-only schemas that springdoc cannot derive from the generated code.
+// Inline schemas (for example oneOf branches) are kept inline rather than flattened.
+def openApiBundleDir = layout.buildDirectory.dir('openapi-bundle')
+tasks.register('bundleOpenApiSpec') {
+    def specFile = file('open-api-specification.yml')
+    inputs.files(fileTree(projectDir) {
+        include '**/*.yml'
+        exclude 'build/**', 'generated/**'
+    }).withPathSensitivity(PathSensitivity.RELATIVE)
+    outputs.dir(openApiBundleDir)
+    doLast {
+        def options = new ParseOptions()
+        options.resolve = true
+        options.flatten = false
+        def result = new io.swagger.v3.parser.OpenAPIV3Parser().readLocation(specFile.toURI().toString(), null, options)
+        if (result.openAPI == null) {
+            throw new GradleException("Unable to bundle OpenAPI spec: ${result.messages}")
+        }
+        def output = openApiBundleDir.get().file('openapi/openapi.yaml').asFile
+        output.parentFile.mkdirs()
+        output.text = io.swagger.v3.core.util.Yaml31.pretty(result.openAPI)
+    }
+}
+
+tasks.named('processResources') {
+    from(tasks.named('bundleOpenApiSpec'))
+}
 
 clean {
     delete("$rootDir/data-access-api/generated")
