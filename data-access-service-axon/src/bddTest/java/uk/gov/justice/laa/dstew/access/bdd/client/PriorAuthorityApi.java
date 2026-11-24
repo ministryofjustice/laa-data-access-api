@@ -2,7 +2,9 @@ package uk.gov.justice.laa.dstew.access.bdd.client;
 
 import com.microsoft.playwright.options.FilePayload;
 import com.microsoft.playwright.options.FormData;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Predicate;
 import uk.gov.justice.laa.dstew.access.bdd.support.ApiClient;
 import uk.gov.justice.laa.dstew.access.bdd.support.ApiResponse;
 import uk.gov.justice.laa.dstew.access.bdd.support.HttpPolling;
@@ -49,5 +51,25 @@ public final class PriorAuthorityApi {
     return polling.awaitGet(
         "/api/v0/prior-authorities/" + priorAuthorityId,
         response -> decision.equals(response.body().path("decision").asText()));
+  }
+
+  public ApiResponse awaitPriorAuthority(UUID priorAuthorityId, Predicate<ApiResponse> condition) {
+    return polling.awaitGet("/api/v0/prior-authorities/" + priorAuthorityId, condition);
+  }
+
+  public ApiResponse update(UUID priorAuthorityId, Object draft) {
+    return apiClient.put("/api/v0/prior-authorities/" + priorAuthorityId, draft);
+  }
+
+  public ApiResponse updateDocumentType(
+      UUID priorAuthorityId, UUID documentId, String documentType) {
+    return apiClient.patch(
+        "/api/v0/prior-authorities/" + priorAuthorityId + "/documents/" + documentId,
+        Map.of("documentType", documentType));
+  }
+
+  public ApiResponse deleteDocument(UUID priorAuthorityId, UUID documentId) {
+    return apiClient.delete(
+        "/api/v0/prior-authorities/" + priorAuthorityId + "/documents/" + documentId);
   }
 }

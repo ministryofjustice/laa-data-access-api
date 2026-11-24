@@ -108,8 +108,6 @@ public final class ApplicationSteps {
 
   @When("I decide the application as {string}")
   public void decide(String decision) {
-    if (!"GRANTED".equals(decision))
-      throw new IllegalArgumentException("Only GRANTED is currently supported");
     ApiResponse latest = applications.get(context.applicationId());
     context.applicationVersion(latest.body().path("version").asLong());
     assertStatus(
@@ -117,7 +115,7 @@ public final class ApplicationSteps {
         "I decide the application as \"" + decision + "\"",
         applications.decide(
             context.applicationId(),
-            fixtures.grantDecision(context.proceedingId(), context.applicationVersion())),
+            fixtures.decision(context.proceedingId(), context.applicationVersion(), decision)),
         204);
   }
 

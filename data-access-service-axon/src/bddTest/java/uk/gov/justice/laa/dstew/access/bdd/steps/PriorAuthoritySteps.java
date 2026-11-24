@@ -66,14 +66,13 @@ public final class PriorAuthoritySteps {
 
   @When("I decide the prior authority as {string}")
   public void decide(String decision) {
-    if (!"GRANTED".equals(decision))
-      throw new IllegalArgumentException("Only GRANTED is currently supported");
     ApiResponse latest = priorAuthorities.get(context.priorAuthorityId());
     context.priorAuthorityVersion(latest.body().path("priorAuthorityVersion").asLong());
     assertAndRecord(
         "I decide the prior authority as \"" + decision + "\"",
         priorAuthorities.decide(
-            context.priorAuthorityId(), fixtures.grantDecision(context.priorAuthorityVersion())),
+            context.priorAuthorityId(),
+            fixtures.decision(decision, context.priorAuthorityVersion())),
         204);
   }
 

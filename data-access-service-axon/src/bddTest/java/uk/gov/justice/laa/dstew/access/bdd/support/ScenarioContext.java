@@ -1,11 +1,15 @@
 package uk.gov.justice.laa.dstew.access.bdd.support;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 public final class ScenarioContext {
+  private final Map<String, UUID> relatedApplicationIds = new HashMap<>();
   private UUID applicationId;
   private UUID proceedingId;
   private UUID priorAuthorityId;
+  private UUID documentId;
   private UUID workItemId;
   private String workItemType;
   private long applicationVersion;
@@ -36,6 +40,22 @@ public final class ScenarioContext {
 
   public void priorAuthorityId(UUID value) {
     priorAuthorityId = value;
+  }
+
+  public UUID documentId() {
+    return required(documentId, "document ID");
+  }
+
+  public void documentId(UUID value) {
+    documentId = value;
+  }
+
+  public UUID relatedApplicationId(String role) {
+    return required(relatedApplicationIds.get(role), role + " application ID");
+  }
+
+  public void relatedApplicationId(String role, UUID value) {
+    relatedApplicationIds.put(role, value);
   }
 
   public UUID workItemId() {

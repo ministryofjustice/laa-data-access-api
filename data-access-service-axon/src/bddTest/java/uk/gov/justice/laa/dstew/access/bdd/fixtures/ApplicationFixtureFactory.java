@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.bdd.fixtures;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -14,18 +15,19 @@ public final class ApplicationFixtureFactory {
         "laaReference",
         "BDD-" + applicationId.toString().substring(0, 8),
         "applicationContent",
-        Map.of(
-            "createdAt", "2026-01-01T00:00:00Z",
-            "submittedAt", "2026-01-01T00:00:00Z",
-            "provider", Map.of("officeCode", officeCode, "contactEmail", "bdd@example.com"),
-            "client", client(),
-            "proceedings", List.of(proceeding(proceedingId))));
+        content(proceedingId, officeCode, "Ada"));
   }
 
-  public Map<String, Object> grantDecision(UUID proceedingId, long applicationVersion) {
-    return Map.of(
-        "overallDecision",
-        "GRANTED",
+  /** Full application content with a changed client first name; partial content is rejected. */
+  public Map<String, Object> update(UUID proceedingId, String officeCode, String firstName) {
+    return Map.of("applicationContent", content(proceedingId, officeCode, firstName));
+  }
+
+  /** Builds a decision request; {@code decision} is {@code GRANTED} or {@code REFUSED}. */
+  public Map<String, Object> decision(UUID proceedingId, long applicationVersion, String decision) {
+    Map<String, Object> request = new LinkedHashMap<>();
+    request.put("overallDecision", decision);
+    request.put(
         "proceedings",
         List.of(
             Map.of(
@@ -33,22 +35,30 @@ public final class ApplicationFixtureFactory {
                 "meritsDecision",
                     Map.of(
                         "decision",
-                        "GRANTED",
+                        decision,
                         "reason",
-                        "BDD smoke",
+                        "Decision reason",
                         "justification",
-                        "BDD smoke"))),
-        "certificate",
-        Map.of("source", "bdd"),
-        "eventHistory",
-        Map.of("eventType", "DECISION", "eventDescription", "BDD smoke"),
-        "applicationVersion",
-        applicationVersion);
+                        "Decision justification"))));
+    if ("GRANTED".equals(decision)) request.put("certificate", Map.of("source", "bdd"));
+    request.put(
+        "eventHistory", Map.of("eventType", "DECISION", "eventDescription", "Decision recorded"));
+    request.put("applicationVersion", applicationVersion);
+    return request;
   }
 
-  private Map<String, Object> client() {
+  private Map<String, Object> content(UUID proceedingId, String officeCode, String firstName) {
+    return Map.of(
+        "createdAt", "2026-01-01T00:00:00Z",
+        "submittedAt", "2026-01-01T00:00:00Z",
+        "provider", Map.of("officeCode", officeCode, "contactEmail", "bdd@example.com"),
+        "client", client(firstName),
+        "proceedings", List.of(proceeding(proceedingId)));
+  }
+
+  private Map<String, Object> client(String firstName) {
     return Map.ofEntries(
-        Map.entry("firstName", "Ada"),
+        Map.entry("firstName", firstName),
         Map.entry("lastName", "Lovelace"),
         Map.entry("dateOfBirth", "1815-12-10"),
         Map.entry("appliedPreviously", false),

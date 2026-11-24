@@ -60,6 +60,14 @@ public final class ApiClient implements AutoCloseable {
     return response(request.patch(path, RequestOptions.create().setData(body)));
   }
 
+  public ApiResponse put(String path, Object body) {
+    return response(request.put(path, RequestOptions.create().setData(body)));
+  }
+
+  public ApiResponse delete(String path) {
+    return response(request.delete(path));
+  }
+
   @Override
   public void close() {
     if (request != null) request.dispose();
