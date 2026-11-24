@@ -20,6 +20,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
 import uk.gov.justice.laa.dstew.access.command.EventTypes;
@@ -55,7 +56,12 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
  * <p>Without upcasting, a stored row still decodes when the event record changes: an unknown stored
  * field is ignored and a missing one, even a required kept field, loads silently as null or erased.
  * Only a changed field type or a missing primitive fails. So these fixtures are what notices a
- * changed stored shape. When this test fails, add an upcaster for the old version and a new {@code
+ * changed stored shape.
+ *
+ * <p>Every stored value must survive loading, at any depth. A field added to an event or to a class
+ * it carries passes, because older events simply lack it: it loads as null, erased or its default,
+ * and readers must accept that. A renamed, removed or retyped field fails, because stored data
+ * would be lost. When this test fails, add an upcaster for the old version and a new {@code
  * vN.json} for the new shape; every older version must still load.
  */
 class StoredEventCompatibilityTest {
@@ -89,8 +95,56 @@ class StoredEventCompatibilityTest {
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("fixtures")
-  void givenStoredEvent_whenLoadedWithCurrentRecord_thenFieldsMatchAndRoundTripUnchanged(
-      Fixture fixture) {
+  void givenStoredEvent_whenLoadedWithCurrentRecord_thenNoStoredValueIsLost(Fixture fixture) {
+    assertLoadsWithoutLoss(fixture);
+  }
+
+  @Test
+  void givenStoredEventWithoutKeptFieldAddedLater_whenLoaded_thenAccepted() {
+    Fixture fixture = fixture("access.ApplicationCreated");
+    fixture.kept().remove("officeCode");
+
+    assertThatCode(() -> assertLoadsWithoutLoss(fixture)).doesNotThrowAnyException();
+  }
+
+  @Test
+  void givenStoredEventWithoutNestedContentFieldAddedLater_whenLoaded_thenAccepted() {
+    Fixture fixture = fixture("access.ApplicationCreated");
+    client(fixture).remove("lastNameAtBirth");
+
+    assertThatCode(() -> assertLoadsWithoutLoss(fixture)).doesNotThrowAnyException();
+  }
+
+  @Test
+  void givenStoredFieldRenamed_whenLoaded_thenRejected() {
+    Fixture fixture = fixture("access.NoteCreated");
+    fixture.content().set("text", fixture.content().remove("noteText"));
+
+    assertThatThrownBy(() -> assertLoadsWithoutLoss(fixture))
+        .isInstanceOf(AssertionError.class)
+        .hasMessageContaining("text");
+  }
+
+  @Test
+  void givenStoredNestedFieldRenamed_whenLoaded_thenRejected() {
+    Fixture fixture = fixture("access.ApplicationCreated");
+    ObjectNode client = client(fixture);
+    client.set("forename", client.remove("firstName"));
+
+    assertThatThrownBy(() -> assertLoadsWithoutLoss(fixture))
+        .isInstanceOf(AssertionError.class)
+        .hasMessageContaining("forename");
+  }
+
+  @Test
+  void givenStoredFieldRetyped_whenLoaded_thenRejected() {
+    Fixture fixture = fixture("access.ApplicationCreated");
+    client(fixture).putObject("dateOfBirth").put("year", 2000);
+
+    assertThatThrownBy(() -> assertLoadsWithoutLoss(fixture)).isNotNull();
+  }
+
+  private void assertLoadsWithoutLoss(Fixture fixture) {
     Class<?> type = EVENT_TYPES.get(fixture.typeName());
     assertThat(type).as("event class for %s", fixture).isNotNull();
     assertThat(fixture.content() != null)
@@ -98,21 +152,59 @@ class StoredEventCompatibilityTest {
         .isEqualTo(separator.hasContentFields(fixture.typeName()));
     ObjectNode whole = whole(fixture);
 
-    assertThat(new TreeSet<>(whole.propertyNames()))
-        .as("stored fields of %s against the current record components", fixture)
-        .isEqualTo(componentNames(type));
-
-    EventContentSeparator.Split split = separator.separate(fixture.typeName(), whole);
-    assertThat(split.kept()).as("kept row of %s", fixture).isEqualTo(fixture.kept());
-    assertThat(split.content())
-        .as("content row of %s", fixture)
-        .isEqualTo(fixture.content() == null ? mapper.createObjectNode() : fixture.content());
+    assertThat(componentNames(type))
+        .as("current record components of %s against its stored fields", fixture)
+        .containsAll(whole.propertyNames());
 
     Object event = mapper.treeToValue(whole, type);
-    // Re-read both sides so number node types (int or long) do not affect equality.
-    assertThat(mapper.readTree(mapper.writeValueAsString(event)))
-        .as("%s re-serialised", fixture)
-        .isEqualTo(mapper.readTree(whole.toString()));
+    // Re-splitting the loaded event checks each stored field is still kept or content as stored,
+    // and that a kept field added since is nullable in its schema. Re-read both sides so number
+    // node types (int or long) do not affect equality.
+    ObjectNode loaded = (ObjectNode) mapper.readTree(mapper.writeValueAsString(event));
+    EventContentSeparator.Split split = separator.separate(fixture.typeName(), loaded);
+    assertPreserved(fixture + " kept", mapper.readTree(fixture.kept().toString()), split.kept());
+    assertPreserved(
+        fixture + " content",
+        fixture.content() == null
+            ? mapper.createObjectNode()
+            : mapper.readTree(fixture.content().toString()),
+        split.content());
+  }
+
+  /** Every stored value is present and equal after loading; fields added since may also appear. */
+  private static void assertPreserved(String path, JsonNode stored, JsonNode loaded) {
+    if (stored.isObject() && loaded != null && loaded.isObject()) {
+      for (String name : stored.propertyNames()) {
+        assertThat(loaded.has(name))
+            .as("%s.%s is stored but no longer loaded (renamed or removed?)", path, name)
+            .isTrue();
+        assertPreserved(path + "." + name, stored.get(name), loaded.get(name));
+      }
+    } else if (stored.isArray() && loaded != null && loaded.isArray()) {
+      assertThat(loaded.size()).as("%s size", path).isEqualTo(stored.size());
+      for (int i = 0; i < stored.size(); i++) {
+        assertPreserved(path + "[" + i + "]", stored.get(i), loaded.get(i));
+      }
+    } else {
+      assertThat(loaded).as("%s re-serialised", path).isEqualTo(stored);
+    }
+  }
+
+  private static Fixture fixture(String typeName) {
+    Fixture fixture =
+        fixtures()
+            .filter(f -> f.typeName().equals(typeName) && f.version().equals("v1"))
+            .findFirst()
+            .orElseThrow();
+    return new Fixture(
+        fixture.typeName(),
+        fixture.version(),
+        fixture.kept().deepCopy(),
+        fixture.content() == null ? null : fixture.content().deepCopy());
+  }
+
+  private static ObjectNode client(Fixture fixture) {
+    return (ObjectNode) fixture.content().get("content").get("client");
   }
 
   @ParameterizedTest(name = "{0}")
