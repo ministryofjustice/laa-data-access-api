@@ -1,0 +1,23 @@
+{
+  "kept": {
+    "priorAuthorityId": "00000000-0000-0000-0000-000000000012",
+    "applicationId": "00000000-0000-0000-0000-000000000001",
+    "priorAuthorityType": "DISBURSEMENT",
+    "schemaVersion": 1,
+    "dataVersion": 0,
+    "applicationDataVersion": 4,
+    "occurredAt": "2026-11-24T09:48:25.126583Z",
+    "billingType": null
+  },
+  "content": {
+    "content": {
+      "justification": "Updated interpreter costs",
+      "priorAuthorityType": "DISBURSEMENT",
+      "disbursementDetails": {
+        "disbursementAmount": 175.50,
+        "disbursementPurpose": "Court interpreter"
+      }
+    },
+    "serialisedRequest": "{\"documentType\":\"GATEWAY_EVIDENCE\"}"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "kept": {
+    "applicationId": "00000000-0000-0000-0000-000000000001",
+    "documentId": "00000000-0000-0000-0000-000000000004",
+    "uploadedAt": "2026-11-24T09:48:23.649916Z",
+    "checksum": "checksum",
+    "applicationDataVersion": null
+  },
+  "content": {
+    "size": 16,
+    "fileSuffix": ".pdf",
+    "contentType": "application/pdf",
+    "documentType": "GATEWAY_EVIDENCE",
+    "sourceService": "CIVIL_APPLY",
+    "originalFilename": "evidence.pdf"
+  }
+}

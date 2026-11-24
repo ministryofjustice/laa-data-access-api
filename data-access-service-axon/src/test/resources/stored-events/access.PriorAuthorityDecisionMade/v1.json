@@ -1,0 +1,19 @@
+{
+  "kept": {
+    "priorAuthorityId": "00000000-0000-0000-0000-000000000012",
+    "applicationId": "00000000-0000-0000-0000-000000000001",
+    "priorAuthorityType": "DISBURSEMENT",
+    "dataVersion": 1,
+    "overallDecision": "GRANTED",
+    "occurredAt": "2026-11-24T09:48:25.626285Z"
+  },
+  "content": {
+    "expertFee": null,
+    "dateGranted": "2026-11-01T10:00:00Z",
+    "amountGranted": 175.50,
+    "serialisedRequest": "{\"decision\":\"GRANTED\",\"decisionJustification\":\"Granted as per policy guidelines\",\"amountGranted\":175.50,\"dateGranted\":\"2026-11-01T10:00:00Z\",\"eventHistory\":{\"eventDescription\":null},\"priorAuthorityVersion\":0,\"apportionment\":null,\"disbursement\":null,\"expert\":null}",
+    "decisionJustification": "Granted as per policy guidelines",
+    "disbursementInformation": null,
+    "apportionmentInformation": null
+  }
+}

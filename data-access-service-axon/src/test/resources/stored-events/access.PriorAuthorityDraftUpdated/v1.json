@@ -1,0 +1,18 @@
+{
+  "kept": {
+    "priorAuthorityId": "00000000-0000-0000-0000-000000000012",
+    "parentApplicationId": "00000000-0000-0000-0000-000000000001",
+    "occurredAt": "2026-11-24T09:48:24.768606Z"
+  },
+  "content": {
+    "content": {
+      "justification": "Updated interpreter costs",
+      "priorAuthorityType": "DISBURSEMENT",
+      "disbursementDetails": {
+        "disbursementAmount": 175.50,
+        "disbursementPurpose": "Court interpreter"
+      }
+    },
+    "serialisedRequest": "{\"counselDetails\":null,\"disbursementDetails\":{\"disbursementAmount\":175.50,\"disbursementPurpose\":\"Court interpreter\"},\"expertDetails\":null,\"justification\":\"Updated interpreter costs\"}"
+  }
+}

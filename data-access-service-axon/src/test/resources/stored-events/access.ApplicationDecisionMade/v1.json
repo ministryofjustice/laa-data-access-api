@@ -1,0 +1,28 @@
+{
+  "kept": {
+    "applicationId": "00000000-0000-0000-0000-000000000001",
+    "applicationVersion": 3,
+    "applicationDataVersion": 4,
+    "overallDecision": "GRANTED",
+    "autoGranted": "MANUAL",
+    "occurredAt": "2026-11-24T09:48:24.566513Z",
+    "decisionRequestFingerprint": "dbbae89ca61d493c510d6168b08333e90d0d9248f656e10acf6112cc8e153422",
+    "proceedingDecisions": {
+      "00000000-0000-0000-0000-000000000002": "GRANTED"
+    }
+  },
+  "content": {
+    "certificate": {
+      "certificateNumber": "FIXTURE-CERT-001"
+    },
+    "meritsDecisions": {
+      "00000000-0000-0000-0000-000000000002": {
+        "reason": null,
+        "decision": "GRANTED",
+        "justification": "Synthetic merits justification"
+      }
+    },
+    "eventDescription": "Synthetic decision",
+    "serialisedRequest": "{\"overallDecision\":\"GRANTED\",\"proceedings\":[{\"proceedingId\":\"00000000-0000-0000-0000-000000000002\",\"meritsDecision\":{\"decision\":\"GRANTED\",\"justification\":\"Synthetic merits justification\",\"reason\":null}}],\"eventHistory\":{\"eventDescription\":\"Synthetic decision\"},\"applicationVersion\":2,\"autoGranted\":false,\"certificate\":{\"certificateNumber\":\"FIXTURE-CERT-001\"}}"
+  }
+}
