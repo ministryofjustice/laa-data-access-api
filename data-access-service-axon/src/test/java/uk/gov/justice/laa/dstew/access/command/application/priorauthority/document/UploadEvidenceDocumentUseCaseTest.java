@@ -109,6 +109,23 @@ class UploadEvidenceDocumentUseCaseTest {
   }
 
   @Test
+  void givenDraftQueryReturnsNull_whenExecute_thenThrowsNotFoundWithoutUploadingToSds() {
+    UploadPriorAuthorityDocumentUseCase useCase =
+        new UploadPriorAuthorityDocumentUseCase(queryGateway, dispatcher, sdsService);
+    UUID priorAuthorityId = UUID.randomUUID();
+    MockMultipartFile file =
+        new MockMultipartFile("file", "evidence.pdf", "application/pdf", "%PDF-content".getBytes());
+
+    stubDraft(priorAuthorityId, null);
+
+    assertThatExceptionOfType(ResourceNotFoundException.class)
+        .isThrownBy(() -> useCase.execute(priorAuthorityId, file, "CIVIL_APPLY", CALLER))
+        .withMessage("Prior Authority %s not found".formatted(priorAuthorityId));
+
+    verifyNoInteractions(dispatcher, sdsService);
+  }
+
+  @Test
   void givenSdsReturnsNull_whenExecute_thenDispatchesCommandWithNullChecksum() {
     UploadPriorAuthorityDocumentUseCase useCase =
         new UploadPriorAuthorityDocumentUseCase(queryGateway, dispatcher, sdsService);

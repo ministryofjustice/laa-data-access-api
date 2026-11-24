@@ -132,6 +132,21 @@ class DeleteEvidenceDocumentUseCaseTest {
     verifyNoInteractions(dispatcher, sdsService);
   }
 
+  @Test
+  void givenDraftQueryReturnsNull_whenExecute_thenThrowsNotFoundWithoutDeletingFromSds() {
+    DeletePriorAuthorityDocumentUseCase useCase =
+        new DeletePriorAuthorityDocumentUseCase(queryGateway, dispatcher, sdsService);
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    stubDraft(priorAuthorityId, documentId, null);
+
+    assertThatExceptionOfType(ResourceNotFoundException.class)
+        .isThrownBy(() -> useCase.execute(priorAuthorityId, documentId, CALLER))
+        .withMessage("Prior Authority %s not found".formatted(priorAuthorityId));
+
+    verifyNoInteractions(dispatcher, sdsService);
+  }
+
   @ParameterizedTest
   @ValueSource(strings = {".pdf", ".PDF", ".png", ""})
   void givenSuffixWithoutFilename_whenDeleted_thenUsesAggregateMetadata(String suffix) {

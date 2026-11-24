@@ -193,6 +193,43 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
   }
 
   @Test
+  void givenExistingAggregateWithoutPriorAuthorityId_whenHandle_thenCreatesDraft() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    PriorAuthorityContent content =
+        new PriorAuthorityContent(
+            PriorAuthorityType.EXPERT, "Need urgent review", null, null, null);
+    when(existing.getPriorAuthorityId()).thenReturn(null);
+    when(application.isGranted()).thenReturn(true);
+    when(application.getOfficeCode()).thenReturn("1A001B");
+    CreatePriorAuthorityDraftCommand command =
+        new CreatePriorAuthorityDraftCommand(
+            priorAuthorityId,
+            applicationId,
+            content,
+            "{}",
+            1,
+            "PriorAuthority.json",
+            OCCURRED_AT,
+            CALLER);
+
+    new CreatePriorAuthorityDraftCommandHandler()
+        .handle(command, existing, application, writeAccessPolicy, draftStore, eventAppender);
+
+    verify(eventAppender)
+        .append(
+            new PriorAuthorityDraftStartedEvent(
+                priorAuthorityId,
+                applicationId,
+                PriorAuthorityType.EXPERT.name(),
+                1,
+                OCCURRED_AT,
+                "1A001B",
+                Erasable.of(content),
+                Erasable.of("{}")));
+  }
+
+  @Test
   void givenDeniedParentApplicationOffice_whenHandle_thenDoesNotCreateDraftOrAppendEvent() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();

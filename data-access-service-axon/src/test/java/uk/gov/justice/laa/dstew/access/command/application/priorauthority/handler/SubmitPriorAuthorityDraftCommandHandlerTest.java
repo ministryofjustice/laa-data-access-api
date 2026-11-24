@@ -3,6 +3,8 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority.handl
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -232,6 +234,44 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
                 3L,
                 OCCURRED_AT,
                 BillingType.HOURLY.name()));
+  }
+
+  @Test
+  void givenDraftPayloadWithoutContent_whenHandle_thenEmitsSubmittedEventWithNullBillingType() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    PriorAuthorityContent content =
+        new PriorAuthorityContent(
+            PriorAuthorityType.EXPERT, "Need urgent review", null, null, null);
+    PriorAuthorityDataPayload startedPayload =
+        new PriorAuthorityDataPayload(priorAuthorityId, applicationId, content, "{}", OCCURRED_AT);
+    PriorAuthorityDataPayload payloadWithoutContent =
+        new PriorAuthorityDataPayload(priorAuthorityId, applicationId, null, "{}", OCCURRED_AT);
+    PriorAuthorityState state =
+        spy(
+            startedState(
+                priorAuthorityId, applicationId, PriorAuthorityType.EXPERT, 1, startedPayload));
+    doReturn(Optional.of(payloadWithoutContent)).when(state).draft();
+
+    when(priorAuthority.getApplicationId()).thenReturn(applicationId);
+    when(priorAuthority.getState()).thenReturn(state);
+    when(applicationDataStore.latestVersion(applicationId)).thenReturn(3L);
+    SubmitPriorAuthorityDraftCommand command =
+        new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT, CALLER);
+
+    new SubmitPriorAuthorityDraftCommandHandler()
+        .handle(
+            command,
+            dataStore,
+            applicationDataStore,
+            jsonSchemaValidator,
+            priorAuthority,
+            draftStore,
+            eventAppender);
+
+    var eventCaptor = ArgumentCaptor.forClass(PriorAuthoritySubmittedEvent.class);
+    verify(eventAppender).append(eventCaptor.capture());
+    assertThat(eventCaptor.getValue().billingType()).isNull();
   }
 
   @ParameterizedTest

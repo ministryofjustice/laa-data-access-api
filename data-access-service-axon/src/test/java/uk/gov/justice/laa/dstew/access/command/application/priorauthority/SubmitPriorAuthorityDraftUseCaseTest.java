@@ -128,6 +128,20 @@ class SubmitPriorAuthorityDraftUseCaseTest {
   }
 
   @Test
+  void givenDraftQueryReturnsNull_whenSubmit_thenThrowsNotFoundBeforeDispatch() {
+    SubmitPriorAuthorityDraftCommand command = stubCommand();
+    when(queryGateway.query(
+            new FindPriorAuthorityDraftQuery(command.priorAuthorityId()),
+            PriorAuthorityDraftSummary.class))
+        .thenReturn(CompletableFuture.completedFuture(null));
+
+    assertThatThrownBy(() -> useCase.submit(command))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("Prior Authority draft not found: " + command.priorAuthorityId());
+    verifyNoInteractions(dispatcher, projectionGateway);
+  }
+
+  @Test
   void givenValidationFails_whenSubmit_thenPropagatesAndSkipsProjectionGateway() {
     SubmitPriorAuthorityDraftCommand command = stubCommand();
     UUID applicationId = UUID.randomUUID();
