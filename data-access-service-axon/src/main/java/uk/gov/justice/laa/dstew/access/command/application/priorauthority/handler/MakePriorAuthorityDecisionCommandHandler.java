@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority.handl
 import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.axonframework.modelling.annotation.InjectEntity;
+import org.axonframework.modelling.repository.EntityNotFoundException;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecider;
@@ -28,8 +29,7 @@ public class MakePriorAuthorityDecisionCommandHandler {
     PriorAuthorityDecider.decideDecision(priorAuthority.getState(), command)
         .ifPresent(
             event -> {
-              PriorAuthorityDataPayload current =
-                  dataStore.get(command.priorAuthorityId(), priorAuthority.getDataVersion());
+              PriorAuthorityDataPayload current = requireSubmittedContent(priorAuthority);
               dataStore.append(
                   event.priorAuthorityId(),
                   event.dataVersion(),
@@ -48,6 +48,20 @@ public class MakePriorAuthorityDecisionCommandHandler {
                   command.occurredAt());
               eventAppender.append(event);
             });
+  }
+
+  /**
+   * Returns the submitted content folded from the event stream. The decider has already applied
+   * every rule from kept fields, so this is checked only when a new version must be written: a
+   * submission whose content has been erased is treated as missing, with the same not-found error
+   * Axon raises for an entity that does not exist.
+   */
+  private static PriorAuthorityDataPayload requireSubmittedContent(
+      PriorAuthorityAggregate priorAuthority) {
+    return priorAuthority
+        .getState()
+        .submittedPayload()
+        .orElseThrow(() -> new EntityNotFoundException(priorAuthority.getPriorAuthorityId()));
   }
 
   private static void requirePriorAuthorityExists(

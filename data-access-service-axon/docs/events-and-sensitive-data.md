@@ -73,6 +73,17 @@ Command handlers that build the next payload read it from there instead of from 
 but still write each new version to `application_data`. API reads, projections and history
 descriptions are unchanged: they still hydrate from `application_data`.
 
+Prior Authority content follows the same pattern. Draft and document events carry the draft body,
+request JSON and document metadata. `PriorAuthoritySubmittedEvent` carries a copy of the submitted
+content and request JSON, and `PriorAuthorityDecisionMadeEvent` carries the decision
+justification, amounts, dates, expert, disbursement and apportionment details and request JSON.
+The kept fields include `dataVersion`, `billingType`, `priorAuthorityType` and `overallDecision`,
+so decision validation and conflicts still work after content is erased. Aggregate state folds
+the submitted payload as an `Erasable`; the decision handler builds the next `prior_authority_data`
+version from it and returns not found when it has been erased. `prior_authority_data` and
+`prior_authority_draft` are still written, and API reads, projections and history descriptions
+still read from them.
+
 The exact file suffix, such as `.PDF`, is non-sensitive storage metadata. Application and Prior
 Authority upload events persist it as optional `fileSuffix`; aggregate state and projected
 `DocumentMetadata` retain it independently of the original filename. New extensionless uploads
@@ -115,7 +126,7 @@ the content fields of each event.
 | Store | Typical contents | Purpose |
 |---|---|---|
 | Axon event store | IDs, timestamps, status/type, version pointers, decision outcome, group membership | Durable business timeline and aggregate control state |
-| `event_content` | Potential duplicates, document metadata, Prior Authority document types and decision details | Erasable content of individual events |
+| `event_content` | Draft and submitted Application and Prior Authority content, request JSON, notes, decision details, potential duplicates, document metadata | Erasable content of individual events |
 | `application_data` | Application content, individuals, proceedings, certificates, notes, request JSON, free-text descriptions | Immutable versioned sensitive payloads |
 | `application_current_state` | IDs, status, timestamps, versions, caseworker ID and other thin query state | Disposable current-state projection |
 | `lifecycle_stream` | Genesis application ID, event identifier and name, timestamp | Disposable pointers from which history is read; descriptions are hydrated when queried |

@@ -170,6 +170,14 @@ matching retries still succeed without writing, and conflicting outcomes still r
 The guard recognises submission by the `ApplicationCreated` event, not by a non-null status;
 an open draft has no submitted payload to erase.
 
+A Prior Authority decision is never idempotent: deciding a decided Prior Authority is a 409.
+Making a decision therefore runs every decider rule (validation, version, status and assignment)
+from kept fields first, and only when a `PriorAuthorityDecisionMade` event is to be written does it
+need the submitted payload to build the next `prior_authority_data` version. If the
+`PriorAuthoritySubmitted` content, or a decision's `serialisedRequest`, has been erased, that
+write returns not found (`EntityNotFoundException`, HTTP 404) and nothing is written; every
+validation and conflict outcome is unchanged.
+
 | Event | Content |
 |---|---|
 | `ApplicationCreated` | `content` (parsed application content), `serialisedRequest`, `potentialDuplicates` (links this person to other applications). Gains the kept `laaReference` and `proceedingIds`. |
@@ -181,7 +189,8 @@ an open draft has no submitted payload to erase.
 | `PriorAuthorityDraftStarted`, `PriorAuthorityDraftUpdated` | `content`, `serialisedRequest` |
 | `PriorAuthorityDocumentUploaded` | `size`, `contentType`, `sourceService`, `fileSuffix`, `originalFilename` |
 | `PriorAuthorityDocumentTypeUpdated` | `documentType`, `serialisedRequest` (the last raw request carried forward at submit) |
-| `PriorAuthorityDecisionMade` | `decisionJustification`, `amountGranted`, `dateGranted` |
+| `PriorAuthoritySubmitted` | `content` (the submitted Prior Authority content), `serialisedRequest`. Keeps `dataVersion` and `billingType`. |
+| `PriorAuthorityDecisionMade` | `decisionJustification`, `amountGranted`, `dateGranted`, `expertFee` (including any granted-time override), `disbursementInformation`, `apportionmentInformation`, `serialisedRequest`. Keeps `dataVersion` and `overallDecision`. |
 | Other event types | None |
 
 `fileSuffix` can hold part of a filename, so it is content. Once erased, deleting a Prior
@@ -328,7 +337,12 @@ This layer moves no content into events that was not there already. Later layers
    the aggregate, writes the existing immutable `prior_authority_data` version and deletes the
    draft read copy. The public GETs and submission readiness wait have not moved. There is no new
    migration here: retiring the draft table requires a replacement with equivalent read semantics.
-   PA submitted/decision content adoption remains separate;
+   PA submitted and decision content is now event content too: `PriorAuthoritySubmitted` carries
+   the submitted content and request, `PriorAuthorityDecisionMade` carries the full decision
+   details, and the decision handler builds the next `prior_authority_data` version from aggregate
+   state instead of reading it. `prior_authority_data` is still written and still serves the
+   public GETs, projections and history descriptions; reading Prior Authority details from the
+   aggregate and removing `PriorAuthorityDataStore` is later work;
 4. build erasure on the store mechanism: the soft deletion event, the retention period and the
    automatic hard erasure.
 

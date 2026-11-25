@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
@@ -12,6 +13,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
+import org.axonframework.modelling.repository.EntityNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -28,6 +30,9 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decisi
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
+import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
+import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
+import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
@@ -59,6 +64,8 @@ class MakePriorAuthorityDecisionCommandHandlerTest {
         new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Need review", null, null, null);
     PriorAuthorityDataPayload current =
         new PriorAuthorityDataPayload(priorAuthorityId, applicationId, content, "{}", OCCURRED_AT);
+    setField(state, "priorAuthorityId", priorAuthorityId);
+    setField(state, "submission", Erasable.of(current));
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
             priorAuthorityId,
@@ -76,8 +83,6 @@ class MakePriorAuthorityDecisionCommandHandlerTest {
 
     when(priorAuthority.getState()).thenReturn(state);
     when(priorAuthority.getPriorAuthorityId()).thenReturn(priorAuthorityId);
-    when(priorAuthority.getDataVersion()).thenReturn(dataVersion);
-    when(dataStore.get(priorAuthorityId, dataVersion)).thenReturn(current);
 
     new MakePriorAuthorityDecisionCommandHandler()
         .handle(command, dataStore, priorAuthority, eventAppender);
@@ -90,6 +95,7 @@ class MakePriorAuthorityDecisionCommandHandlerTest {
             payloadCaptor.capture(),
             eq("{}"),
             eq(OCCURRED_AT));
+    assertThat(payloadCaptor.getValue().content()).isEqualTo(content);
     assertThat(payloadCaptor.getValue().decision()).isEqualTo("GRANTED");
     assertThat(payloadCaptor.getValue().decisionJustification()).isEqualTo("Decision recorded");
     assertThat(payloadCaptor.getValue().amountGranted())
@@ -105,7 +111,12 @@ class MakePriorAuthorityDecisionCommandHandlerTest {
                 "Decision recorded",
                 BigDecimal.valueOf(100.00),
                 OCCURRED_AT,
-                OCCURRED_AT));
+                OCCURRED_AT,
+                null,
+                null,
+                null,
+                "{}"));
+    verifyNoMoreInteractions(dataStore);
   }
 
   @Test
@@ -129,7 +140,11 @@ class MakePriorAuthorityDecisionCommandHandlerTest {
             new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Need review", null, null, null),
             "{}",
             OCCURRED_AT);
+    setField(state, "priorAuthorityId", priorAuthorityId);
+    setField(state, "submission", Erasable.of(current));
     TimeRequested timeRequested = new TimeRequested(3, 15);
+    ExpertFeeInformation expertFee =
+        ExpertFeeInformation.builder().grantedTime(timeRequested).build();
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
             priorAuthorityId,
@@ -138,7 +153,7 @@ class MakePriorAuthorityDecisionCommandHandlerTest {
             "GRANTED",
             "Decision recorded",
             BigDecimal.valueOf(100.00),
-            ExpertFeeInformation.builder().grantedTime(timeRequested).build(),
+            expertFee,
             null,
             null,
             OCCURRED_AT,
@@ -147,8 +162,6 @@ class MakePriorAuthorityDecisionCommandHandlerTest {
 
     when(priorAuthority.getState()).thenReturn(state);
     when(priorAuthority.getPriorAuthorityId()).thenReturn(priorAuthorityId);
-    when(priorAuthority.getDataVersion()).thenReturn(dataVersion);
-    when(dataStore.get(priorAuthorityId, dataVersion)).thenReturn(current);
 
     new MakePriorAuthorityDecisionCommandHandler()
         .handle(command, dataStore, priorAuthority, eventAppender);
@@ -173,7 +186,109 @@ class MakePriorAuthorityDecisionCommandHandlerTest {
                 "Decision recorded",
                 BigDecimal.valueOf(100.00),
                 OCCURRED_AT,
-                OCCURRED_AT));
+                OCCURRED_AT,
+                expertFee,
+                null,
+                null,
+                "{}"));
+  }
+
+  @Test
+  void givenErasedSubmittedContent_whenHandle_thenThrowsNotFoundWithoutWriting() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    PriorAuthorityState state = submittedState(priorAuthorityId, caseworkerId, false);
+
+    when(priorAuthority.getState()).thenReturn(state);
+    when(priorAuthority.getPriorAuthorityId()).thenReturn(priorAuthorityId);
+
+    assertThatExceptionOfType(EntityNotFoundException.class)
+        .isThrownBy(
+            () ->
+                new MakePriorAuthorityDecisionCommandHandler()
+                    .handle(
+                        decisionCommand(priorAuthorityId, caseworkerId, 3L),
+                        dataStore,
+                        priorAuthority,
+                        eventAppender));
+
+    verifyNoInteractions(dataStore, eventAppender);
+  }
+
+  @Test
+  void givenErasedContentAndStaleVersion_whenHandle_thenStillConflicts() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    PriorAuthorityState state = submittedState(priorAuthorityId, caseworkerId, false);
+
+    when(priorAuthority.getState()).thenReturn(state);
+    when(priorAuthority.getPriorAuthorityId()).thenReturn(priorAuthorityId);
+
+    assertThatExceptionOfType(PriorAuthorityVersionConflictException.class)
+        .isThrownBy(
+            () ->
+                new MakePriorAuthorityDecisionCommandHandler()
+                    .handle(
+                        decisionCommand(priorAuthorityId, caseworkerId, 2L),
+                        dataStore,
+                        priorAuthority,
+                        eventAppender));
+
+    verifyNoInteractions(dataStore, eventAppender);
+  }
+
+  @Test
+  void givenErasedContentOnDecidedPriorAuthority_whenHandle_thenStillConflicts() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    PriorAuthorityState state = submittedState(priorAuthorityId, caseworkerId, true);
+
+    when(priorAuthority.getState()).thenReturn(state);
+    when(priorAuthority.getPriorAuthorityId()).thenReturn(priorAuthorityId);
+
+    assertThatExceptionOfType(PriorAuthorityStatusConflictException.class)
+        .isThrownBy(
+            () ->
+                new MakePriorAuthorityDecisionCommandHandler()
+                    .handle(
+                        decisionCommand(priorAuthorityId, caseworkerId, 3L),
+                        dataStore,
+                        priorAuthority,
+                        eventAppender))
+        .withMessageContaining("already been decided");
+
+    verifyNoInteractions(dataStore, eventAppender);
+  }
+
+  /** A submitted Prior Authority at data version 3 whose submitted content has been erased. */
+  private static PriorAuthorityState submittedState(
+      UUID priorAuthorityId, UUID caseworkerId, boolean decided) {
+    PriorAuthorityState state = new PriorAuthorityState();
+    setField(state, "priorAuthorityId", priorAuthorityId);
+    setField(state, "applicationId", UUID.randomUUID());
+    setField(state, "caseworkerId", caseworkerId);
+    setField(state, "dataVersion", 3L);
+    setField(state, "submitted", true);
+    setField(state, "decided", decided);
+    setField(state, "priorAuthorityType", PriorAuthorityType.EXPERT.name());
+    return state;
+  }
+
+  private static MakePriorAuthorityDecisionCommand decisionCommand(
+      UUID priorAuthorityId, UUID caseworkerId, long expectedVersion) {
+    return new MakePriorAuthorityDecisionCommand(
+        priorAuthorityId,
+        caseworkerId,
+        expectedVersion,
+        "GRANTED",
+        "Decision recorded",
+        BigDecimal.ONE,
+        null,
+        null,
+        null,
+        OCCURRED_AT,
+        "{}",
+        OCCURRED_AT);
   }
 
   @Test

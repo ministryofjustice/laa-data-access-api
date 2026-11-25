@@ -43,6 +43,8 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationRead
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 import uk.gov.justice.laa.dstew.access.testutils.EventTypeNames;
@@ -218,8 +220,7 @@ class ErasureReplayTest {
                 Erasable.of("{}")),
             new PriorAuthorityDocumentDeletedEvent(
                 priorAuthorityId, deletedDocumentId, AT, applicationId),
-            new PriorAuthoritySubmittedEvent(
-                priorAuthorityId, applicationId, "EXPERT", 1, 0L, 3L, AT, "HOURLY"),
+            submittedPriorAuthority(),
             new WorkItemAssigned(
                 priorAuthorityId,
                 WorkItemType.PRIOR_AUTHORITY,
@@ -235,9 +236,11 @@ class ErasureReplayTest {
         fold(new PriorAuthorityState(), PriorAuthorityEvolve.class, erase(submitted));
 
     assertThat(erased.getUploadedDocuments()).hasSize(2);
+    assertThat(full.submittedPayload()).isPresent();
+    assertThat(erased.submittedPayload()).isEmpty();
     assertThat(erased)
         .usingRecursiveComparison()
-        .ignoringFields("uploadedDocuments")
+        .ignoringFields("uploadedDocuments", "submission")
         .isEqualTo(full);
     assertThat(erased.getUploadedDocuments())
         .isEqualTo(full.getUploadedDocuments().stream().map(this::withoutContent).toList());
@@ -252,8 +255,7 @@ class ErasureReplayTest {
     List<Object> decided =
         List.of(
             started(),
-            new PriorAuthoritySubmittedEvent(
-                priorAuthorityId, applicationId, "EXPERT", 1, 0L, 3L, AT, "HOURLY"),
+            submittedPriorAuthority(),
             new WorkItemAssigned(
                 priorAuthorityId,
                 WorkItemType.PRIOR_AUTHORITY,
@@ -268,16 +270,22 @@ class ErasureReplayTest {
                 "EXPERT",
                 1L,
                 "GRANTED",
-                Erasable.of("justified"),
-                Erasable.of(new BigDecimal("125.50")),
-                Erasable.of(AT),
-                AT));
+                "justified",
+                new BigDecimal("125.50"),
+                AT,
+                AT,
+                null,
+                null,
+                null,
+                "{\"overallDecision\":\"GRANTED\"}"));
 
     PriorAuthorityState full = fold(new PriorAuthorityState(), PriorAuthorityEvolve.class, decided);
     PriorAuthorityState erased =
         fold(new PriorAuthorityState(), PriorAuthorityEvolve.class, erase(decided));
 
-    assertThat(erased).usingRecursiveComparison().isEqualTo(full);
+    assertThat(full.submittedPayload()).isPresent();
+    assertThat(erased.submittedPayload()).isEmpty();
+    assertThat(erased).usingRecursiveComparison().ignoringFields("submission").isEqualTo(full);
     assertSameDecision(full, erased, state -> decidePriorAuthority(state, caseworkerId, 1L));
   }
 
@@ -333,6 +341,22 @@ class ErasureReplayTest {
   private PriorAuthorityDraftStartedEvent started() {
     return new PriorAuthorityDraftStartedEvent(
         priorAuthorityId, applicationId, "EXPERT", 1, AT, "1A234B");
+  }
+
+  private PriorAuthoritySubmittedEvent submittedPriorAuthority() {
+    return new PriorAuthoritySubmittedEvent(
+        priorAuthorityId,
+        applicationId,
+        "EXPERT",
+        1,
+        0L,
+        3L,
+        AT,
+        "HOURLY",
+        Erasable.of(
+            new PriorAuthorityContent(
+                PriorAuthorityType.EXPERT, "Jane Doe needs", null, null, null)),
+        Erasable.of("{\"justification\":\"Jane Doe needs\"}"));
   }
 
   private PriorAuthorityDocumentUploadedEvent uploaded(UUID id) {

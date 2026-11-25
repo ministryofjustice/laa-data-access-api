@@ -7,6 +7,7 @@ import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.MakePriorAuthorityDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.BillingType;
@@ -42,19 +43,22 @@ public final class PriorAuthorityDecider {
   }
 
   /**
-   * Returns a {@link PriorAuthoritySubmittedEvent} — a thin pointer with no personal data — for the
-   * given submit command. The submitted content is always appended as version 0 of {@code
-   * prior_authority_data}, since a submission's draft content is not itself versioned.
+   * Returns a {@link PriorAuthoritySubmittedEvent} for the given submit command, carrying the
+   * submitted draft content and raw request as erasable content. The submitted content is also
+   * appended as version 0 of {@code prior_authority_data}, since a submission's draft content is
+   * not itself versioned.
    *
    * @param applicationDataVersion the parent application's current data version, pinned into the
    *     event so the work-list projection hydrates parent fields deterministically on replay
    * @param billingType the expert billing type from the validated submitted content, or null
+   * @param submitted the open draft being submitted, folded from the event stream
    */
   public static PriorAuthoritySubmittedEvent decideSubmit(
       SubmitPriorAuthorityDraftCommand command,
       PriorAuthorityState state,
       long applicationDataVersion,
-      String billingType) {
+      String billingType,
+      PriorAuthorityDataPayload submitted) {
     return new PriorAuthoritySubmittedEvent(
         command.priorAuthorityId(),
         state.applicationId,
@@ -63,7 +67,9 @@ public final class PriorAuthorityDecider {
         0L,
         applicationDataVersion,
         command.occurredAt(),
-        billingType);
+        billingType,
+        Erasable.of(submitted.content()),
+        Erasable.of(submitted.serialisedRequest()));
   }
 
   /**
@@ -130,7 +136,11 @@ public final class PriorAuthorityDecider {
         command.decisionJustification(),
         command.amountGranted(),
         command.dateGranted(),
-        command.occurredAt());
+        command.occurredAt(),
+        command.expertFee(),
+        command.disbursementInformation(),
+        command.apportionmentInformation(),
+        command.serialisedRequest());
   }
 
   private static PriorAuthorityStatus statusOf(PriorAuthorityState state) {

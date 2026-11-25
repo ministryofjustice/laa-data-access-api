@@ -99,6 +99,22 @@ The PostgreSQL draft integration tests force both competing commands to read sta
 state before writing, assert one rolled-back/retried attempt, and check that both
 accepted changes and both owner-stream events survive without sensitive event fields.
 
+### Prior Authority submission and decision content
+
+`PriorAuthoritySubmittedEvent` adds the erasable `content` and `serialisedRequest`, and
+`PriorAuthorityDecisionMadeEvent` adds the erasable `expertFee`, `disbursementInformation`,
+`apportionmentInformation` and `serialisedRequest`. All are content, so the kept-field schemas and
+stored payload bytes are unchanged. Each compact constructor normalises an absent content field to
+erased, so an event whose row has been erased still deserializes and folds; its submitted payload
+then reads as erased and a decision that needs to write a new `prior_authority_data` version
+returns not found. Kept fields, including `dataVersion`, are unchanged.
+
+`PriorAuthoritySubmitted` had no content fields before, so a Submitted event stored before this
+change has no content row and now fails to load with `MissingEventContentException`. No upcaster
+is provided: this layer ships with the stack's single data reset (ADR 0007).
+`PriorAuthorityEventContentTest` splits and rejoins both events through `EventJson`, including
+`BigDecimal` scale.
+
 ### Genesis IDs (ADR 0006)
 
 `WorkItemAssigned` and `WorkItemUnassigned` add `applicationId`;
