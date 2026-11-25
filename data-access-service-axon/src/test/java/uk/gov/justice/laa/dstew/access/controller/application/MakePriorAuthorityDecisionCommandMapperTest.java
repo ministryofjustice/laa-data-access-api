@@ -146,6 +146,30 @@ class MakePriorAuthorityDecisionCommandMapperTest {
   }
 
   @Test
+  void givenGrantedTotalAmount_whenMapped_thenStoresGrantedTotalAmount() {
+    when(authenticatedUserId.get()).thenReturn(TestJwtDecoderConfig.CASEWORKER_ID);
+    MakePriorAuthorityDecisionRequest request =
+        MakePriorAuthorityDecisionRequest.builder()
+            .priorAuthorityVersion(7L)
+            .decision(DecisionStatus.GRANTED)
+            .amountGranted(BigDecimal.valueOf(250))
+            .dateGranted(OffsetDateTime.parse("2026-09-08T12:30:00Z"))
+            .eventHistory(
+                EventHistoryRequest.builder().eventDescription("Decision recorded").build())
+            .expert(
+                ExpertMakePriorAuthorityDecisionRequest.builder()
+                    .newFixedRateAmount(BigDecimal.valueOf(250))
+                    .grantedTotalAmount(BigDecimal.valueOf(250))
+                    .build())
+            .build();
+
+    MakePriorAuthorityDecisionCommand command = mapper.toCommand(UUID.randomUUID(), request);
+
+    assertThat(command.expertFee().getGrantedTotalAmount()).isEqualByComparingTo("250");
+    assertThat(command.serialisedRequest()).contains("\"grantedTotalAmount\":250");
+  }
+
+  @Test
   void givenDecisionJustificationWithWhitespace_whenMapped_thenStoresTrimmedJustification() {
     when(authenticatedUserId.get()).thenReturn(TestJwtDecoderConfig.CASEWORKER_ID);
     MakePriorAuthorityDecisionRequest request =

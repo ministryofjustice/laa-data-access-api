@@ -71,6 +71,7 @@ public class MakePriorAuthorityDecisionCommandMapper {
             .newFixedRateAmount(value.getNewFixedRateAmount())
             .newHourlyRateAmount(value.getNewHourlyRateAmount())
             .grantedTime(toTimeRequested(value.getGrantedTime()))
+            .grantedTotalAmount(value.getGrantedTotalAmount())
             .build();
   }
 

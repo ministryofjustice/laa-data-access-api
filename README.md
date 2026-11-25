@@ -233,7 +233,8 @@ expert fee overrides:
     "grantedTime": {
       "hours": 3,
       "minutes": 15
-    }
+    },
+    "grantedTotalAmount": 308.75
   }
 }
 ```
@@ -244,6 +245,10 @@ expert fee overrides:
   59. Non-integer values are rejected with a `400 ProblemDetail`.
 - The provider's original `timeRequested` is retained. The override is returned in
   `decisionDetails.expert.grantedTime`.
+- `grantedTotalAmount` is optional, records the total amount granted by the caseworker, and is
+  permitted for EXPERT prior authorities with either FIXED_RATE or HOURLY billing (otherwise
+  `400`). The provider's original `totalAmount` is retained; the granted value is returned in
+  `decisionDetails.expert.grantedTotalAmount`.
 
 #### Getting tokens from local mock-oauth2-server
 

@@ -267,6 +267,66 @@ class PriorAuthorityDecisionIntegrationTest extends BaseIntegrationTest {
     assertThat(decisionDataVersionCount(priorAuthorityId)).isZero();
   }
 
+  @Test
+  void givenHourlyExpert_whenDecisionWithGrantedTotalAmount_thenRecordedAndOriginalUnchanged() {
+    var priorAuthorityId = submittedAndAssigned(expertDraft(hourlyCosts()));
+    var request =
+        decisionRequest(DecisionStatus.GRANTED, "Granted", BigDecimal.valueOf(162.50))
+            .expert(
+                new ExpertMakePriorAuthorityDecisionRequest()
+                    .newHourlyRateAmount(BigDecimal.valueOf(50))
+                    .grantedTime(DecisionTimeRequested.builder().hours(3).minutes(15).build())
+                    .grantedTotalAmount(BigDecimal.valueOf(162.50)));
+
+    assertThat(patchDecision(priorAuthorityId, request).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+
+    projectionAwaiter.awaitDecidedPriorAuthority(priorAuthorityId);
+    var response = getPriorAuthority(priorAuthorityId);
+    assertThat(response.getDecisionDetails().getExpert().getGrantedTotalAmount())
+        .isEqualByComparingTo("162.50");
+    assertThat(response.getExpertDetails().getExpertCosts().getTotalAmount())
+        .isEqualByComparingTo("250");
+  }
+
+  @Test
+  void givenFixedRateExpert_whenDecisionWithGrantedTotalAmount_thenRecordedAndOriginalUnchanged() {
+    var priorAuthorityId = submittedAndAssigned(expertDraft(fixedRateCosts()));
+    var request =
+        decisionRequest(DecisionStatus.GRANTED, "Granted", BigDecimal.valueOf(1200))
+            .expert(
+                new ExpertMakePriorAuthorityDecisionRequest()
+                    .newFixedRateAmount(BigDecimal.valueOf(1200))
+                    .grantedTotalAmount(BigDecimal.valueOf(1200)));
+
+    assertThat(patchDecision(priorAuthorityId, request).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+
+    projectionAwaiter.awaitDecidedPriorAuthority(priorAuthorityId);
+    var response = getPriorAuthority(priorAuthorityId);
+    assertThat(response.getDecisionDetails().getExpert().getGrantedTotalAmount())
+        .isEqualByComparingTo("1200");
+    assertThat(response.getExpertDetails().getExpertCosts().getTotalAmount())
+        .isEqualByComparingTo("1500");
+  }
+
+  @Test
+  void givenDisbursement_whenDecisionWithGrantedTotalAmount_thenReturnsBadRequest() {
+    var priorAuthorityId = submittedAndAssigned(disbursementDraft());
+    var request =
+        decisionRequest(DecisionStatus.GRANTED, "Granted", BigDecimal.valueOf(150))
+            .expert(
+                new ExpertMakePriorAuthorityDecisionRequest()
+                    .grantedTotalAmount(BigDecimal.valueOf(150)));
+
+    var response = patchDecision(priorAuthorityId, request);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getBody())
+        .contains("expert.grantedTotalAmount is only permitted for EXPERT prior authorities");
+    assertThat(decisionDataVersionCount(priorAuthorityId)).isZero();
+  }
+
   private void assertDecisionPersisted(
       UUID priorAuthorityId, DecisionEnum decision, String justification) {
     assertThat(decisionDataVersionCount(priorAuthorityId)).isOne();

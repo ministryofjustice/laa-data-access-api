@@ -16,4 +16,5 @@ public class ExpertFeeInformation {
   private BigDecimal newFixedRateAmount;
   private BigDecimal newHourlyRateAmount;
   private TimeRequested grantedTime;
+  private BigDecimal grantedTotalAmount;
 }
