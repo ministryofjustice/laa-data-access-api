@@ -15,10 +15,10 @@ public record LinkedApplicationGroupDissolvedEvent(
     @RetainedField @EventTag(key = "LinkedApplicationGroupAggregate") UUID groupId,
     @RetainedField UUID formerLeadApplicationId,
     @RetainedField UUID removedApplicationId,
-    @RetainedField List<UUID> memberApplicationIds,
+    @RetainedField(nullable = true) List<UUID> memberApplicationIds,
     @RetainedField long groupVersion,
     @RetainedField Instant occurredAt,
-    @RetainedField UUID justificationId)
+    @RetainedField(nullable = true) UUID justificationId)
     implements LinkedGroupMemberRemoval, GenesisScoped {
 
   /** Preserves callers and historical events without a justification reference. */

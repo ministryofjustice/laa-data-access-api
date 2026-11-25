@@ -16,10 +16,10 @@ import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 public record PriorAuthorityDraftStartedEvent(
     @RetainedField @EventTag(key = "PriorAuthorityAggregate") UUID priorAuthorityId,
     @RetainedField UUID applicationId,
-    @RetainedField String priorAuthorityType,
+    @RetainedField(nullable = true) String priorAuthorityType,
     @RetainedField int schemaVersion,
     @RetainedField Instant occurredAt,
-    @RetainedField String officeCode,
+    @RetainedField(nullable = true) String officeCode,
     @Nullable PriorAuthorityContent content)
     implements GenesisScoped {
 

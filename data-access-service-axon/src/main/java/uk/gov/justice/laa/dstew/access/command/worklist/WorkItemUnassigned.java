@@ -12,7 +12,7 @@ import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 @Event(namespace = "access", name = "WorkItemUnassigned")
 public record WorkItemUnassigned(
     @RetainedField @EventTag UUID workItemId,
-    @RetainedField WorkItemType workItemType,
+    @RetainedField(nullable = true) WorkItemType workItemType,
     @RetainedField UUID applicationId,
     @RetainedField long itemVersion,
     @RetainedField long assignmentVersion,

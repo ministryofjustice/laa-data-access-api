@@ -17,6 +17,7 @@ class EventContentSeparatorTest {
   private static final String ASSIGNED = "access.WorkItemAssigned";
   private static final String MARKED = "test.Marked";
   private static final String NON_RECORD = "test.NonRecord";
+  private static final String OPTIONAL = "test.Optional";
 
   private final EventJson json = new EventJson();
   private final EventContentSeparator separator =
@@ -30,9 +31,14 @@ class EventContentSeparatorTest {
               MARKED,
               MarkedTestEvent.class,
               NON_RECORD,
-              NonRecordTestEvent.class));
+              NonRecordTestEvent.class,
+              OPTIONAL,
+              OptionalTestEvent.class));
 
   record MarkedTestEvent(@RetainedField String id, @RetainedField int count, String note) {}
+
+  record OptionalTestEvent(
+      @RetainedField String id, @RetainedField(nullable = true) String reference) {}
 
   static final class NonRecordTestEvent {}
 
@@ -126,8 +132,48 @@ class EventContentSeparatorTest {
     assertThatThrownBy(
             () -> separator.checkMetadata(ContentTestEvent.TYPE, Set.of("correlationId", "email")))
         .isInstanceOf(KeptFieldViolationException.class)
+        .hasMessage("Event test.Content has metadata keys that are not allowed: [email]");
+  }
+
+  @Test
+  void givenNullRetainedField_whenSeparated_thenRejected() {
+    ObjectNode payload = json.mapper().createObjectNode().putNull("id").put("note", "secret");
+
+    assertThatThrownBy(() -> separator.separate(ContentTestEvent.TYPE, payload))
+        .isInstanceOf(KeptFieldViolationException.class)
+        .hasMessage("Event test.Content has null retained fields: [id]");
+  }
+
+  @Test
+  void givenAbsentRetainedFields_whenSeparated_thenAllAreRejected() {
+    ObjectNode payload = json.mapper().createObjectNode().put("note", "secret");
+
+    assertThatThrownBy(() -> separator.separate(ContentTestEvent.TYPE, payload))
+        .isInstanceOf(KeptFieldViolationException.class)
+        .hasMessage("Event test.Content has null retained fields: [id]");
+    assertThatThrownBy(() -> separator.separate(ASSIGNED, json.mapper().createObjectNode()))
+        .isInstanceOf(KeptFieldViolationException.class)
         .hasMessage(
-            "Event test.Content keeps fields that are not allowed: "
-                + "[metadata keys not allowed: [email]]");
+            "Event access.WorkItemAssigned has null retained fields: "
+                + "[applicationId, occurredAt, workItemId]");
+  }
+
+  @Test
+  void givenNullNullableRetainedField_whenSeparated_thenKeptAsNull() {
+    ObjectNode payload = json.mapper().createObjectNode().put("id", "a").putNull("reference");
+
+    var split = separator.separate(OPTIONAL, payload);
+
+    assertThat(split.kept()).isEqualTo(payload);
+    assertThat(split.content()).isEmpty();
+  }
+
+  @Test
+  void givenAbsentPrimitiveRetainedField_whenSeparated_thenAccepted() {
+    ObjectNode payload = json.mapper().createObjectNode().put("id", "a");
+
+    var split = separator.separate(MARKED, payload);
+
+    assertThat(split.kept()).isEqualTo(payload);
   }
 }

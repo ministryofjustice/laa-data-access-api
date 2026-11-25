@@ -6,6 +6,7 @@ import static com.tngtech.archunit.core.domain.properties.HasName.Predicates.nam
 import static com.tngtech.archunit.core.domain.properties.HasOwner.Predicates.With.owner;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static java.util.Map.entry;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
@@ -17,7 +18,9 @@ import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.annotation.Event;
@@ -31,6 +34,38 @@ import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 class EventContentArchitectureTest {
 
   private static final String ROOT = "uk.gov.justice.laa.dstew.access";
+
+  /** Retained fields that may be null on append, by event record. Every other one is required. */
+  private static final Map<String, Set<String>> NULLABLE_RETAINED_FIELDS =
+      Map.ofEntries(
+          entry("ApplicationCreatedEvent", Set.of("requestFingerprint", "status", "officeCode")),
+          entry(
+              "ApplicationDecisionMadeEvent",
+              Set.of("overallDecision", "autoGranted", "decisionRequestFingerprint")),
+          entry("ApplicationDocumentUploadedEvent", Set.of("checksum", "applicationDataVersion")),
+          entry(
+              "ApplicationDraftStartedEvent",
+              Set.of("requestFingerprint", "officeCode", "status", "laaReference")),
+          entry("ApplicationUpdatedEvent", Set.of("previousStatus", "status")),
+          entry(
+              "LinkedApplicationGroupCreatedEvent",
+              Set.of("memberApplicationIds", "justificationId")),
+          entry(
+              "LinkedApplicationGroupDissolvedEvent",
+              Set.of("memberApplicationIds", "justificationId")),
+          entry(
+              "LinkedApplicationGroupLeadChangedEvent",
+              Set.of("memberApplicationIds", "justificationId")),
+          entry("MemberAddedToGroupEvent", Set.of("memberApplicationIds", "justificationId")),
+          entry("MemberRemovedFromGroupEvent", Set.of("memberApplicationIds", "justificationId")),
+          entry("PriorAuthorityDecisionMadeEvent", Set.of("priorAuthorityType", "overallDecision")),
+          entry("PriorAuthorityDocumentUploadedEvent", Set.of("checksum")),
+          entry("PriorAuthorityDraftStartedEvent", Set.of("priorAuthorityType", "officeCode")),
+          entry(
+              "PriorAuthoritySubmittedEvent",
+              Set.of("priorAuthorityType", "applicationDataVersion", "billingType")),
+          entry("WorkItemAssigned", Set.of("workItemType", "caseworkerId")),
+          entry("WorkItemUnassigned", Set.of("workItemType")));
 
   private static final JavaClasses classes =
       new ClassFileImporter()
@@ -132,6 +167,31 @@ class EventContentArchitectureTest {
             .toList();
 
     assertThat(unsupported).as("retained fields with an unsupported type").isEmpty();
+  }
+
+  @Test
+  void givenRetainedFields_whenInspected_thenNoPrimitiveIsMarkedNullable() {
+    var primitives =
+        retainedComponents()
+            .filter(component -> component.getType().isPrimitive())
+            .filter(component -> component.getAnnotation(RetainedField.class).nullable())
+            .map(EventContentArchitectureTest::nameOf)
+            .toList();
+
+    assertThat(primitives).as("primitive retained fields marked nullable").isEmpty();
+  }
+
+  @Test
+  void givenRetainedFields_whenInspected_thenOnlyListedFieldsAreNullable() {
+    var nullable =
+        retainedComponents()
+            .filter(component -> component.getAnnotation(RetainedField.class).nullable())
+            .collect(
+                Collectors.groupingBy(
+                    component -> component.getDeclaringRecord().getSimpleName(),
+                    Collectors.mapping(RecordComponent::getName, Collectors.toSet())));
+
+    assertThat(nullable).isEqualTo(NULLABLE_RETAINED_FIELDS);
   }
 
   @Test

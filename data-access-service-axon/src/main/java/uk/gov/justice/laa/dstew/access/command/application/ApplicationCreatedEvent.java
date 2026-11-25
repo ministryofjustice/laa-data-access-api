@@ -22,12 +22,12 @@ import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 public record ApplicationCreatedEvent(
     @RetainedField @EventTag(key = "ApplicationAggregate") UUID applicationId,
     @RetainedField long applicationDataVersion,
-    @RetainedField String requestFingerprint,
-    @RetainedField String status,
+    @RetainedField(nullable = true) String requestFingerprint,
+    @RetainedField(nullable = true) String status,
     @RetainedField int schemaVersion,
     @RetainedField Instant occurredAt,
     @Nullable List<PotentialDuplicate> potentialDuplicates,
-    @RetainedField String officeCode,
+    @RetainedField(nullable = true) String officeCode,
     @RetainedField String laaReference,
     @RetainedField List<UUID> proceedingIds,
     @Nullable ParsedAppContentDetails content)

@@ -21,9 +21,9 @@ import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 public record PriorAuthorityDecisionMadeEvent(
     @RetainedField @EventTag(key = "PriorAuthorityAggregate") UUID priorAuthorityId,
     @RetainedField UUID applicationId,
-    @RetainedField String priorAuthorityType,
+    @RetainedField(nullable = true) String priorAuthorityType,
     @RetainedField long dataVersion,
-    @RetainedField String overallDecision,
+    @RetainedField(nullable = true) String overallDecision,
     @Nullable String decisionJustification,
     @Nullable BigDecimal amountGranted,
     @Nullable Instant dateGranted,

@@ -17,9 +17,9 @@ import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 public record LinkedApplicationGroupCreatedEvent(
     @RetainedField @EventTag(key = "LinkedApplicationGroupAggregate") UUID groupId,
     @RetainedField UUID leadApplicationId,
-    @RetainedField List<UUID> memberApplicationIds,
+    @RetainedField(nullable = true) List<UUID> memberApplicationIds,
     @RetainedField Instant occurredAt,
-    @RetainedField UUID justificationId)
+    @RetainedField(nullable = true) UUID justificationId)
     implements GenesisScoped {
 
   /** Preserves callers and historical events without a justification reference. */

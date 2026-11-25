@@ -21,11 +21,11 @@ import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 public record ApplicationDraftStartedEvent(
     @RetainedField @EventTag(key = "ApplicationAggregate") UUID applicationId,
     @RetainedField int schemaVersion,
-    @RetainedField String requestFingerprint,
+    @RetainedField(nullable = true) String requestFingerprint,
     @RetainedField Instant occurredAt,
-    @RetainedField String officeCode,
-    @RetainedField String status,
-    @RetainedField String laaReference,
+    @RetainedField(nullable = true) String officeCode,
+    @RetainedField(nullable = true) String status,
+    @RetainedField(nullable = true) String laaReference,
     @Nullable Map<String, Object> applicationContent,
     @Nullable List<PotentialDuplicate> potentialDuplicates)
     implements GenesisScoped {

@@ -18,8 +18,8 @@ public record LinkedApplicationGroupLeadChangedEvent(
     @RetainedField UUID newLeadApplicationId,
     @RetainedField long groupVersion,
     @RetainedField Instant occurredAt,
-    @RetainedField List<UUID> memberApplicationIds,
-    @RetainedField UUID justificationId)
+    @RetainedField(nullable = true) List<UUID> memberApplicationIds,
+    @RetainedField(nullable = true) UUID justificationId)
     implements GenesisScoped {
 
   /** Preserves historical events whose full membership was not recorded. */

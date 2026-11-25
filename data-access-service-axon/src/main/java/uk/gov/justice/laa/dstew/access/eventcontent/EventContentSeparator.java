@@ -14,8 +14,8 @@ import tools.jackson.databind.node.ObjectNode;
 /**
  * Splits event payloads into retained fields and content. A field stays on the stored event only
  * when its record component is marked {@link RetainedField}; every other field is content.
- * Fail-safe: an unmarked field is content, and an event type outside the separator's event classes
- * is rejected.
+ * Fail-safe: an unmarked field is content, an event type outside the separator's event classes is
+ * rejected, and so is a null retained field not marked {@link RetainedField#nullable()}.
  */
 public final class EventContentSeparator {
 
@@ -44,17 +44,26 @@ public final class EventContentSeparator {
    *
    * @throws UnclassifiedEventException if the event type is not one of the separator's classes
    * @throws IllegalStateException if the event class is not a record
+   * @throws KeptFieldViolationException if a retained field not marked nullable is null or absent
    */
   public Split separate(String typeName, ObjectNode payload) {
-    Set<String> retained = fields(typeName).retained();
+    Fields typeFields = fields(typeName);
     ObjectNode kept = mapper.createObjectNode();
     ObjectNode content = mapper.createObjectNode();
     for (Map.Entry<String, JsonNode> field : payload.properties()) {
-      if (retained.contains(field.getKey())) {
+      if (typeFields.retained().contains(field.getKey())) {
         kept.set(field.getKey(), field.getValue());
       } else {
         content.set(field.getKey(), field.getValue());
       }
+    }
+    List<String> missing =
+        typeFields.required().stream()
+            .filter(name -> kept.get(name) == null || kept.get(name).isNull())
+            .sorted()
+            .toList();
+    if (!missing.isEmpty()) {
+      throw KeptFieldViolationException.nullRetainedFields(typeName, missing);
     }
     return new Split(kept, content);
   }
@@ -75,8 +84,7 @@ public final class EventContentSeparator {
     List<String> unexpected =
         keys.stream().filter(key -> !ALLOWED_METADATA_KEYS.contains(key)).sorted().toList();
     if (!unexpected.isEmpty()) {
-      throw new KeptFieldViolationException(
-          typeName, List.of("metadata keys not allowed: " + unexpected));
+      throw KeptFieldViolationException.metadataNotAllowed(typeName, unexpected);
     }
   }
 
@@ -128,10 +136,17 @@ public final class EventContentSeparator {
             .filter(component -> component.isAnnotationPresent(RetainedField.class))
             .map(RecordComponent::getName)
             .collect(Collectors.toUnmodifiableSet());
-    return new Fields(retained, retained.size() < components.length);
+    Set<String> required =
+        Arrays.stream(components)
+            .filter(component -> component.isAnnotationPresent(RetainedField.class))
+            .filter(component -> !component.getAnnotation(RetainedField.class).nullable())
+            .filter(component -> !component.getType().isPrimitive())
+            .map(RecordComponent::getName)
+            .collect(Collectors.toUnmodifiableSet());
+    return new Fields(retained, required, retained.size() < components.length);
   }
 
-  private record Fields(Set<String> retained, boolean hasContent) {}
+  private record Fields(Set<String> retained, Set<String> required, boolean hasContent) {}
 
   /** Thrown when an event type is not one of the separator's event classes. */
   public static final class UnclassifiedEventException extends IllegalStateException {
@@ -140,10 +155,24 @@ public final class EventContentSeparator {
     }
   }
 
-  /** Thrown when an event carries metadata keys outside {@link #ALLOWED_METADATA_KEYS}. */
+  /**
+   * Thrown when an event carries metadata keys outside {@link #ALLOWED_METADATA_KEYS}, or a null
+   * retained field not marked {@link RetainedField#nullable()}.
+   */
   public static final class KeptFieldViolationException extends IllegalStateException {
-    public KeptFieldViolationException(String typeName, List<String> violations) {
-      super("Event " + typeName + " keeps fields that are not allowed: " + violations);
+
+    private KeptFieldViolationException(String message) {
+      super(message);
+    }
+
+    static KeptFieldViolationException metadataNotAllowed(String typeName, List<String> keys) {
+      return new KeptFieldViolationException(
+          "Event " + typeName + " has metadata keys that are not allowed: " + keys);
+    }
+
+    static KeptFieldViolationException nullRetainedFields(String typeName, List<String> fields) {
+      return new KeptFieldViolationException(
+          "Event " + typeName + " has null retained fields: " + fields);
     }
   }
 }

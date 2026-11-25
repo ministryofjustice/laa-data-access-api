@@ -10,6 +10,10 @@ import java.lang.annotation.Target;
  * other component is erasable content, stored apart in {@code event_content} on append. Retain only
  * identity and genesis keys, values a decider rule uses, access and work-allocation values, the
  * event's own timestamp and non-personal outcomes.
+ *
+ * <p>A retained field must be non-null on append unless it is marked {@code nullable = true}; the
+ * separator rejects the event otherwise. Primitive components are never null, so they are never
+ * marked nullable.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({
@@ -18,4 +22,8 @@ import java.lang.annotation.Target;
   ElementType.PARAMETER,
   ElementType.METHOD
 })
-public @interface RetainedField {}
+public @interface RetainedField {
+
+  /** Whether the field may be null when the event is appended. */
+  boolean nullable() default false;
+}

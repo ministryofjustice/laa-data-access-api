@@ -22,8 +22,8 @@ public record ApplicationUpdatedEvent(
     @RetainedField @EventTag(key = "ApplicationAggregate") UUID applicationId,
     @RetainedField long applicationVersion,
     @RetainedField long applicationDataVersion,
-    @RetainedField String previousStatus,
-    @RetainedField String status,
+    @RetainedField(nullable = true) String previousStatus,
+    @RetainedField(nullable = true) String status,
     @RetainedField Instant occurredAt,
     @RetainedField List<UUID> proceedingIds,
     @Nullable ParsedAppContentDetails content)

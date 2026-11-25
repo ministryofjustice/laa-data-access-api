@@ -19,9 +19,9 @@ public record ApplicationDocumentUploadedEvent(
     @RetainedField Instant uploadedAt,
     @Nullable Long size,
     @Nullable String contentType,
-    @RetainedField String checksum,
+    @RetainedField(nullable = true) String checksum,
     @Nullable String sourceService,
-    @RetainedField Long applicationDataVersion,
+    @RetainedField(nullable = true) Long applicationDataVersion,
     @Nullable String fileSuffix,
     @Nullable String originalFilename)
     implements GenesisScoped {

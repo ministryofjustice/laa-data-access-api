@@ -12,11 +12,11 @@ import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 @Event(namespace = "access", name = "WorkItemAssigned")
 public record WorkItemAssigned(
     @RetainedField @EventTag UUID workItemId,
-    @RetainedField WorkItemType workItemType,
+    @RetainedField(nullable = true) WorkItemType workItemType,
     @RetainedField UUID applicationId,
     @RetainedField long itemVersion,
     @RetainedField long assignmentVersion,
-    @RetainedField UUID caseworkerId,
+    @RetainedField(nullable = true) UUID caseworkerId,
     @RetainedField Instant occurredAt)
     implements WorkItemAssignmentChange, GenesisScoped {
 

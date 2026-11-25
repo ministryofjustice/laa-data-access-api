@@ -18,7 +18,7 @@ public record PriorAuthorityDocumentUploadedEvent(
     @RetainedField Instant uploadedAt,
     @Nullable Long size,
     @Nullable String contentType,
-    @RetainedField String checksum,
+    @RetainedField(nullable = true) String checksum,
     @RetainedField UUID parentApplicationId,
     @Nullable String sourceService,
     @Nullable String fileSuffix,
