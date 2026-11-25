@@ -5,8 +5,9 @@ import java.util.Set;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
+import org.jspecify.annotations.Nullable;
 import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
+import uk.gov.justice.laa.dstew.access.eventcontent.RedactedEventString;
 import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 
 /** Persisted event emitted when a prior-authority document is uploaded and finalised. */
@@ -15,48 +16,14 @@ public record PriorAuthorityDocumentUploadedEvent(
     @RetainedField @EventTag(key = "PriorAuthorityAggregate") UUID priorAuthorityId,
     @RetainedField UUID documentId,
     @RetainedField Instant uploadedAt,
-    Erasable<Long> size,
-    Erasable<String> contentType,
+    @Nullable Long size,
+    @Nullable String contentType,
     @RetainedField String checksum,
     @RetainedField UUID parentApplicationId,
-    Erasable<String> sourceService,
-    Erasable<String> fileSuffix,
-    Erasable<String> originalFilename)
+    @Nullable String sourceService,
+    @Nullable String fileSuffix,
+    @Nullable String originalFilename)
     implements GenesisScoped {
-
-  /** Treats absent content as erased, as in an erased content row or a kept-fields-only read. */
-  public PriorAuthorityDocumentUploadedEvent {
-    size = Erasable.orErased(size);
-    contentType = Erasable.orErased(contentType);
-    sourceService = Erasable.orErased(sourceService);
-    fileSuffix = Erasable.orErased(fileSuffix);
-    originalFilename = Erasable.orErased(originalFilename);
-  }
-
-  /** Creates the event from plain content values. */
-  public PriorAuthorityDocumentUploadedEvent(
-      UUID priorAuthorityId,
-      UUID documentId,
-      Instant uploadedAt,
-      Long size,
-      String contentType,
-      String checksum,
-      UUID parentApplicationId,
-      String sourceService,
-      String fileSuffix,
-      String originalFilename) {
-    this(
-        priorAuthorityId,
-        documentId,
-        uploadedAt,
-        Erasable.of(size),
-        Erasable.of(contentType),
-        checksum,
-        parentApplicationId,
-        Erasable.of(sourceService),
-        Erasable.of(fileSuffix),
-        Erasable.of(originalFilename));
-  }
 
   /** Creates the upload event without a recorded original filename. */
   public PriorAuthorityDocumentUploadedEvent(
@@ -112,5 +79,10 @@ public record PriorAuthorityDocumentUploadedEvent(
   @Override
   public Instant occurredAt() {
     return uploadedAt;
+  }
+
+  @Override
+  public String toString() {
+    return RedactedEventString.of(this);
   }
 }

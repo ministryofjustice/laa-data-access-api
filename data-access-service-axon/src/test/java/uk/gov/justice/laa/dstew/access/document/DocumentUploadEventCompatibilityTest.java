@@ -42,7 +42,7 @@ class DocumentUploadEventCompatibilityTest {
          "sourceService":"CIVIL_APPLY"}
         """;
     var event = objectMapper.readValue(json, PriorAuthorityDocumentUploadedEvent.class);
-    assertThat(event.fileSuffix().isErased()).isTrue();
+    assertThat(event.fileSuffix()).isNull();
     assertThat(event.parentApplicationId())
         .isEqualTo(UUID.fromString("00000000-0000-0000-0000-000000000003"));
   }

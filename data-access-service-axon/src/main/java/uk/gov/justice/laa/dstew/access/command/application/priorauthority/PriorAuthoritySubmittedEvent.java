@@ -5,9 +5,10 @@ import java.util.Set;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
+import org.jspecify.annotations.Nullable;
 import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
+import uk.gov.justice.laa.dstew.access.eventcontent.RedactedEventString;
 import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 
 /**
@@ -32,20 +33,15 @@ public record PriorAuthoritySubmittedEvent(
     @RetainedField Long applicationDataVersion,
     @RetainedField Instant occurredAt,
     @RetainedField String billingType,
-    Erasable<PriorAuthorityContent> content,
-    Erasable<String> serialisedRequest)
+    @Nullable PriorAuthorityContent content,
+    @Nullable String serialisedRequest)
     implements GenesisScoped {
 
-  /**
-   * Normalises a missing (pre-field) {@code applicationDataVersion} to {@code 0L}, and absent
-   * content to erased, as in an erased content row or a kept-fields-only read.
-   */
+  /** Normalises a missing (pre-field) {@code applicationDataVersion} to {@code 0L}. */
   public PriorAuthoritySubmittedEvent {
     if (applicationDataVersion == null) {
       applicationDataVersion = 0L;
     }
-    content = Erasable.orErased(content);
-    serialisedRequest = Erasable.orErased(serialisedRequest);
   }
 
   /** Creates the event without submitted content, as though the content had been erased. */
@@ -67,12 +63,17 @@ public record PriorAuthoritySubmittedEvent(
         applicationDataVersion,
         occurredAt,
         billingType,
-        Erasable.erased(),
-        Erasable.erased());
+        null,
+        null);
   }
 
   @Override
   public Set<UUID> genesisIds() {
     return GenesisScoped.ids(applicationId);
+  }
+
+  @Override
+  public String toString() {
+    return RedactedEventString.of(this);
   }
 }

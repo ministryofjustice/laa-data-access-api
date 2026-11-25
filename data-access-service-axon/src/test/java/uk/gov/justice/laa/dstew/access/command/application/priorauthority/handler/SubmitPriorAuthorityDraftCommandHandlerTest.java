@@ -39,7 +39,6 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertDetails;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
@@ -111,8 +110,8 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
                 3L,
                 OCCURRED_AT,
                 null,
-                Erasable.of(content),
-                Erasable.of("{}")));
+                content,
+                "{}"));
   }
 
   @Test
@@ -178,8 +177,8 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
                 4L,
                 OCCURRED_AT,
                 null,
-                Erasable.of(content),
-                Erasable.of("{}")));
+                content,
+                "{}"));
     verify(jsonSchemaValidator).validate(content, "PriorAuthority.json", 4);
   }
 
@@ -236,8 +235,8 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
                 3L,
                 OCCURRED_AT,
                 BillingType.HOURLY.name(),
-                Erasable.of(content),
-                Erasable.of("{}")));
+                content,
+                "{}"));
   }
 
   @ParameterizedTest

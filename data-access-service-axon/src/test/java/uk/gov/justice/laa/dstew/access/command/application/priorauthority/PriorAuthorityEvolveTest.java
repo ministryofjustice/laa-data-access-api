@@ -15,7 +15,6 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 
 /** Unit tests for {@link PriorAuthorityEvolve}. */
 class PriorAuthorityEvolveTest {
@@ -285,8 +284,8 @@ class PriorAuthorityEvolveTest {
             0L,
             submittedAt,
             "HOURLY",
-            Erasable.of(submitted),
-            Erasable.of("{\"submitted\":true}")));
+            submitted,
+            "{\"submitted\":true}"));
 
     PriorAuthorityDataPayload versionZero =
         new PriorAuthorityDataPayload(
@@ -354,9 +353,8 @@ class PriorAuthorityEvolveTest {
             0L,
             occurredAt,
             null,
-            Erasable.of(
-                new PriorAuthorityContent(PriorAuthorityType.EXPERT, "x", null, null, null)),
-            Erasable.of("{}")));
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "x", null, null, null),
+            "{}"));
     assertThat(erasedDecision.submittedPayload()).isPresent();
     PriorAuthorityEvolve.apply(
         erasedDecision,

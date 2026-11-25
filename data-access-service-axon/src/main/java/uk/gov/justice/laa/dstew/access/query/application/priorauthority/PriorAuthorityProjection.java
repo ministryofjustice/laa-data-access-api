@@ -207,12 +207,12 @@ public class PriorAuthorityProjection {
                       event.documentId(),
                       null,
                       event.uploadedAt(),
-                      event.size().orElse(null),
-                      event.contentType().orElse(null),
+                      event.size(),
+                      event.contentType(),
                       event.checksum(),
-                      event.sourceService().orElse(null),
+                      event.sourceService(),
                       false,
-                      event.fileSuffix().orElse(null)));
+                      event.fileSuffix()));
               current.setUploadedDocuments(List.copyOf(documents));
               current.setModifiedAt(event.uploadedAt());
               repository.save(current);
@@ -236,7 +236,7 @@ public class PriorAuthorityProjection {
         event.priorAuthorityId(),
         event.documentId(),
         event.occurredAt(),
-        document -> document.withDocumentType(event.documentType().orElse(null)));
+        document -> document.withDocumentType(event.documentType()));
   }
 
   /** Records the assignment version after a prior-authority work item is assigned. */

@@ -19,7 +19,6 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.BillingType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityVersionConflictException;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
@@ -111,8 +110,8 @@ class PriorAuthorityDeciderTest {
     assertThat(event.applicationDataVersion()).isEqualTo(4L);
     assertThat(event.occurredAt()).isEqualTo(OCCURRED_AT);
     assertThat(event.billingType()).isEqualTo("FIXED_RATE");
-    assertThat(event.content()).isEqualTo(Erasable.of(SUBMITTED_CONTENT));
-    assertThat(event.serialisedRequest()).isEqualTo(Erasable.of("{\"submit\":1}"));
+    assertThat(event.content()).isEqualTo(SUBMITTED_CONTENT);
+    assertThat(event.serialisedRequest()).isEqualTo("{\"submit\":1}");
   }
 
   @Test
@@ -144,9 +143,8 @@ class PriorAuthorityDeciderTest {
     assertThat(result.get().priorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT.name());
     assertThat(result.get().dataVersion()).isEqualTo(5L);
     assertThat(result.get().overallDecision()).isEqualTo("GRANTED");
-    assertThat(result.get().decisionJustification()).isEqualTo(Erasable.of("Recorded"));
-    assertThat(result.get().serialisedRequest())
-        .isEqualTo(Erasable.of("{\"decision\":\"GRANTED\"}"));
+    assertThat(result.get().decisionJustification()).isEqualTo("Recorded");
+    assertThat(result.get().serialisedRequest()).isEqualTo("{\"decision\":\"GRANTED\"}");
   }
 
   @Test
@@ -464,12 +462,12 @@ class PriorAuthorityDeciderTest {
     assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(event.documentId()).isEqualTo(documentId);
     assertThat(event.uploadedAt()).isEqualTo(OCCURRED_AT);
-    assertThat(event.size().value()).isEqualTo(7L);
-    assertThat(event.contentType().value()).isEqualTo("application/pdf");
+    assertThat(event.size()).isEqualTo(7L);
+    assertThat(event.contentType()).isEqualTo("application/pdf");
     assertThat(event.checksum()).isEqualTo("abc123");
     assertThat(event.parentApplicationId()).isEqualTo(applicationId);
-    assertThat(event.sourceService().value()).isEqualTo("CIVIL_APPLY");
-    assertThat(event.originalFilename().value()).isEqualTo("evidence.pdf");
+    assertThat(event.sourceService()).isEqualTo("CIVIL_APPLY");
+    assertThat(event.originalFilename()).isEqualTo("evidence.pdf");
     assertThat(event.toString()).doesNotContain("evidence.pdf");
   }
 
@@ -504,7 +502,7 @@ class PriorAuthorityDeciderTest {
 
     assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(event.documentId()).isEqualTo(documentId);
-    assertThat(event.documentType().value()).isEqualTo("GATEWAY_EVIDENCE");
+    assertThat(event.documentType()).isEqualTo("GATEWAY_EVIDENCE");
     assertThat(event.occurredAt()).isEqualTo(OCCURRED_AT);
     assertThat(event.parentApplicationId()).isEqualTo(applicationId);
   }

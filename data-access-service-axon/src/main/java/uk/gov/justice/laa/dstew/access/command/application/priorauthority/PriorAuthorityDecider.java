@@ -14,7 +14,6 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityCont
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.document.DocumentFileSuffix;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityVersionConflictException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -67,8 +66,8 @@ public final class PriorAuthorityDecider {
         applicationDataVersion,
         command.occurredAt(),
         billingType,
-        Erasable.of(submitted.content()),
-        Erasable.of(submitted.serialisedRequest()));
+        submitted.content(),
+        submitted.serialisedRequest());
   }
 
   /**
@@ -216,9 +215,9 @@ public final class PriorAuthorityDecider {
     return new PriorAuthorityDocumentTypeUpdatedEvent(
         command.priorAuthorityId(),
         command.documentId(),
-        Erasable.of(command.documentType()),
+        command.documentType(),
         command.occurredAt(),
         applicationId,
-        Erasable.of(command.serialisedRequest()));
+        command.serialisedRequest());
   }
 }

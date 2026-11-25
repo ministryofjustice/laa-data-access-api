@@ -39,7 +39,6 @@ import uk.gov.justice.laa.dstew.access.command.EventTypes;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventContentSeparator;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventJson;
 
@@ -224,14 +223,14 @@ class LifecycleStreamReaderTest {
                           "EXPERT",
                           3L,
                           "GRANTED",
-                          Erasable.erased(),
-                          Erasable.erased(),
-                          Erasable.erased(),
+                          null,
+                          null,
+                          null,
                           OCCURRED_AT,
-                          Erasable.erased(),
-                          Erasable.erased(),
-                          Erasable.erased(),
-                          Erasable.erased()));
+                          null,
+                          null,
+                          null,
+                          null));
               assertThat(event.metadata()).containsEntry("X-Service-Name", "CIVIL_APPLY");
             });
   }

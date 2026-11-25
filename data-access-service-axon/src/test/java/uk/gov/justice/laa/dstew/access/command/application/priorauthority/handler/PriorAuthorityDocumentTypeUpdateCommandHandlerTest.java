@@ -27,7 +27,6 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -67,10 +66,10 @@ class PriorAuthorityDocumentTypeUpdateCommandHandlerTest {
             new PriorAuthorityDocumentTypeUpdatedEvent(
                 priorAuthorityId,
                 documentId,
-                Erasable.of("GATEWAY_EVIDENCE"),
+                "GATEWAY_EVIDENCE",
                 OCCURRED_AT,
                 applicationId,
-                Erasable.of("new")));
+                "new"));
   }
 
   @Test

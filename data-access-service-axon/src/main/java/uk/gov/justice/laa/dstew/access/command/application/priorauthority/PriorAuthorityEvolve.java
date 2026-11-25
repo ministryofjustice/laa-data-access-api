@@ -65,7 +65,7 @@ public final class PriorAuthorityEvolve {
     state.decided = true;
     // The request is always present with decision content; the other parts may be null.
     state.submission =
-        state.submission.isErased() || event.serialisedRequest().isErased()
+        state.submission.isErased() || event.serialisedRequest() == null
             ? Erasable.erased()
             : Erasable.of(
                 state
@@ -74,13 +74,13 @@ public final class PriorAuthorityEvolve {
                     .withDecision(
                         new PriorAuthorityDataPayload.DecisionDetails(
                             event.overallDecision(),
-                            event.decisionJustification().orElse(null),
-                            event.amountGranted().orElse(null),
-                            event.dateGranted().orElse(null),
-                            event.expertFee().orElse(null),
-                            event.disbursementInformation().orElse(null),
-                            event.apportionmentInformation().orElse(null),
-                            event.serialisedRequest().value())));
+                            event.decisionJustification(),
+                            event.amountGranted(),
+                            event.dateGranted(),
+                            event.expertFee(),
+                            event.disbursementInformation(),
+                            event.apportionmentInformation(),
+                            event.serialisedRequest())));
   }
 
   /** Applies a generic direct PA assignment. */
@@ -102,13 +102,13 @@ public final class PriorAuthorityEvolve {
             event.documentId(),
             null,
             event.uploadedAt(),
-            event.size().orElse(null),
-            event.contentType().orElse(null),
+            event.size(),
+            event.contentType(),
             event.checksum(),
-            event.sourceService().orElse(null),
+            event.sourceService(),
             false,
-            event.fileSuffix().orElse(null)));
-    state.documentFilenames.put(event.documentId(), event.originalFilename());
+            event.fileSuffix()));
+    state.documentFilenames.put(event.documentId(), Erasable.of(event.originalFilename()));
   }
 
   /** Applies a {@link PriorAuthorityDocumentDeletedEvent} to the given state. */
@@ -124,26 +124,26 @@ public final class PriorAuthorityEvolve {
   /** Applies a {@link PriorAuthorityDocumentTypeUpdatedEvent} to the given state. */
   public static void apply(
       PriorAuthorityState state, PriorAuthorityDocumentTypeUpdatedEvent event) {
-    state.draftSerialisedRequest = event.serialisedRequest();
+    state.draftSerialisedRequest = Erasable.of(event.serialisedRequest());
     state.draftModifiedAt = event.occurredAt();
     state.uploadedDocuments.replaceAll(
         document ->
             document.documentId().equals(event.documentId())
-                ? document.withDocumentType(event.documentType().orElse(null))
+                ? document.withDocumentType(event.documentType())
                 : document);
   }
 
   private static Erasable<PriorAuthorityDataPayload> submittedContent(
       PriorAuthorityState state, PriorAuthoritySubmittedEvent event) {
-    if (event.content().isErased() || event.serialisedRequest().isErased()) {
+    if (event.content() == null || event.serialisedRequest() == null) {
       return Erasable.erased();
     }
     return Erasable.of(
         new PriorAuthorityDataPayload(
             event.priorAuthorityId(),
             event.applicationId(),
-            event.content().value(),
-            event.serialisedRequest().value(),
+            event.content(),
+            event.serialisedRequest(),
             event.occurredAt(),
             null,
             state.officeCode,

@@ -13,7 +13,6 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decisi
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventContentSeparator;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventJson;
 
@@ -44,9 +43,8 @@ class PriorAuthorityEventContentTest {
             3L,
             AT,
             "HOURLY",
-            Erasable.of(
-                new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Jane Doe", null, null, null)),
-            Erasable.of("{\"justification\":\"Jane Doe\"}"));
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Jane Doe", null, null, null),
+            "{\"justification\":\"Jane Doe\"}");
 
     var split = separator.separate("access.PriorAuthoritySubmitted", tree(event));
 
