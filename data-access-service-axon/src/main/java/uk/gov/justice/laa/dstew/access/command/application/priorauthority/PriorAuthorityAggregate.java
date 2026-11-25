@@ -64,9 +64,10 @@ public class PriorAuthorityAggregate implements OfficeCodeOwned {
     this.priorAuthorityId = state.priorAuthorityId;
   }
 
-  /** Advances stream concurrency without changing the externally stored draft content. */
   @EventSourcingHandler
-  void on(PriorAuthorityDraftUpdatedEvent event) {}
+  void on(PriorAuthorityDraftUpdatedEvent event) {
+    PriorAuthorityEvolve.apply(state, event);
+  }
 
   @EventSourcingHandler
   void on(PriorAuthoritySubmittedEvent event) {

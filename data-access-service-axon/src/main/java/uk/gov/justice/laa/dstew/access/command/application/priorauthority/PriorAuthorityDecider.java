@@ -10,9 +10,11 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.MakePriorAuthorityDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.BillingType;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.document.DocumentFileSuffix;
+import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityVersionConflictException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -34,7 +36,9 @@ public final class PriorAuthorityDecider {
         priorAuthorityType,
         command.schemaVersion(),
         command.occurredAt(),
-        officeCode);
+        officeCode,
+        Erasable.of(command.content()),
+        Erasable.of(command.serialisedRequest()));
   }
 
   /**
@@ -63,14 +67,29 @@ public final class PriorAuthorityDecider {
   }
 
   /**
-   * Returns a {@link PriorAuthorityDraftUpdatedEvent} — a thin, PII-free pointer with no draft
-   * content — for a draft-body update. It exists to seal the write through the aggregate's
-   * optimistic-concurrency gate.
+   * Returns a {@link PriorAuthorityDraftUpdatedEvent} carrying the replacement draft content. The
+   * prior-authority type is fixed when the draft starts, so it overrides any type in the update.
    */
   public static PriorAuthorityDraftUpdatedEvent decideDraftUpdated(
-      UpdatePriorAuthorityDraftCommand command, UUID applicationId) {
+      UpdatePriorAuthorityDraftCommand command,
+      PriorAuthorityState state,
+      PriorAuthorityContent content) {
     return new PriorAuthorityDraftUpdatedEvent(
-        command.priorAuthorityId(), applicationId, command.occurredAt());
+        command.priorAuthorityId(),
+        state.applicationId,
+        command.occurredAt(),
+        Erasable.of(content),
+        Erasable.of(command.serialisedRequest()));
+  }
+
+  /** Preserves the draft type established when the draft was opened. */
+  public static PriorAuthorityContent updatedDraftContent(
+      UpdatePriorAuthorityDraftCommand command, PriorAuthorityState state) {
+    return state.priorAuthorityType == null
+        ? command.content()
+        : command
+            .content()
+            .withPriorAuthorityType(PriorAuthorityType.valueOf(state.priorAuthorityType));
   }
 
   /**
@@ -188,7 +207,8 @@ public final class PriorAuthorityDecider {
         command.checksum(),
         applicationId,
         command.sourceService(),
-        DocumentFileSuffix.fromFilename(command.originalFilename()));
+        DocumentFileSuffix.fromFilename(command.originalFilename()),
+        command.originalFilename());
   }
 
   /** Returns the persisted event for removing a prior-authority document. */
@@ -204,8 +224,9 @@ public final class PriorAuthorityDecider {
     return new PriorAuthorityDocumentTypeUpdatedEvent(
         command.priorAuthorityId(),
         command.documentId(),
-        command.documentType(),
+        Erasable.of(command.documentType()),
         command.occurredAt(),
-        applicationId);
+        applicationId,
+        Erasable.of(command.serialisedRequest()));
   }
 }

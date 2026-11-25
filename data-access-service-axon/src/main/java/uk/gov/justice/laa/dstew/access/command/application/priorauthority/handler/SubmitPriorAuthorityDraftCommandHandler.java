@@ -28,17 +28,18 @@ public class SubmitPriorAuthorityDraftCommandHandler {
   @RequireWriteAccess(resolver = OfficeCodeResourceWriteAccessResolver.class)
   public void handle(
       @AuthenticatedCallerResource SubmitPriorAuthorityDraftCommand command,
-      PriorAuthorityDraftStore draftStore,
       PriorAuthorityDataStore dataStore,
       ApplicationDataStore applicationDataStore,
       JsonSchemaValidator jsonSchemaValidator,
       @InjectEntity(idProperty = "priorAuthorityId") @WriteAccessResolverResource
           PriorAuthorityAggregate priorAuthority,
+      PriorAuthorityDraftStore draftStore,
       EventAppender eventAppender) {
 
     PriorAuthorityDataPayload payload =
-        draftStore
-            .find(command.priorAuthorityId())
+        priorAuthority
+            .getState()
+            .draft()
             .orElseThrow(
                 () ->
                     new ResourceNotFoundException(
@@ -65,7 +66,6 @@ public class SubmitPriorAuthorityDraftCommandHandler {
             priorAuthority.getState(),
             applicationDataVersion,
             billingTypeOf(payload.content())));
-
     draftStore.delete(command.priorAuthorityId());
   }
 

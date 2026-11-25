@@ -15,11 +15,13 @@ public record PriorAuthorityDocumentTypeUpdatedEvent(
     UUID documentId,
     Erasable<String> documentType,
     Instant occurredAt,
-    UUID parentApplicationId)
+    UUID parentApplicationId,
+    Erasable<String> serialisedRequest)
     implements GenesisScoped {
 
   public PriorAuthorityDocumentTypeUpdatedEvent {
     documentType = Erasable.orErased(documentType);
+    serialisedRequest = Erasable.orErased(serialisedRequest);
   }
 
   /** Creates the event from plain content values. */
@@ -29,7 +31,13 @@ public record PriorAuthorityDocumentTypeUpdatedEvent(
       String documentType,
       Instant occurredAt,
       UUID parentApplicationId) {
-    this(priorAuthorityId, documentId, Erasable.of(documentType), occurredAt, parentApplicationId);
+    this(
+        priorAuthorityId,
+        documentId,
+        Erasable.of(documentType),
+        occurredAt,
+        parentApplicationId,
+        Erasable.erased());
   }
 
   /** Events stored before {@code parentApplicationId} was recorded name no genesis. */

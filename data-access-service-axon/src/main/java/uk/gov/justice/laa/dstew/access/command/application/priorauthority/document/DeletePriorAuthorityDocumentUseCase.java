@@ -2,11 +2,13 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority.docum
 
 import java.time.Instant;
 import java.util.UUID;
+import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.FindPriorAuthorityDraftQuery;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentDeleteCommand;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDraftSummary;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
@@ -17,7 +19,7 @@ import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 /** Marks a prior-authority draft document deleted and then attempts SDS file deletion. */
 @Component
 public class DeletePriorAuthorityDocumentUseCase {
-  private final PriorAuthorityDraftStore draftStore;
+  private final QueryGateway queryGateway;
   private final RetryingCommandDispatcher dispatcher;
   private final SdsService sdsService;
   private final ErrorReporter errorReporter;
@@ -27,20 +29,18 @@ public class DeletePriorAuthorityDocumentUseCase {
    * Sentry reporting explicitly.
    */
   public DeletePriorAuthorityDocumentUseCase(
-      PriorAuthorityDraftStore draftStore,
-      RetryingCommandDispatcher dispatcher,
-      SdsService sdsService) {
-    this(draftStore, dispatcher, sdsService, new ErrorReporter());
+      QueryGateway queryGateway, RetryingCommandDispatcher dispatcher, SdsService sdsService) {
+    this(queryGateway, dispatcher, sdsService, new ErrorReporter());
   }
 
   /** Creates the use case with draft lookup, command dispatch, and SDS dependencies. */
   @Autowired
   public DeletePriorAuthorityDocumentUseCase(
-      PriorAuthorityDraftStore draftStore,
+      QueryGateway queryGateway,
       RetryingCommandDispatcher dispatcher,
       SdsService sdsService,
       ErrorReporter errorReporter) {
-    this.draftStore = draftStore;
+    this.queryGateway = queryGateway;
     this.dispatcher = dispatcher;
     this.sdsService = sdsService;
     this.errorReporter = errorReporter;
@@ -49,14 +49,17 @@ public class DeletePriorAuthorityDocumentUseCase {
   /** Records the deletion durably before attempting best-effort SDS deletion. */
   @AllowApiCaseworker
   public void execute(UUID priorAuthorityId, UUID documentId, AuthenticatedCaller caller) {
-    var draft =
-        draftStore
-            .find(priorAuthorityId)
-            .orElseThrow(
-                () ->
-                    new ResourceNotFoundException(
-                        "Prior Authority %s not found".formatted(priorAuthorityId)));
-    String originalFileName = draft.documentFilenames().get(documentId);
+    PriorAuthorityDraftSummary draft =
+        queryGateway
+            .query(
+                new FindPriorAuthorityDraftQuery(priorAuthorityId, documentId),
+                PriorAuthorityDraftSummary.class)
+            .join();
+    if (draft == null || !draft.exists()) {
+      throw new ResourceNotFoundException(
+          "Prior Authority %s not found".formatted(priorAuthorityId));
+    }
+    String originalFileName = draft.originalFilename();
     DocumentMetadata document =
         dispatcher.dispatch(
             new PriorAuthorityDocumentDeleteCommand(
