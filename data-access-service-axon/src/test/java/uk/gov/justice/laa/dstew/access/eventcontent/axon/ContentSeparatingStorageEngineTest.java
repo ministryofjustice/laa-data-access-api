@@ -1,29 +1,32 @@
 package uk.gov.justice.laa.dstew.access.eventcontent.axon;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import org.axonframework.common.infra.ComponentDescriptor;
 import org.axonframework.conversion.jackson.JacksonConverter;
 import org.axonframework.eventsourcing.eventstore.AppendCondition;
+import org.axonframework.eventsourcing.eventstore.ConsistencyMarker;
 import org.axonframework.eventsourcing.eventstore.EventStorageEngine;
 import org.axonframework.eventsourcing.eventstore.GenericTaggedEventMessage;
+import org.axonframework.eventsourcing.eventstore.GlobalIndexConsistencyMarker;
 import org.axonframework.eventsourcing.eventstore.SourcingCondition;
 import org.axonframework.eventsourcing.eventstore.TaggedEventMessage;
+import org.axonframework.eventsourcing.eventstore.TerminalEventMessage;
+import org.axonframework.messaging.core.Context;
 import org.axonframework.messaging.core.MessageStream;
 import org.axonframework.messaging.core.MessageType;
 import org.axonframework.messaging.eventhandling.EventMessage;
@@ -36,6 +39,7 @@ import org.axonframework.messaging.eventstreaming.StreamingCondition;
 import org.axonframework.messaging.eventstreaming.Tag;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.ObjectNode;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.eventcontent.ContentTestEvent;
@@ -79,7 +83,6 @@ class ContentSeparatingStorageEngineTest {
         .satisfies(
             row -> {
               assertThat(row.eventId()).isEqualTo(event.identifier());
-              assertThat(row.tags()).containsExactly("applicationId=a-1");
               assertThat(row.content().get("note").asString()).isEqualTo("secret");
             });
     ArgumentCaptor<List<TaggedEventMessage<?>>> appended = ArgumentCaptor.forClass(List.class);
@@ -114,67 +117,92 @@ class ContentSeparatingStorageEngineTest {
   }
 
   @Test
-  void givenStoredEvents_whenSourced_thenContentIsRejoinedWhereItExists() {
-    String id = UUID.randomUUID().toString();
-    EventMessage withContent = keptOnly(new ContentTestEvent(id, "secret"));
-    EventMessage erased = keptOnly(new ContentTestEvent(id, null));
+  void givenStoredEvents_whenSourced_thenContentIsRejoinedByEventIdInOneLookup() {
+    EventMessage withContent = keptOnly(UUID.randomUUID().toString(), "secret");
+    EventMessage erased = keptOnly(UUID.randomUUID().toString(), "gone");
     EventMessage keptFieldsOnly = new GenericEventMessage(new MessageType(ASSIGNED), new byte[0]);
-    EventMessage empty = new GenericEventMessage(new MessageType(ContentTestEvent.TYPE), null);
-    ObjectNode content = json.mapper().createObjectNode().put("note", "secret");
-    when(store.findByTags(Set.of("applicationId=a-1")))
+    List<String> contentEventIds = List.of(withContent.identifier(), erased.identifier());
+    when(store.findByEventIds(contentEventIds))
         .thenReturn(
             Map.of(
                 withContent.identifier(),
-                content,
+                json.mapper().createObjectNode().put("note", "secret"),
                 erased.identifier(),
-                json.mapper().createObjectNode(),
-                empty.identifier(),
-                content));
+                json.mapper().createObjectNode()));
     SourcingCondition condition = SourcingCondition.conditionFor(EventCriteria.havingTags(TAG));
     when(delegate.source(condition, null))
-        .thenReturn(MessageStream.fromItems(withContent, erased, keptFieldsOnly, empty));
+        .thenReturn(MessageStream.fromItems(withContent, erased, keptFieldsOnly));
 
     MessageStream<EventMessage> sourced = engine.source(condition, null);
 
-    assertThat(note(sourced.next().orElseThrow().message())).isEqualTo("secret");
-    assertThat(note(sourced.next().orElseThrow().message())).isNull();
+    assertThat(payload(sourced.next().orElseThrow().message()).get("note").asString())
+        .isEqualTo("secret");
+    assertThat(payload(sourced.next().orElseThrow().message()).has("note")).isFalse();
     assertThat(sourced.next().orElseThrow().message()).isSameAs(keptFieldsOnly);
-    assertThat(sourced.next().orElseThrow().message().payload()).isNull();
-    verify(store, never()).findByEventId(any());
+    verify(store).findByEventIds(contentEventIds);
+    verifyNoMoreInteractions(store);
   }
 
   @Test
-  void givenEventCommittedAfterTheTagRead_whenSourced_thenItsContentIsFoundByEventId() {
-    EventMessage later = keptOnly(new ContentTestEvent(UUID.randomUUID().toString(), "later"));
-    when(store.findByTags(Set.of("applicationId=a-1"))).thenReturn(Map.of());
-    when(store.findByEventId(later.identifier()))
-        .thenReturn(Optional.of(json.mapper().createObjectNode().put("note", "later")));
+  void givenTerminalEntry_whenSourced_thenItAndItsContextArePreserved() {
+    EventMessage event = keptOnly(UUID.randomUUID().toString(), "secret");
+    ConsistencyMarker marker = new GlobalIndexConsistencyMarker(42);
+    when(store.findByEventIds(List.of(event.identifier())))
+        .thenReturn(
+            Map.of(event.identifier(), json.mapper().createObjectNode().put("note", "secret")));
     SourcingCondition condition = SourcingCondition.conditionFor(EventCriteria.havingTags(TAG));
-    when(delegate.source(condition, null)).thenReturn(MessageStream.fromItems(later));
+    when(delegate.source(condition, null))
+        .thenReturn(
+            MessageStream.<EventMessage>fromItems(event)
+                .concatWith(
+                    MessageStream.just(
+                        TerminalEventMessage.INSTANCE,
+                        terminal -> Context.with(ConsistencyMarker.RESOURCE_KEY, marker))));
 
     MessageStream<EventMessage> sourced = engine.source(condition, null);
 
-    assertThat(note(sourced.next().orElseThrow().message())).isEqualTo("later");
+    assertThat(payload(sourced.next().orElseThrow().message()).get("note").asString())
+        .isEqualTo("secret");
+    var last = sourced.next().orElseThrow();
+    assertThat(last.message()).isSameAs(TerminalEventMessage.INSTANCE);
+    assertThat(last.getResource(ConsistencyMarker.RESOURCE_KEY)).isSameAs(marker);
+    assertThat(sourced.next()).isEmpty();
   }
 
   @Test
   void givenEventWithContentFieldsAndNoContentRow_whenSourced_thenFails() {
-    EventMessage lost = keptOnly(new ContentTestEvent(UUID.randomUUID().toString(), "lost"));
-    when(store.findByTags(Set.of("applicationId=a-1"))).thenReturn(Map.of());
-    when(store.findByEventId(lost.identifier())).thenReturn(Optional.empty());
+    EventMessage lost = keptOnly(UUID.randomUUID().toString(), "lost");
     SourcingCondition condition = SourcingCondition.conditionFor(EventCriteria.havingTags(TAG));
     when(delegate.source(condition, null)).thenReturn(MessageStream.fromItems(lost));
 
     MessageStream<EventMessage> sourced = engine.source(condition, null);
 
-    assertThatThrownBy(sourced::next)
-        .isInstanceOf(MissingEventContentException.class)
-        .hasMessage(
-            "Event "
-                + lost.identifier()
-                + " of type "
-                + ContentTestEvent.TYPE
-                + " has no content row");
+    assertThat(sourced.error())
+        .hasValueSatisfying(
+            error ->
+                assertThat(error)
+                    .isInstanceOf(MissingEventContentException.class)
+                    .hasMessage(
+                        "Event "
+                            + lost.identifier()
+                            + " of type "
+                            + ContentTestEvent.TYPE
+                            + " has no content row"));
+  }
+
+  @Test
+  void givenEventsWithoutContent_whenSourced_thenNoContentIsLookedUp() {
+    EventMessage keptFieldsOnly = new GenericEventMessage(new MessageType(ASSIGNED), new byte[0]);
+    EventMessage empty = new GenericEventMessage(new MessageType(ContentTestEvent.TYPE), null);
+    SourcingCondition condition = SourcingCondition.conditionFor(EventCriteria.havingTags(TAG));
+    when(delegate.source(condition, null))
+        .thenReturn(MessageStream.fromItems(keptFieldsOnly, empty));
+
+    MessageStream<EventMessage> sourced = engine.source(condition, null);
+
+    assertThat(sourced.next().orElseThrow().message()).isSameAs(keptFieldsOnly);
+    assertThat(sourced.next().orElseThrow().message()).isSameAs(empty);
+    verifyNoInteractions(store);
   }
 
   @Test
@@ -201,15 +229,15 @@ class ContentSeparatingStorageEngineTest {
     return new GenericEventMessage(new MessageType(ContentTestEvent.TYPE), payload);
   }
 
-  private EventMessage keptOnly(ContentTestEvent event) {
-    ObjectNode payload = (ObjectNode) json.mapper().valueToTree(event);
+  private EventMessage keptOnly(String id, String note) {
+    ObjectNode payload = json.mapper().createObjectNode().put("id", id).put("note", note);
     byte[] kept =
         converter.convert(separator.separate(ContentTestEvent.TYPE, payload).kept(), byte[].class);
     return message(kept);
   }
 
-  private String note(EventMessage message) {
-    return converter.convert(message.payload(), ContentTestEvent.class).note();
+  private JsonNode payload(EventMessage message) {
+    return converter.convert(message.payload(), JsonNode.class);
   }
 
   private static TaggedEventMessage<?> tagged(EventMessage event) {

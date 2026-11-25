@@ -3,7 +3,6 @@ package uk.gov.justice.laa.dstew.access.testsupport;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -38,15 +37,11 @@ public class InMemoryEventContentStoreConfig {
     }
 
     @Override
-    public Map<String, ObjectNode> findByTags(Collection<String> tags) {
-      return rows.values().stream()
-          .filter(row -> row.tags().stream().anyMatch(tags::contains))
-          .collect(Collectors.toMap(ContentRow::eventId, row -> row.content().deepCopy()));
-    }
-
-    @Override
-    public Optional<ObjectNode> findByEventId(String eventId) {
-      return Optional.ofNullable(rows.get(eventId)).map(row -> row.content().deepCopy());
+    public Map<String, ObjectNode> findByEventIds(Collection<String> eventIds) {
+      return eventIds.stream()
+          .distinct()
+          .filter(rows::containsKey)
+          .collect(Collectors.toMap(id -> id, id -> rows.get(id).content().deepCopy()));
     }
 
     @Override
@@ -58,8 +53,7 @@ public class InMemoryEventContentStoreConfig {
               id ->
                   rows.computeIfPresent(
                       id,
-                      (key, row) ->
-                          new ContentRow(key, row.tags(), JsonNodeFactory.instance.objectNode())));
+                      (key, row) -> new ContentRow(key, JsonNodeFactory.instance.objectNode())));
     }
   }
 }

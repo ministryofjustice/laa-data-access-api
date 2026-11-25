@@ -5,8 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import org.axonframework.conversion.jackson.JacksonConverter;
@@ -69,10 +69,12 @@ class ContentReadingEventSourceTest {
     EventMessage withContent = message(json.mapper().createObjectNode().put("id", "1"));
     EventMessage erased = message(json.mapper().createObjectNode().put("id", "2"));
     EventMessage empty = message(null);
-    when(store.findByEventId(withContent.identifier()))
-        .thenReturn(Optional.of(json.mapper().createObjectNode().put("note", "secret")));
-    when(store.findByEventId(erased.identifier()))
-        .thenReturn(Optional.of(json.mapper().createObjectNode()));
+    when(store.findByEventIds(List.of(withContent.identifier())))
+        .thenReturn(
+            Map.of(
+                withContent.identifier(), json.mapper().createObjectNode().put("note", "secret")));
+    when(store.findByEventIds(List.of(erased.identifier())))
+        .thenReturn(Map.of(erased.identifier(), json.mapper().createObjectNode()));
     StreamingCondition condition = StreamingCondition.startingFrom(null);
     when(delegate.open(condition, null))
         .thenReturn(MessageStream.fromItems(withContent, erased, empty));
@@ -88,7 +90,7 @@ class ContentReadingEventSourceTest {
   @Test
   void givenEventWithContentFieldsAndNoContentRow_whenOpened_thenFails() {
     EventMessage lost = message(json.mapper().createObjectNode().put("id", "3"));
-    when(store.findByEventId(lost.identifier())).thenReturn(Optional.empty());
+    when(store.findByEventIds(List.of(lost.identifier()))).thenReturn(Map.of());
     StreamingCondition condition = StreamingCondition.startingFrom(null);
     when(delegate.open(condition, null)).thenReturn(MessageStream.fromItems(lost));
 

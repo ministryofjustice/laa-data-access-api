@@ -386,8 +386,6 @@ class PostgresAxonIntegrationTest {
                 "DELETE FROM axon.event_content WHERE event_id = ?",
                 "UPDATE axon.event_content SET content = '{}'::jsonb WHERE event_id = ?",
                 "UPDATE axon.event_content SET content = '{}'::jsonb, erased_at = now(),"
-                    + " tags = '{other=1}' WHERE event_id = ?",
-                "UPDATE axon.event_content SET content = '{}'::jsonb, erased_at = now(),"
                     + " created_at = now() - interval '1 day' WHERE event_id = ?"))
         .allSatisfy(
             statement ->
@@ -409,6 +407,22 @@ class PostgresAxonIntegrationTest {
   }
 
   @Test
+  void givenMigratedDatabase_whenEventContentInspected_thenItHasNoTags() {
+    assertThat(
+            jdbcTemplate.queryForList(
+                "SELECT column_name FROM information_schema.columns"
+                    + " WHERE table_schema = 'axon' AND table_name = 'event_content'",
+                String.class))
+        .containsExactlyInAnyOrder("event_id", "content", "created_at", "erased_at");
+    assertThat(
+            jdbcTemplate.queryForList(
+                "SELECT indexname FROM pg_indexes"
+                    + " WHERE schemaname = 'axon' AND tablename = 'event_content'",
+                String.class))
+        .doesNotContain("event_content_tags_idx");
+  }
+
+  @Test
   void givenContentRowLost_whenAggregateSourced_thenFailsInsteadOfLoadingAsErased() {
     UUID applicationId = UUID.randomUUID();
     createDocumentDraft(applicationId);
@@ -416,9 +430,7 @@ class PostgresAxonIntegrationTest {
     String eventId = uploadedEventIds(applicationId).getFirst();
     Map<String, Object> row =
         jdbcTemplate.queryForMap(
-            "SELECT tags::text AS tags, content::text AS content FROM axon.event_content"
-                + " WHERE event_id = ?",
-            eventId);
+            "SELECT content::text AS content FROM axon.event_content WHERE event_id = ?", eventId);
     // Rows cannot be deleted, so bypass the guard to simulate a lost row.
     jdbcTemplate.execute(
         "ALTER TABLE axon.event_content DISABLE TRIGGER event_content_immutable;"
@@ -434,10 +446,8 @@ class PostgresAxonIntegrationTest {
     } finally {
       // Restore the row so event processors that read content are not left stuck.
       jdbcTemplate.update(
-          "INSERT INTO axon.event_content (event_id, tags, content)"
-              + " VALUES (?, ?::text[], ?::jsonb)",
+          "INSERT INTO axon.event_content (event_id, content) VALUES (?, ?::jsonb)",
           eventId,
-          row.get("tags"),
           row.get("content"));
     }
     assertThat(uploadedEventIds(applicationId)).hasSize(1);

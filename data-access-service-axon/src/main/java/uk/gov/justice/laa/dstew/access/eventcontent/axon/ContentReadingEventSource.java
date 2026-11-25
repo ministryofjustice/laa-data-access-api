@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.eventcontent.axon;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import org.axonframework.messaging.core.MessageStream;
@@ -10,6 +11,7 @@ import org.axonframework.messaging.eventhandling.conversion.EventConverter;
 import org.axonframework.messaging.eventhandling.processing.streaming.token.TrackingToken;
 import org.axonframework.messaging.eventstreaming.StreamableEventSource;
 import org.axonframework.messaging.eventstreaming.StreamingCondition;
+import tools.jackson.databind.node.ObjectNode;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventContentSeparator;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventContentStore;
 import uk.gov.justice.laa.dstew.access.eventcontent.ReadsEventContent;
@@ -64,15 +66,13 @@ public final class ContentReadingEventSource implements StreamableEventSource {
     if (message.payload() == null) {
       return message;
     }
-    return store
-        .get()
-        .findByEventId(message.identifier())
-        .map(content -> ContentJoin.join(message, content, separator, converter))
-        .orElseGet(
-            () -> {
-              separator.get().requireNoContentFields(message.type().name(), message.identifier());
-              return message;
-            });
+    ObjectNode content =
+        store.get().findByEventIds(List.of(message.identifier())).get(message.identifier());
+    if (content == null) {
+      separator.get().requireNoContentFields(message.type().name(), message.identifier());
+      return message;
+    }
+    return ContentJoin.join(message, content, separator, converter);
   }
 
   @Override

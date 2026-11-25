@@ -3,8 +3,6 @@ package uk.gov.justice.laa.dstew.access.eventcontent;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
 import tools.jackson.databind.node.ObjectNode;
 
 /**
@@ -14,20 +12,22 @@ import tools.jackson.databind.node.ObjectNode;
  */
 public interface EventContentStore {
 
-  /** One event's content and the stream tags used to find it when sourcing. */
-  record ContentRow(String eventId, Set<String> tags, ObjectNode content) {}
+  /** One event's content, keyed by the event's identifier. */
+  record ContentRow(String eventId, ObjectNode content) {}
 
   void save(List<ContentRow> rows);
 
-  /** Returns content keyed by event id for every event carrying any of the given tags. */
-  Map<String, ObjectNode> findByTags(Collection<String> tags);
-
-  Optional<ObjectNode> findByEventId(String eventId);
+  /**
+   * Returns content keyed by event id for those of the given events that have a content row. Events
+   * without one are absent from the result.
+   */
+  Map<String, ObjectNode> findByEventIds(Collection<String> eventIds);
 
   /**
    * Hard-erases the content of the given events: replaces it with an empty object and records when
-   * it was erased. The rows are kept, so a missing row is never mistaken for erased content.
-   * Content already erased is left unchanged.
+   * it was erased. The rows are kept, so a missing row is never mistaken for erased content; the
+   * table's trigger allows this as the only change to a row. Content already erased is left
+   * unchanged.
    */
   void erase(Collection<String> eventIds);
 }
