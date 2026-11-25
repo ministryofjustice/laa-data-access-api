@@ -53,7 +53,7 @@ public class MakePriorAuthorityDecisionCommandMapper {
     return value == null
         ? null
         : ApportionmentInformation.builder()
-            .newClientShareAmount(value.getNewClientShareAmount())
+            .grantedClientShareAmount(value.getGrantedClientShareAmount())
             .build();
   }
 
@@ -61,15 +61,15 @@ public class MakePriorAuthorityDecisionCommandMapper {
       DisbursementMakePriorAuthorityDecisionRequest value) {
     return value == null
         ? null
-        : DisbursementInformation.builder().newAmount(value.getNewAmount()).build();
+        : DisbursementInformation.builder().grantedAmount(value.getGrantedAmount()).build();
   }
 
   private ExpertFeeInformation expertFeeInformation(ExpertMakePriorAuthorityDecisionRequest value) {
     return value == null
         ? null
         : ExpertFeeInformation.builder()
-            .newFixedRateAmount(value.getNewFixedRateAmount())
-            .newHourlyRateAmount(value.getNewHourlyRateAmount())
+            .grantedFixedRateAmount(value.getGrantedFixedRateAmount())
+            .grantedHourlyRateAmount(value.getGrantedHourlyRateAmount())
             .grantedTime(toTimeRequested(value.getGrantedTime()))
             .build();
   }

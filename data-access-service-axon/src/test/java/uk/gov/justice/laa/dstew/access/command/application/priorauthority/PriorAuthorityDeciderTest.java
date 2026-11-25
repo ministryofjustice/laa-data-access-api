@@ -174,7 +174,7 @@ class PriorAuthorityDeciderTest {
     state.billingType = BillingType.FIXED_RATE.name();
     MakePriorAuthorityDecisionCommand command =
         decisionCommand(
-            state, ExpertFeeInformation.builder().newFixedRateAmount(BigDecimal.TEN).build());
+            state, ExpertFeeInformation.builder().grantedFixedRateAmount(BigDecimal.TEN).build());
 
     Optional<PriorAuthorityDecisionMadeEvent> result =
         PriorAuthorityDecider.decideDecision(state, command);
