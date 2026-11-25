@@ -137,8 +137,7 @@ public final class PriorAuthorityDecider {
         command.occurredAt(),
         command.expertFee(),
         command.disbursementInformation(),
-        command.apportionmentInformation(),
-        command.serialisedRequest());
+        command.apportionmentInformation());
   }
 
   private static PriorAuthorityStatus statusOf(PriorAuthorityState state) {

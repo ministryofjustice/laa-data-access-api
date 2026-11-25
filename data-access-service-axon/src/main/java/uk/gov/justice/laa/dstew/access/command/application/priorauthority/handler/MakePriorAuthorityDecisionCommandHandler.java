@@ -42,8 +42,7 @@ public class MakePriorAuthorityDecisionCommandHandler {
                           command.dateGranted(),
                           command.expertFee(),
                           command.disbursementInformation(),
-                          command.apportionmentInformation(),
-                          command.serialisedRequest())),
+                          command.apportionmentInformation())),
                   command.occurredAt());
               eventAppender.append(event);
             });

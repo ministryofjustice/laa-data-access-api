@@ -15,7 +15,7 @@ import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 
 /**
  * Event raised when a terminal decision is made against a PriorAuthority submission. The decision
- * details and raw request are erasable content; the outcome and data version are kept.
+ * details are erasable content; the outcome and data version are kept.
  */
 @Event(namespace = "access", name = "PriorAuthorityDecisionMade")
 public record PriorAuthorityDecisionMadeEvent(
@@ -30,11 +30,10 @@ public record PriorAuthorityDecisionMadeEvent(
     @RetainedField Instant occurredAt,
     @Nullable ExpertFeeInformation expertFee,
     @Nullable DisbursementInformation disbursementInformation,
-    @Nullable ApportionmentInformation apportionmentInformation,
-    @Nullable String serialisedRequest)
+    @Nullable ApportionmentInformation apportionmentInformation)
     implements GenesisScoped {
 
-  /** Creates the event without cost adjustments or the raw request. */
+  /** Creates the event without cost adjustments. */
   public PriorAuthorityDecisionMadeEvent(
       UUID priorAuthorityId,
       UUID applicationId,
@@ -55,7 +54,6 @@ public record PriorAuthorityDecisionMadeEvent(
         amountGranted,
         dateGranted,
         occurredAt,
-        null,
         null,
         null,
         null);

@@ -229,7 +229,6 @@ class LifecycleStreamReaderTest {
                           OCCURRED_AT,
                           null,
                           null,
-                          null,
                           null));
               assertThat(event.metadata()).containsEntry("X-Service-Name", "CIVIL_APPLY");
             });

@@ -163,9 +163,8 @@ class PriorAuthorityDecisionIntegrationTest extends BaseIntegrationTest {
     var decided = storedEvent(priorAuthorityId, "access.PriorAuthorityDecisionMade");
     assertThat(decided.get("payload").toString())
         .contains("\"overallDecision\":\"GRANTED\"")
-        .doesNotContain("Jane Doe", "grantedTime", "serialisedRequest");
-    assertThat(decided.get("content").toString())
-        .contains("Jane Doe", "grantedTime", "serialisedRequest");
+        .doesNotContain("Jane Doe", "grantedTime");
+    assertThat(decided.get("content").toString()).contains("Jane Doe", "grantedTime");
 
     projectionAwaiter.awaitDecidedPriorAuthority(priorAuthorityId);
     var response = getPriorAuthority(priorAuthorityId);

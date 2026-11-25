@@ -269,8 +269,7 @@ class ErasureReplayTest {
                 AT,
                 null,
                 null,
-                null,
-                "{\"overallDecision\":\"GRANTED\"}"));
+                null));
 
     PriorAuthorityState full = fold(new PriorAuthorityState(), PriorAuthorityEvolve.class, decided);
     PriorAuthorityState erased =

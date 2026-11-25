@@ -113,8 +113,7 @@ class MakePriorAuthorityDecisionCommandHandlerTest {
                 OCCURRED_AT,
                 null,
                 null,
-                null,
-                "{}"));
+                null));
     verifyNoMoreInteractions(dataStore);
   }
 
@@ -187,8 +186,7 @@ class MakePriorAuthorityDecisionCommandHandlerTest {
                 OCCURRED_AT,
                 expertFee,
                 null,
-                null,
-                "{}"));
+                null));
   }
 
   @Test

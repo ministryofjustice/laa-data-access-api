@@ -144,7 +144,6 @@ class PriorAuthorityDeciderTest {
     assertThat(result.get().dataVersion()).isEqualTo(5L);
     assertThat(result.get().overallDecision()).isEqualTo("GRANTED");
     assertThat(result.get().decisionJustification()).isEqualTo("Recorded");
-    assertThat(result.get().serialisedRequest()).isEqualTo("{\"decision\":\"GRANTED\"}");
   }
 
   @Test

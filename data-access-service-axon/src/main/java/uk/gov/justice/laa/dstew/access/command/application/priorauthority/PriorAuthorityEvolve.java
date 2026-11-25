@@ -63,24 +63,18 @@ public final class PriorAuthorityEvolve {
     state.dataVersion = event.dataVersion();
     state.submitted = true;
     state.decided = true;
-    // The request is always present with decision content; the other parts may be null.
     state.submission =
-        state.submission.isErased() || event.serialisedRequest() == null
-            ? Erasable.erased()
-            : Erasable.of(
-                state
-                    .submission
-                    .value()
-                    .withDecision(
-                        new PriorAuthorityDataPayload.DecisionDetails(
-                            event.overallDecision(),
-                            event.decisionJustification(),
-                            event.amountGranted(),
-                            event.dateGranted(),
-                            event.expertFee(),
-                            event.disbursementInformation(),
-                            event.apportionmentInformation(),
-                            event.serialisedRequest())));
+        state.submission.map(
+            submission ->
+                submission.withDecision(
+                    new PriorAuthorityDataPayload.DecisionDetails(
+                        event.overallDecision(),
+                        event.decisionJustification(),
+                        event.amountGranted(),
+                        event.dateGranted(),
+                        event.expertFee(),
+                        event.disbursementInformation(),
+                        event.apportionmentInformation())));
   }
 
   /** Applies a generic direct PA assignment. */

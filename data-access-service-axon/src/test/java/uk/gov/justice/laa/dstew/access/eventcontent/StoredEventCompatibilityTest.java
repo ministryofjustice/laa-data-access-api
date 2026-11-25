@@ -284,8 +284,6 @@ class StoredEventCompatibilityTest {
                   .isEqualTo("Granted as per policy guidelines");
               assertThat(payload.decisionDetails().amountGranted())
                   .isEqualTo(new BigDecimal("175.50"));
-              assertThat(payload.decisionDetails().decisionSerialisedRequest())
-                  .contains("\"decision\":\"GRANTED\"");
             });
   }
 

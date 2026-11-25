@@ -313,37 +313,73 @@ class PriorAuthorityEvolveTest {
             decidedAt,
             expertFee,
             null,
-            null,
-            "{\"decision\":true}"));
+            null));
 
     assertThat(state.submittedPayload())
         .contains(
             versionZero.withDecision(
                 new PriorAuthorityDataPayload.DecisionDetails(
-                    "GRANTED",
-                    "Reason",
-                    BigDecimal.TEN,
-                    decidedAt,
-                    expertFee,
-                    null,
-                    null,
-                    "{\"decision\":true}")));
+                    "GRANTED", "Reason", BigDecimal.TEN, decidedAt, expertFee, null, null)));
   }
 
   @Test
-  void givenErasedSubmittedOrDecisionContent_whenApplied_thenSubmittedPayloadEmpty() {
+  void givenErasedSubmittedContent_whenApplied_thenSubmittedPayloadEmpty() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
-    PriorAuthorityState erasedSubmission = new PriorAuthorityState();
+    PriorAuthorityState state = new PriorAuthorityState();
     PriorAuthorityEvolve.apply(
-        erasedSubmission,
+        state,
         new PriorAuthoritySubmittedEvent(
             priorAuthorityId, applicationId, "EXPERT", 1, 0L, 0L, occurredAt, null));
-
-    PriorAuthorityState erasedDecision = new PriorAuthorityState();
     PriorAuthorityEvolve.apply(
-        erasedDecision,
+        state,
+        new PriorAuthorityDecisionMadeEvent(
+            priorAuthorityId,
+            applicationId,
+            "EXPERT",
+            1L,
+            "REFUSED",
+            "Reason",
+            null,
+            null,
+            occurredAt));
+
+    assertThat(state.submittedPayload()).isEmpty();
+    assertThat(state.isDecided()).isTrue();
+  }
+
+  @Test
+  void givenSubmittedContentWithErasedRequest_whenApplied_thenSubmittedPayloadEmpty() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
+    PriorAuthorityState state = new PriorAuthorityState();
+    PriorAuthorityEvolve.apply(
+        state,
+        new PriorAuthoritySubmittedEvent(
+            priorAuthorityId,
+            applicationId,
+            "EXPERT",
+            1,
+            0L,
+            0L,
+            occurredAt,
+            null,
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "x", null, null, null),
+            null));
+
+    assertThat(state.submittedPayload()).isEmpty();
+  }
+
+  @Test
+  void givenDecisionWithoutContent_whenApplied_thenRecordsOutcomeOnSubmittedContent() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
+    PriorAuthorityState state = new PriorAuthorityState();
+    PriorAuthorityEvolve.apply(
+        state,
         new PriorAuthoritySubmittedEvent(
             priorAuthorityId,
             applicationId,
@@ -355,9 +391,8 @@ class PriorAuthorityEvolveTest {
             null,
             new PriorAuthorityContent(PriorAuthorityType.EXPERT, "x", null, null, null),
             "{}"));
-    assertThat(erasedDecision.submittedPayload()).isPresent();
     PriorAuthorityEvolve.apply(
-        erasedDecision,
+        state,
         new PriorAuthorityDecisionMadeEvent(
             priorAuthorityId,
             applicationId,
@@ -369,9 +404,14 @@ class PriorAuthorityEvolveTest {
             null,
             occurredAt));
 
-    assertThat(erasedSubmission.submittedPayload()).isEmpty();
-    assertThat(erasedDecision.submittedPayload()).isEmpty();
-    assertThat(erasedDecision.isDecided()).isTrue();
+    assertThat(state.submittedPayload())
+        .hasValueSatisfying(
+            payload -> {
+              assertThat(payload.content().justification()).isEqualTo("x");
+              assertThat(payload.decision()).isEqualTo("REFUSED");
+              assertThat(payload.decisionJustification()).isNull();
+            });
+    assertThat(state.isDecided()).isTrue();
   }
 
   private PriorAuthorityDocumentUploadedEvent uploaded(

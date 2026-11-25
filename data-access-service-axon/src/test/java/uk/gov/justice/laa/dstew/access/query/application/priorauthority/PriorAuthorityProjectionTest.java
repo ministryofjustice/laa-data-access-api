@@ -691,8 +691,7 @@ class PriorAuthorityProjectionTest {
                     Instant.parse("2026-09-08T12:00:00Z"),
                     null,
                     DisbursementInformation.builder().build(),
-                    null,
-                    "{\"decision\":\"GRANTED\"}"),
+                    null),
                 null,
                 null));
 

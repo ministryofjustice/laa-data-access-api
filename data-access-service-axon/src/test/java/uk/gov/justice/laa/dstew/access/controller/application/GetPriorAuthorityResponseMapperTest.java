@@ -85,7 +85,7 @@ class GetPriorAuthorityResponseMapperTest {
             .submittedAt(submittedAt)
             .decisionDetails(
                 new PriorAuthorityDataPayload.DecisionDetails(
-                    "GRANTED", "Decision recorded", null, null, null, null, null, "{}"))
+                    "GRANTED", "Decision recorded", null, null, null, null, null))
             .priorAuthorityType(PriorAuthorityType.EXPERT)
             .expertDetails(
                 new ExpertDetails(
@@ -207,7 +207,7 @@ class GetPriorAuthorityResponseMapperTest {
             .applicationId(UUID.randomUUID())
             .decisionDetails(
                 new PriorAuthorityDataPayload.DecisionDetails(
-                    "   ", null, null, null, null, null, null, "{}"))
+                    "   ", null, null, null, null, null, null))
             .build();
     PriorAuthorityResult invalidDecisionResult =
         PriorAuthorityResult.builder()
@@ -216,7 +216,7 @@ class GetPriorAuthorityResponseMapperTest {
             .status("SUBMITTED")
             .decisionDetails(
                 new PriorAuthorityDataPayload.DecisionDetails(
-                    "NOT_A_REAL_DECISION", null, null, null, null, null, null, "{}"))
+                    "NOT_A_REAL_DECISION", null, null, null, null, null, null))
             .build();
 
     var blankResponse = mapper.toResponse(blankDecisionResult);
@@ -251,8 +251,7 @@ class GetPriorAuthorityResponseMapperTest {
                     DisbursementInformation.builder().newAmount(BigDecimal.valueOf(50)).build(),
                     ApportionmentInformation.builder()
                         .newClientShareAmount(BigDecimal.valueOf(25))
-                        .build(),
-                    "{}"))
+                        .build()))
             .uploadedDocuments(
                 List.of(
                     new DocumentMetadata(
@@ -321,8 +320,7 @@ class GetPriorAuthorityResponseMapperTest {
                     null,
                     ExpertFeeInformation.builder().newHourlyRateAmount(BigDecimal.TEN).build(),
                     null,
-                    null,
-                    "{}"))
+                    null))
             .build();
 
     var response = mapper.toResponse(result);
@@ -402,7 +400,7 @@ class GetPriorAuthorityResponseMapperTest {
             .status("DECIDED")
             .decisionDetails(
                 new PriorAuthorityDataPayload.DecisionDetails(
-                    null, null, null, null, null, null, null, "{}"))
+                    null, null, null, null, null, null, null))
             .build();
 
     var response = mapper.toResponse(result);

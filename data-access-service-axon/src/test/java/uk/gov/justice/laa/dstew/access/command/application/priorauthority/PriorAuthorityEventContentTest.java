@@ -71,8 +71,7 @@ class PriorAuthorityEventContentTest {
             new ExpertFeeInformation(
                 new BigDecimal("10.00"), new BigDecimal("20.50"), new TimeRequested(3, 15)),
             new DisbursementInformation(new BigDecimal("30.00")),
-            new ApportionmentInformation(new BigDecimal("40.00")),
-            "{\"overallDecision\":\"GRANTED\"}");
+            new ApportionmentInformation(new BigDecimal("40.00")));
 
     var split = separator.separate("access.PriorAuthorityDecisionMade", tree(event));
 
@@ -83,8 +82,7 @@ class PriorAuthorityEventContentTest {
             "dateGranted",
             "expertFee",
             "disbursementInformation",
-            "apportionmentInformation",
-            "serialisedRequest");
+            "apportionmentInformation");
     assertThat(split.kept().get("overallDecision").asText()).isEqualTo("GRANTED");
     assertThat(rejoin(split, PriorAuthorityDecisionMadeEvent.class))
         .usingRecursiveComparison()

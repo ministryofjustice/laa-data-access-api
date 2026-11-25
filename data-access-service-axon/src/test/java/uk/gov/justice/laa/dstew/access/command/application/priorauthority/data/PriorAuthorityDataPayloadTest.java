@@ -32,7 +32,6 @@ class PriorAuthorityDataPayloadTest {
     assertThat(payload.expert()).isNull();
     assertThat(payload.disbursement()).isNull();
     assertThat(payload.apportionment()).isNull();
-    assertThat(payload.decisionSerialisedRequest()).isNull();
   }
 
   @Test
@@ -56,7 +55,6 @@ class PriorAuthorityDataPayloadTest {
     assertThat(decided.expert()).isEqualTo(decisionDetails.expert());
     assertThat(decided.disbursement()).isEqualTo(decisionDetails.disbursement());
     assertThat(decided.apportionment()).isEqualTo(decisionDetails.apportionment());
-    assertThat(decided.decisionSerialisedRequest()).isEqualTo("{\"decision\":\"GRANTED\"}");
   }
 
   @Test
@@ -129,8 +127,7 @@ class PriorAuthorityDataPayloadTest {
                     GRANTED_AT,
                     ExpertFeeInformation.builder().grantedTime(new TimeRequested(3, 15)).build(),
                     null,
-                    null,
-                    "{\"decision\":\"GRANTED\"}"));
+                    null));
 
     PriorAuthorityDataPayload roundTripped =
         objectMapper.readValue(
@@ -181,7 +178,6 @@ class PriorAuthorityDataPayloadTest {
             .grantedTime(new TimeRequested(3, 15))
             .build(),
         DisbursementInformation.builder().newAmount(BigDecimal.valueOf(45.0)).build(),
-        ApportionmentInformation.builder().newClientShareAmount(BigDecimal.valueOf(15.0)).build(),
-        "{\"decision\":\"GRANTED\"}");
+        ApportionmentInformation.builder().newClientShareAmount(BigDecimal.valueOf(15.0)).build());
   }
 }

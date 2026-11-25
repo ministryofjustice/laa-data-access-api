@@ -11,7 +11,6 @@
     "expertFee": null,
     "dateGranted": "2026-11-01T10:00:00Z",
     "amountGranted": 175.50,
-    "serialisedRequest": "{\"decision\":\"GRANTED\",\"decisionJustification\":\"Granted as per policy guidelines\",\"amountGranted\":175.50,\"dateGranted\":\"2026-11-01T10:00:00Z\",\"eventHistory\":{\"eventDescription\":null},\"priorAuthorityVersion\":0,\"apportionment\":null,\"disbursement\":null,\"expert\":null}",
     "decisionJustification": "Granted as per policy guidelines",
     "disbursementInformation": null,
     "apportionmentInformation": null

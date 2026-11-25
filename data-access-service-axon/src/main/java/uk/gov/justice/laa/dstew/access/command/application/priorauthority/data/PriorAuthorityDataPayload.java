@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority.data;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.HashMap;
@@ -28,7 +29,11 @@ public record PriorAuthorityDataPayload(
     documentFilenames = documentFilenames == null ? Map.of() : Map.copyOf(documentFilenames);
   }
 
-  /** Decision data recorded once a prior-authority request has been decided. */
+  /**
+   * Decision data recorded once a prior-authority request has been decided. Unknown properties are
+   * ignored so that rows written before the stored request was removed still load.
+   */
+  @JsonIgnoreProperties(ignoreUnknown = true)
   public record DecisionDetails(
       String decision,
       String decisionJustification,
@@ -36,8 +41,7 @@ public record PriorAuthorityDataPayload(
       Instant dateGranted,
       ExpertFeeInformation expert,
       DisbursementInformation disbursement,
-      ApportionmentInformation apportionment,
-      String decisionSerialisedRequest) {}
+      ApportionmentInformation apportionment) {}
 
   /** Creates an initial payload version before any decision has been recorded. */
   public PriorAuthorityDataPayload(
@@ -102,10 +106,5 @@ public record PriorAuthorityDataPayload(
   /** Returns the apportionment details, or {@code null} if undecided. */
   public ApportionmentInformation apportionment() {
     return decisionDetails == null ? null : decisionDetails.apportionment();
-  }
-
-  /** Returns the serialised decision request, or {@code null} if undecided. */
-  public String decisionSerialisedRequest() {
-    return decisionDetails == null ? null : decisionDetails.decisionSerialisedRequest();
   }
 }
