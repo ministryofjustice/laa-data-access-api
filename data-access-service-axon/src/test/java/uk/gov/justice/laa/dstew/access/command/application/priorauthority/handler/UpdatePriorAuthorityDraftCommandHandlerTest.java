@@ -20,7 +20,6 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityEvolve;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityState;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.UpdatePriorAuthorityDraftCommand;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
@@ -36,7 +35,6 @@ class UpdatePriorAuthorityDraftCommandHandlerTest {
   private static final Instant OCCURRED_AT = Instant.parse("2026-09-01T10:00:00Z");
 
   @Mock private PriorAuthorityAggregate priorAuthority;
-  @Mock private PriorAuthorityDraftStore draftStore;
   @Mock private EventAppender eventAppender;
 
   @Test
@@ -53,8 +51,7 @@ class UpdatePriorAuthorityDraftCommandHandlerTest {
     when(priorAuthority.getState())
         .thenReturn(draftState(priorAuthorityId, applicationId, Erasable.of(existingContent)));
 
-    new UpdatePriorAuthorityDraftCommandHandler()
-        .handle(command, priorAuthority, draftStore, eventAppender);
+    new UpdatePriorAuthorityDraftCommandHandler().handle(command, priorAuthority, eventAppender);
 
     verify(eventAppender)
         .append(
@@ -83,7 +80,7 @@ class UpdatePriorAuthorityDraftCommandHandlerTest {
     assertThatThrownBy(
             () ->
                 new UpdatePriorAuthorityDraftCommandHandler()
-                    .handle(command, priorAuthority, draftStore, eventAppender))
+                    .handle(command, priorAuthority, eventAppender))
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage("Prior Authority " + priorAuthorityId + " not found");
 
@@ -108,7 +105,7 @@ class UpdatePriorAuthorityDraftCommandHandlerTest {
     assertThatThrownBy(
             () ->
                 new UpdatePriorAuthorityDraftCommandHandler()
-                    .handle(command, priorAuthority, draftStore, eventAppender))
+                    .handle(command, priorAuthority, eventAppender))
         .isInstanceOf(ResourceNotFoundException.class);
 
     verifyNoInteractions(eventAppender);

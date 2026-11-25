@@ -47,10 +47,11 @@ the subscribing route projection updates those routes in the same transaction, a
 
 ## Prior-authority assignment
 
-`prior-authority-projection` owns `prior_authority_current_state`, including the caseworker ID
-returned as `assignedTo` by `GET /prior-authorities/{id}`. `WorkItemAssigned` sets the caseworker ID
-and assignment version; `WorkItemUnassigned` clears the caseworker ID and sets the new assignment
-version. The detail response retains the last assignee after a decision removes the work-list row.
+`prior-authority-projection` owns `prior_authority_current_state`, including the caseworker ID.
+`GET /prior-authorities/{id}` reads `assignedTo` from the aggregate instead. `WorkItemAssigned` sets
+the caseworker ID and assignment version; `WorkItemUnassigned` clears the caseworker ID and sets the
+new assignment version. The detail response retains the last assignee after a decision removes the
+work-list row.
 
 Migration V33 adds the nullable `caseworker_id` column. It does not backfill existing assignments.
 After deploying the migration and projection change, an operator must reset and replay

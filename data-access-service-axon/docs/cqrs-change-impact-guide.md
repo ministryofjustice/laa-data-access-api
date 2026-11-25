@@ -175,7 +175,9 @@ bean in `AxonEventProcessingConfig`. No change to aggregate or existing projecti
 * Write the `application_data` row first, then append the event (same transaction).
 * `sendAndWait` returning means the event is committed, **not** that tracking projections are
   current. Endpoints that need read-your-writes poll the read model through
-  `ProjectionReadinessGateway` (as in `CreateApplicationUseCase`) and return `202` on timeout.
+  `ProjectionReadinessGateway` (as in `CreateApplicationUseCase`) and return `202` on timeout, or
+  read the sourced aggregate instead (as `PriorAuthorityQueryHandler` does for Prior Authority GET
+  and document reads, so Prior Authority create and submit do not wait).
 * Concurrency: `RetryingCommandDispatcher` retries once on `ConcurrencyException` /
   `AppendEventsTransactionRejectedException` / unique-key violation. Handlers must therefore be safe
   to re-run.

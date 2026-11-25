@@ -1,143 +1,39 @@
 package uk.gov.justice.laa.dstew.access.query.application.priorauthority;
 
-import jakarta.annotation.Nullable;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
 import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
-import org.axonframework.messaging.queryhandling.annotation.QueryHandler;
-import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentDeletedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentTypeUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 
-/** Independently replayable projection of the current state of each prior-authority submission. */
+/**
+ * Independently replayable projection of the current state of each prior-authority submission, used
+ * for the Prior Authority summaries in application reads. Single Prior Authority reads use {@link
+ * PriorAuthorityQueryHandler}.
+ */
 @Component
 @Namespace("prior-authority-projection")
 public class PriorAuthorityProjection {
 
-  private static final List<String> SUBMITTED_OR_LATER =
-      List.of(PriorAuthorityStatus.SUBMITTED.name(), PriorAuthorityStatus.DECIDED.name());
-
   private final PriorAuthorityReadRepository repository;
-  private final PriorAuthorityReadQueryGateway readQueryGateway;
-  private final PriorAuthorityCurrentStateAccessPolicy accessPolicy;
-  private final PriorAuthorityDataStore priorAuthorityDataStore;
-  private final PriorAuthorityDraftStore priorAuthorityDraftStore;
 
-  /**
-   * Creates the prior-authority current-state projection.
-   *
-   * @param repository persistence for the projected current state
-   * @param priorAuthorityDataStore storage for submitted prior-authority content
-   * @param priorAuthorityDraftStore storage for in-progress draft content
-   */
-  public PriorAuthorityProjection(
-      PriorAuthorityReadRepository repository,
-      PriorAuthorityReadQueryGateway readQueryGateway,
-      PriorAuthorityCurrentStateAccessPolicy accessPolicy,
-      PriorAuthorityDataStore priorAuthorityDataStore,
-      PriorAuthorityDraftStore priorAuthorityDraftStore) {
+  public PriorAuthorityProjection(PriorAuthorityReadRepository repository) {
     this.repository = repository;
-    this.readQueryGateway = readQueryGateway;
-    this.accessPolicy = accessPolicy;
-    this.priorAuthorityDataStore = priorAuthorityDataStore;
-    this.priorAuthorityDraftStore = priorAuthorityDraftStore;
-  }
-
-  /** Returns the hydrated current state for the requested prior-authority submission. */
-  @Nullable
-  @QueryHandler
-  public PriorAuthorityResult handle(FindPriorAuthorityByPriorAuthorityIdQuery query) {
-    UUID priorAuthorityId = query.priorAuthorityId();
-    return readQueryGateway
-        .findPriorAuthority(
-            (root, criteriaQuery, cb) -> cb.equal(root.get("priorAuthorityId"), priorAuthorityId),
-            accessPolicy.restrictionFor(query.accessScope()))
-        .flatMap(result -> hydrate(result, priorAuthorityId))
-        .orElse(null);
-  }
-
-  /** Returns an owned, active document, hydrating its filename when available. */
-  @Nullable
-  @QueryHandler
-  public EvidenceDocument handle(FindPriorAuthorityDocumentQuery query) {
-    return repository
-        .findById(query.priorAuthorityId())
-        .flatMap(
-            priorAuthority ->
-                priorAuthority.getUploadedDocuments().stream()
-                    .filter(document -> query.documentId().equals(document.documentId()))
-                    .filter(document -> !document.deleted())
-                    .findFirst()
-                    .map(
-                        document ->
-                            new EvidenceDocument(
-                                document.documentId(),
-                                document.documentType(),
-                                documentFilename(priorAuthority, document.documentId()),
-                                null,
-                                document.contentType(),
-                                document.size(),
-                                document.uploadedAt(),
-                                document.sourceService(),
-                                document.checksum(),
-                                document.fileSuffix())))
-        .orElse(null);
-  }
-
-  /**
-   * Confirms whether the projection has processed the submission. DECIDED counts too: status only
-   * moves forward, so a decision projected before the poll must not hide the submission.
-   */
-  @QueryHandler
-  public boolean handle(PriorAuthoritySubmittedByPriorAuthorityIdQuery query) {
-    return repository.existsByPriorAuthorityIdAndStatusIn(
-        query.priorAuthorityId(), SUBMITTED_OR_LATER);
-  }
-
-  private String documentFilename(PriorAuthorityReadModel priorAuthority, UUID documentId) {
-    if (PriorAuthorityStatus.DRAFT.name().equals(priorAuthority.getStatus())) {
-      return priorAuthorityDraftStore
-          .find(priorAuthority.getPriorAuthorityId())
-          .map(draft -> draft.documentFilenames().get(documentId))
-          .orElse(null);
-    }
-    PriorAuthorityDataPayload payload =
-        priorAuthorityDataStore.get(
-            priorAuthority.getPriorAuthorityId(), priorAuthority.getDataVersion());
-    return payload == null ? null : payload.documentFilenames().get(documentId);
-  }
-
-  private Optional<@NonNull PriorAuthorityResult> hydrate(
-      PriorAuthorityReadModel priorAuthority, UUID priorAuthorityId) {
-    if (PriorAuthorityStatus.DRAFT.name().equals(priorAuthority.getStatus())) {
-      return priorAuthorityDraftStore
-          .find(priorAuthorityId)
-          .map(draft -> PriorAuthorityResult.from(priorAuthority, draft));
-    }
-    PriorAuthorityDataPayload payload =
-        priorAuthorityDataStore.get(priorAuthorityId, priorAuthority.getDataVersion());
-    return Optional.of(PriorAuthorityResult.from(priorAuthority, payload));
   }
 
   /** Creates the current-state row when a prior-authority draft is started. */
@@ -279,10 +175,6 @@ public class PriorAuthorityProjection {
               current.setModifiedAt(occurredAt);
               repository.save(current);
             });
-  }
-
-  private boolean isPending(PriorAuthorityReadModel priorAuthority) {
-    return PriorAuthorityStatus.SUBMITTED.name().equals(priorAuthority.getStatus());
   }
 
   private void updateDocument(

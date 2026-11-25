@@ -10,7 +10,6 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.SubmitPriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerResource;
@@ -33,7 +32,6 @@ public class SubmitPriorAuthorityDraftCommandHandler {
       JsonSchemaValidator jsonSchemaValidator,
       @InjectEntity(idProperty = "priorAuthorityId") @WriteAccessResolverResource
           PriorAuthorityAggregate priorAuthority,
-      PriorAuthorityDraftStore draftStore,
       EventAppender eventAppender) {
 
     PriorAuthorityDataPayload payload =
@@ -67,7 +65,6 @@ public class SubmitPriorAuthorityDraftCommandHandler {
             applicationDataVersion,
             billingTypeOf(payload.content()),
             payload));
-    draftStore.delete(command.priorAuthorityId());
   }
 
   private static String billingTypeOf(PriorAuthorityContent content) {

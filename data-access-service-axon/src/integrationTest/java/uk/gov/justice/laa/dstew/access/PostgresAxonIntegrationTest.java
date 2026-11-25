@@ -548,7 +548,6 @@ class PostgresAxonIntegrationTest {
             "linked_group_justification",
             "prior_authority_current_state",
             "prior_authority_data",
-            "prior_authority_draft",
             "token_entry",
             "work_item_route",
             "work_list_group_member",

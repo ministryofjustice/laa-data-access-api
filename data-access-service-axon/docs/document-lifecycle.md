@@ -14,8 +14,8 @@ upload, update, and delete routes have been removed. Axon Application uploads us
   `documentType`. A classification change must not change the SDS key.
 - Both upload events carry the case-sensitive `fileSuffix` and full original filename as erasable
   content, stored in `axon.event_content` apart from the kept event fields. Null suffix means
-  unknown or erased; an empty string means a known extensionless upload. Prior Authority also
-  writes the filename under `documentFilenames[documentId]` in the synchronous draft read copy. Submission
+  unknown or erased; an empty string means a known extensionless upload. Prior Authority reads
+  the filename from its aggregate, folded from that content. Submission
   preserves the filenames in immutable content storage. Filenames do not appear in kept event
   fields or projected `DocumentMetadata`.
 - GET and delete prefer the recorded suffix even when the full filename is missing or differs.
@@ -86,7 +86,6 @@ sequenceDiagram
     UseCase->>Command: Upload command including full original filename
     Command->>Command: Check draft lifecycle and unique document ID
     Command->>Events: Append upload event; filename and fileSuffix stored as erasable content
-    Note over Command,Events: PA also refreshes its synchronous draft read copy
     Events-->>Projection: Eventually project document metadata
     UseCase-->>HTTP: Shared upload result
     HTTP-->>Client: 201 Created
@@ -193,7 +192,6 @@ sequenceDiagram
     UseCase->>Draft: Find draft and capture historical filename fallback
     UseCase->>Command: Delete command with document ID and timestamp
     Command->>Command: Require draft and owned active document
-    Command->>Command: Remove document filename from draft read copy
     Command->>Events: Append filename-free deletion event
     Note over Draft,Events: Commit logical deletion before external cleanup
     Command-->>UseCase: Command completed with document metadata and fileSuffix

@@ -447,7 +447,7 @@ class PriorAuthorityDecisionIntegrationTest extends BaseIntegrationTest {
     var saveResponse =
         restTemplate.postForEntity(
             url("/api/v0/prior-authorities"), new HttpEntity<>(draft, headers()), String.class);
-    assertThat(saveResponse.getStatusCode()).isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
+    assertThat(saveResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     var priorAuthorityId =
         objectMapper
             .readValue(saveResponse.getBody(), SavePriorAuthorityDraftResponse.class)
@@ -459,7 +459,7 @@ class PriorAuthorityDecisionIntegrationTest extends BaseIntegrationTest {
             priorAuthorityUrl(priorAuthorityId) + "/submit",
             new HttpEntity<>(null, headers()),
             String.class);
-    assertThat(submitResponse.getStatusCode()).isIn(HttpStatus.OK, HttpStatus.ACCEPTED);
+    assertThat(submitResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
     projectionAwaiter.awaitPriorAuthority(priorAuthorityId);
 
     var assignResponse =

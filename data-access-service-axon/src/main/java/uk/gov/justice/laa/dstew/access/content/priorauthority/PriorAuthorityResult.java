@@ -5,15 +5,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.Builder;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityState;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
-import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 
 /** Typed result of retrieving a prior-authority submission. */
 @Builder
 public record PriorAuthorityResult(
     UUID priorAuthorityId,
     UUID applicationId,
+    String officeCode,
     String justification,
     String status,
     long dataVersion,
@@ -29,31 +30,31 @@ public record PriorAuthorityResult(
     PriorAuthorityDataPayload.DecisionDetails decisionDetails) {
 
   /**
-   * Builds the use-case result from the current-state projection and the referenced content, which
-   * may be a partial draft when the status is {@code DRAFT}.
+   * Builds the use-case result from the aggregate state and its current content, which may be a
+   * partial draft when the status is {@code DRAFT}.
    */
   public static PriorAuthorityResult from(
-      PriorAuthorityReadModel priorAuthority, PriorAuthorityDataPayload payload) {
+      PriorAuthorityState state, PriorAuthorityDataPayload payload) {
     PriorAuthorityContent content = payload.content();
     PriorAuthorityType priorAuthorityType = content.priorAuthorityType();
+    PriorAuthorityStatus status = state.status();
     return new PriorAuthorityResult(
-        priorAuthority.getPriorAuthorityId(),
-        priorAuthority.getApplicationId(),
+        state.getPriorAuthorityId(),
+        state.getApplicationId(),
+        state.getOfficeCode(),
         content.justification(),
-        priorAuthority.getStatus(),
-        priorAuthority.getDataVersion(),
-        priorAuthority.getCaseworkerId(),
-        priorAuthority.getAssignmentVersion(),
-        PriorAuthorityStatus.DRAFT.name().equals(priorAuthority.getStatus())
-            ? null
-            : payload.submittedAt(),
+        status.name(),
+        state.getDataVersion(),
+        state.getCaseworkerId(),
+        state.getAssignmentVersion(),
+        status == PriorAuthorityStatus.DRAFT ? null : payload.submittedAt(),
         priorAuthorityType,
         priorAuthorityType == PriorAuthorityType.EXPERT ? toExpertDetails(content) : null,
         priorAuthorityType == PriorAuthorityType.COUNSEL ? toCounselDetails(content) : null,
         priorAuthorityType == PriorAuthorityType.DISBURSEMENT
             ? toDisbursementDetails(content)
             : null,
-        priorAuthority.getUploadedDocuments(),
+        List.copyOf(state.getUploadedDocuments()),
         payload.documentFilenames(),
         payload.decisionDetails());
   }
@@ -77,6 +78,6 @@ public record PriorAuthorityResult(
   }
 
   private static DisbursementDetails toDisbursementDetails(PriorAuthorityContent content) {
-    return content.disbursementDetails() == null ? null : content.disbursementDetails();
+    return content.disbursementDetails();
   }
 }

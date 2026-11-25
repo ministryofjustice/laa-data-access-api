@@ -2,7 +2,7 @@ name: Build feature branch
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [ main, 'feat/**' ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

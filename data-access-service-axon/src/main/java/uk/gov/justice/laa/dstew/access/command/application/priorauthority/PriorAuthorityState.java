@@ -12,6 +12,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 
@@ -38,6 +39,22 @@ public class PriorAuthorityState {
   Instant draftModifiedAt;
   Map<UUID, Erasable<String>> documentFilenames = new LinkedHashMap<>();
   Erasable<PriorAuthorityDataPayload> submission = Erasable.erased();
+
+  /** Returns the processing status derived from the submitted and decided flags. */
+  public PriorAuthorityStatus status() {
+    if (decided) {
+      return PriorAuthorityStatus.DECIDED;
+    }
+    return submitted ? PriorAuthorityStatus.SUBMITTED : PriorAuthorityStatus.DRAFT;
+  }
+
+  /**
+   * Returns the content a read sees: the open draft before submission, otherwise the submitted
+   * content at the current data version. Empty if absent or erased.
+   */
+  public Optional<PriorAuthorityDataPayload> currentPayload() {
+    return submitted ? submittedPayload() : draft();
+  }
 
   /**
    * Returns the open draft folded from the event stream: empty if the draft does not exist, has
@@ -72,8 +89,14 @@ public class PriorAuthorityState {
     return Optional.of(submission.value());
   }
 
-  /** Command pre-check: return no draft body, and only the filename requested for SDS cleanup. */
+  /**
+   * Command pre-check: return no draft body, and only the filename requested for SDS cleanup. A
+   * submitted Prior Authority answers {@link PriorAuthorityDraftSummary#SUBMITTED}.
+   */
   public PriorAuthorityDraftSummary draftSummary(UUID documentId) {
+    if (priorAuthorityId != null && submitted) {
+      return PriorAuthorityDraftSummary.SUBMITTED;
+    }
     if (!hasOpenDraft()) {
       return PriorAuthorityDraftSummary.NONE;
     }

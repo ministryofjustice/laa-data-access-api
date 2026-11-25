@@ -87,9 +87,10 @@ The direction is that **each event carries the content it introduced**, beside i
 `event_content` rather than inside it, so erasure can replace content without rewriting immutable
 events. The stream becomes the ordered history of content as well as control facts. This layer
 builds the mechanism and moves the content events already carry; later layers move drafts and
-submitted content onto it. Even then `application_data`, `prior_authority_data` and the
-`prior_authority_draft` read copy are still written and GET details still read the current-state
-projections; removing them is later work.
+submitted content onto it. Even then `application_data` and `prior_authority_data` are still
+written and Application GET details still read the current-state projections; removing them is
+later work. The `prior_authority_draft` read copy has since been removed: Prior Authority GET and
+document reads now fold the aggregate.
 
 **After this stack:** events carry their content; the data stores remain until later work.
 
@@ -100,7 +101,7 @@ flowchart LR
     events[(domain_event_entry<br/>kept fields)]
     content[(event_content<br/>content per event<br/>erased_at)]
   end
-  data[(application_data<br/>prior_authority_data<br/>prior_authority_draft read copy<br/>until later work)]
+  data[(application_data<br/>prior_authority_data<br/>until later work)]
   agg[Aggregate fold<br/>events + content]
   cur[(current-state projections)]
   life[(lifecycle_stream<br/>kept fields only)]
@@ -336,17 +337,16 @@ This layer moves no content into events that was not there already. Later layers
    `application_data` is still written and still serves API reads, projections and history
    descriptions); reading application details from the aggregate and removing
    `ApplicationDataStore` is later work;
-3. PA drafts and document mutations now fold from event content. Create, replace, upload, type
-   change and delete still maintain `prior_authority_draft` in the command transaction so existing
-   projection-backed GETs see the same content and immediate draft-body updates. Submitting reads
-   the aggregate, writes the existing immutable `prior_authority_data` version and deletes the
-   draft read copy. The public GETs and submission readiness wait have not moved. There is no new
-   migration here: retiring the draft table requires a replacement with equivalent read semantics.
+3. PA drafts and document mutations now fold from event content. Submitting reads the aggregate
+   and writes the existing immutable `prior_authority_data` version. Prior Authority GET and
+   document reads come from the aggregate through `PriorAuthorityQueryHandler`, so create and
+   submit no longer wait for a projection, and `PriorAuthorityDraftStore` and the
+   `prior_authority_draft` table (V39) are removed.
    PA submitted and decision content is now event content too: `PriorAuthoritySubmitted` carries
    the submitted content and request, `PriorAuthorityDecisionMade` carries the full decision
    details, and the decision handler builds the next `prior_authority_data` version from aggregate
-   state instead of reading it. `prior_authority_data` is still written and still serves the
-   public GETs, projections and history descriptions; reading Prior Authority details from the
+   state instead of reading it. `prior_authority_data` is still written and still serves
+   projections and history descriptions; reading Prior Authority details from the
    aggregate and removing `PriorAuthorityDataStore` is later work;
 4. build erasure on the store mechanism: the soft deletion event, the retention period and the
    automatic hard erasure;
@@ -359,7 +359,7 @@ This layer moves no content into events that was not there already. Later layers
 When the old stores are gone, ADR 0002 is superseded.
 
 Erasing event-content rows alone is **not** PA hard erasure. A retention design must also reach
-the draft read copy, submitted versions, projections and SDS. No historical event is rewritten.
+submitted versions, projections and SDS. No historical event is rewritten.
 
 ## Reconsider when
 

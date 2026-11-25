@@ -33,6 +33,7 @@ import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsUploadResult;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 @ExtendWith(MockitoExtension.class)
 class UploadEvidenceDocumentUseCaseTest {
@@ -106,6 +107,25 @@ class UploadEvidenceDocumentUseCaseTest {
 
     assertThatExceptionOfType(ResourceNotFoundException.class)
         .isThrownBy(() -> useCase.execute(priorAuthorityId, file, "CIVIL_APPLY", CALLER));
+  }
+
+  @Test
+  void givenSubmitted_whenExecute_thenRejectsAsNotDraftWithoutUploadingToSds() {
+    UploadPriorAuthorityDocumentUseCase useCase =
+        new UploadPriorAuthorityDocumentUseCase(queryGateway, dispatcher, sdsService);
+    UUID priorAuthorityId = UUID.randomUUID();
+    MockMultipartFile file =
+        new MockMultipartFile("file", "evidence.pdf", "application/pdf", "%PDF-content".getBytes());
+    stubDraft(priorAuthorityId, PriorAuthorityDraftSummary.SUBMITTED);
+
+    assertThatExceptionOfType(ValidationException.class)
+        .isThrownBy(() -> useCase.execute(priorAuthorityId, file, "CIVIL_APPLY", CALLER))
+        .satisfies(
+            e ->
+                assertThat(e.errors())
+                    .containsExactly("Documents can only be changed on a prior authority draft"));
+
+    verifyNoInteractions(dispatcher, sdsService);
   }
 
   @Test

@@ -10,8 +10,6 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecider;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.security.OfficeCodeWriteAccessPolicy;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -27,7 +25,6 @@ public class CreatePriorAuthorityDraftCommandHandler {
       @InjectEntity(idProperty = "priorAuthorityId") @Nullable PriorAuthorityAggregate existing,
       @InjectEntity(idProperty = "applicationId") ApplicationAggregate application,
       OfficeCodeWriteAccessPolicy writeAccessPolicy,
-      PriorAuthorityDraftStore draftStore,
       EventAppender eventAppender) {
 
     if (existing != null && existing.getPriorAuthorityId() != null) {
@@ -42,23 +39,6 @@ public class CreatePriorAuthorityDraftCommandHandler {
 
     String officeCode = application.getOfficeCode();
     writeAccessPolicy.requireOfficeCodeWriteAccess(officeCode, command.caller());
-    PriorAuthorityDataPayload payload =
-        new PriorAuthorityDataPayload(
-            command.priorAuthorityId(),
-            command.applicationId(),
-            command.content(),
-            command.serialisedRequest(),
-            command.occurredAt(),
-            null,
-            officeCode,
-            null);
-
-    draftStore.upsert(
-        command.priorAuthorityId(),
-        command.applicationId(),
-        payload,
-        command.serialisedRequest(),
-        command.occurredAt());
     eventAppender.append(PriorAuthorityDecider.decideStartDraft(command, officeCode));
   }
 }

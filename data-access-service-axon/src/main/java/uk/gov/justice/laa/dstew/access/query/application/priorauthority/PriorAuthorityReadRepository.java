@@ -13,7 +13,4 @@ public interface PriorAuthorityReadRepository
 
   /** Returns all prior-authority current-state rows linked to the given application IDs. */
   List<PriorAuthorityReadModel> findAllByApplicationIdIn(Collection<UUID> applicationIds);
-
-  /** Returns whether a row has the given status; always queries the table. */
-  boolean existsByPriorAuthorityIdAndStatusIn(UUID priorAuthorityId, Collection<String> statuses);
 }

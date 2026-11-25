@@ -56,6 +56,9 @@ public class DeletePriorAuthorityDocumentUseCase {
                 PriorAuthorityDraftSummary.class)
             .join();
     if (draft == null || !draft.exists()) {
+      if (draft != null) {
+        draft.requireDocumentsChangeable();
+      }
       throw new ResourceNotFoundException(
           "Prior Authority %s not found".formatted(priorAuthorityId));
     }
