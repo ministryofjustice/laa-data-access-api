@@ -12,6 +12,7 @@ import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpd
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
+import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 
 /** Event-fold functions for {@link ApplicationState}. */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -27,6 +28,12 @@ public final class ApplicationEvolve {
     state.autoGranted = AutoGrantedState.PENDING;
     state.applicationDataVersion = event.applicationDataVersion();
     state.applicationVersion = 0L;
+    state.laaReference = event.laaReference();
+    state.draftStatus = null;
+    state.draftApplicationContent = Erasable.erased();
+    state.draftSerialisedRequest = Erasable.erased();
+    state.draftPotentialDuplicates = Erasable.erased();
+    state.draftDocumentFilenames.clear();
   }
 
   /** Applies an {@link ApplicationDraftStartedEvent} to the given state. */
@@ -35,6 +42,11 @@ public final class ApplicationEvolve {
     state.schemaVersion = event.schemaVersion();
     state.requestFingerprint = event.requestFingerprint();
     state.officeCode = event.officeCode();
+    state.laaReference = event.laaReference();
+    state.draftStatus = event.status();
+    state.draftApplicationContent = event.applicationContent();
+    state.draftSerialisedRequest = event.serialisedRequest();
+    state.draftPotentialDuplicates = event.potentialDuplicates();
   }
 
   /** Applies an {@link ApplicationUpdatedEvent} to the given state. */
@@ -97,6 +109,7 @@ public final class ApplicationEvolve {
             event.sourceService().orElse(null),
             false,
             event.fileSuffix().orElse(null)));
+    state.draftDocumentFilenames.put(event.documentId(), event.originalFilename());
     if (event.applicationDataVersion() != null) {
       state.applicationDataVersion = event.applicationDataVersion();
     }
