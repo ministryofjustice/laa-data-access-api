@@ -105,7 +105,6 @@ components:
           $ref: "#/components/schemas/DecisionTimeRequested"
         grantedTotalAmount:
           type: number
-          minimum: 0
           description: >-
             Total amount granted by the Caseworker for the expert (fixed-rate or hourly-rate).
             May differ from the Provider's originally requested totalAmount, which is unchanged.
