@@ -422,7 +422,7 @@ class AxonArchitectureTest {
     //    propagate back through the HTTP call stack and are reported at the controller boundary;
     //    pooled-streaming (projection) processors instead go through ReportingErrorHandler, which
     //    itself calls ErrorReporter. Neither route calls Logger.error directly.
-    //  - LoggingAspects (data-access-shared): a generic cross-cutting AOP aspect around
+    //  - LoggingAspects: a generic cross-cutting AOP aspect around
     //    @LogMethodArguments/@LogMethodResponse-annotated methods. It classifies the thrown
     //    exception's severity (see isClientFacing) and only calls log.error for genuinely
     //    unexpected, non-client-facing failures; sentry-logback then turns that single,
@@ -435,7 +435,7 @@ class AxonArchitectureTest {
                 "uk.gov.justice.laa.dstew.access.observability.ErrorReporter")
             .and()
             .doNotHaveFullyQualifiedName(
-                "uk.gov.justice.laa.dstew.access.shared.logging.aspects.LoggingAspects")
+                "uk.gov.justice.laa.dstew.access.observability.logging.aspects.LoggingAspects")
             .should(callLoggerErrorMethod)
             .allowEmptyShould(true);
     rule.check(classes);
@@ -457,6 +457,21 @@ class AxonArchitectureTest {
             .should()
             .dependOnClassesThat()
             .areAssignableTo(uk.gov.justice.laa.dstew.access.observability.ErrorReporter.class)
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
+
+  @Test
+  void securityAndObservabilityMustNotDependOnPersistence() {
+    ArchRule rule =
+        noClasses()
+            .that()
+            .resideInAnyPackage(
+                "uk.gov.justice.laa.dstew.access.security..",
+                "uk.gov.justice.laa.dstew.access.observability..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage("org.springframework.data..", "jakarta.persistence..")
             .allowEmptyShould(true);
     rule.check(classes);
   }

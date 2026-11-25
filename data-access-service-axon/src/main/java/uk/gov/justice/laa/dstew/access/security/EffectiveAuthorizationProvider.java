@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.shared.security;
+package uk.gov.justice.laa.dstew.access.security;
 
 /**
  * Check if current request has authorization to act in a specific app role. Interface to be

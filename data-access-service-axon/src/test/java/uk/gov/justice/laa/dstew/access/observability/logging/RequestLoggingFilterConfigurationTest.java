@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.shared.logging;
+package uk.gov.justice.laa.dstew.access.observability.logging;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.spy;

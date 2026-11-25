@@ -2,7 +2,7 @@ package uk.gov.justice.laa.dstew.access.exception;
 
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
-import uk.gov.justice.laa.dstew.access.shared.logging.ClientFacingException;
+import uk.gov.justice.laa.dstew.access.observability.logging.ClientFacingException;
 
 /** Raised when a decision is attempted for a PriorAuthority that is no longer pending. */
 @ExcludeFromGeneratedCodeCoverage

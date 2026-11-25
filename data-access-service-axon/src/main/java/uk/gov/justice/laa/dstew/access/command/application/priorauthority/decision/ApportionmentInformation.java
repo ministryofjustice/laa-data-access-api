@@ -12,5 +12,5 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ApportionmentInformation {
-  private BigDecimal newClientShareAmount;
+  private BigDecimal grantedClientShareAmount;
 }
