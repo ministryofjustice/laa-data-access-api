@@ -846,14 +846,25 @@ class PostgresAxonIntegrationTest {
                 String.class,
                 applicationId))
         .isEqualTo("REFUSED");
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT convert_from(payload, 'UTF8') FROM axon.domain_event_entry "
-                    + "WHERE aggregate_identifier = ? AND sequence_number = 3",
-                String.class,
-                applicationId.toString()))
+    Map<String, Object> decisionEvent =
+        jdbcTemplate.queryForMap(
+            "SELECT convert_from(e.payload, 'UTF8') AS payload, c.content::text AS content "
+                + "FROM axon.domain_event_entry e "
+                + "JOIN axon.event_content c ON c.event_id = e.event_identifier "
+                + "WHERE e.aggregate_identifier = ? AND e.sequence_number = 3",
+            applicationId.toString());
+    assertThat(decisionEvent.get("payload").toString())
         .contains("applicationDataVersion", "REFUSED")
         .doesNotContain("Insufficient evidence", "The evidence did not meet the test");
+    assertThat(
+            objectMapper
+                .readTree(decisionEvent.get("payload").toString())
+                .get("proceedingDecisions")
+                .get(proceedingId.toString())
+                .asString())
+        .isEqualTo("REFUSED");
+    assertThat(decisionEvent.get("content").toString())
+        .contains("The evidence did not meet the test");
 
     assertThat(
             awaitHistoryTypes(
@@ -1808,6 +1819,35 @@ class PostgresAxonIntegrationTest {
                   .isEqualTo("UNASSIGN_APPLICATION_TO_CASEWORKER");
               assertThat(event.getCaseworkerId()).isEqualTo(TestJwtDecoderConfig.CASEWORKER_ID);
             });
+  }
+
+  @Test
+  void givenErasedSubmittedContent_whenCreateNote_thenReturns404WithoutWriting() {
+    UUID applicationId = UUID.randomUUID();
+    applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
+    projectionAwaiter.awaitApplication(applicationId);
+    assertThat(
+            jdbcTemplate.update(
+                "UPDATE axon.event_content SET content = '{}'::jsonb, erased_at = now()"
+                    + " WHERE event_id = (SELECT event_identifier FROM axon.domain_event_entry"
+                    + " WHERE aggregate_identifier = ? AND sequence_number = 0)",
+                applicationId.toString()))
+        .isOne();
+
+    ResponseEntity<Void> response =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/applications/" + applicationId + "/notes",
+            HttpMethod.POST,
+            new HttpEntity<>(new CreateNoteRequest("Should fail"), headers()),
+            Void.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM axon.application_data WHERE application_id = ?",
+                Integer.class,
+                applicationId))
+        .isOne();
   }
 
   @Test

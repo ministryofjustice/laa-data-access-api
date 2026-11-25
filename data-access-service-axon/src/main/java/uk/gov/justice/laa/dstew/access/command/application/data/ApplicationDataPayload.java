@@ -11,6 +11,7 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Opponent;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetails;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetails;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
@@ -109,6 +110,33 @@ public record ApplicationDataPayload(
         decisionEventDescription,
         assignmentEventDescription,
         notes,
+        Map.of());
+  }
+
+  /** Creates the initial payload from the content carried by an {@code ApplicationCreatedEvent}. */
+  public static ApplicationDataPayload from(
+      String laaReference, ParsedAppContentDetails content, String serialisedRequest) {
+    return new ApplicationDataPayload(
+        laaReference,
+        content.client(),
+        content.provider(),
+        content.opponents(),
+        content.submittedAt(),
+        content.usedDelegatedFunctions(),
+        content.categoryOfLaw(),
+        content.matterType(),
+        content.categoryOfLawCode(),
+        content.matterTypeCode(),
+        content.proceedings(),
+        serialisedRequest,
+        null,
+        AutoGrantedState.PENDING,
+        Map.of(),
+        null,
+        null,
+        null,
+        null,
+        List.of(),
         Map.of());
   }
 
