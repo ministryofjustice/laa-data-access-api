@@ -381,7 +381,6 @@ class ErasureReplayTest {
             null,
             null,
             AT,
-            "{}",
             AT));
   }
 

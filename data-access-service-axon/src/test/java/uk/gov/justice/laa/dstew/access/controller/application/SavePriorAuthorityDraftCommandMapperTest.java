@@ -1,19 +1,12 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.json.JsonMapper;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.UpdatePriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.model.Apportionment;
@@ -35,7 +28,7 @@ class SavePriorAuthorityDraftCommandMapperTest {
       new AuthenticatedCaller(Optional.empty(), Set.of(), Set.of("1A001B"), Set.of());
 
   private final SavePriorAuthorityDraftCommandMapper mapper =
-      new SavePriorAuthorityDraftCommandMapper(JsonMapper.builder().build());
+      new SavePriorAuthorityDraftCommandMapper();
 
   @Test
   void givenExpertRequest_whenCreateMapped_thenMapsAllExpertFields() {
@@ -116,15 +109,6 @@ class SavePriorAuthorityDraftCommandMapperTest {
   }
 
   @Test
-  void givenRequest_whenCreateMapped_thenContentIsSerialised() {
-    CreatePriorAuthorityDraftCommand command = mapper.toCreateCommand(expertRequest(), CALLER);
-
-    assertThat(command.serialisedRequest()).contains("Need expert assessment");
-    assertThatCode(() -> JsonMapper.builder().build().readTree(command.serialisedRequest()))
-        .doesNotThrowAnyException();
-  }
-
-  @Test
   void givenPriorAuthorityId_whenUpdateMapped_thenPriorAuthorityIdMatches() {
     UUID priorAuthorityId = UUID.randomUUID();
     UpdatePriorAuthorityDraftCommand command =
@@ -138,21 +122,6 @@ class SavePriorAuthorityDraftCommandMapperTest {
     assertThat(command.priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(command.caller()).isEqualTo(CALLER);
     assertThat(command.content().priorAuthorityType()).isNull();
-  }
-
-  @Test
-  void givenSerializationFailure_whenMapped_thenWrapsInIllegalStateException() throws Exception {
-    ObjectMapper objectMapper = mock(ObjectMapper.class);
-    CreatePriorAuthorityDraftRequest request = expertRequest();
-    SavePriorAuthorityDraftCommandMapper failingMapper =
-        new SavePriorAuthorityDraftCommandMapper(objectMapper);
-
-    when(objectMapper.writeValueAsString(request)).thenThrow(new JacksonException("boom") {});
-
-    assertThatThrownBy(() -> failingMapper.toCreateCommand(request, CALLER))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessage("Unable to serialise CreatePriorAuthorityDraftRequest")
-        .hasCauseInstanceOf(JacksonException.class);
   }
 
   @Test

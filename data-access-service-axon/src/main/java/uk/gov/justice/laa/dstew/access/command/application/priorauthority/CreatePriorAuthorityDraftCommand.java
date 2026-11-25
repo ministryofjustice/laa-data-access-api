@@ -13,7 +13,6 @@ public record CreatePriorAuthorityDraftCommand(
     @TargetEntityId UUID priorAuthorityId,
     UUID applicationId,
     PriorAuthorityContent content,
-    String serialisedRequest,
     int schemaVersion,
     String schemaName,
     Instant occurredAt,

@@ -75,14 +75,7 @@ class PriorAuthorityDraftCommandControllerTest {
         new CreatePriorAuthorityDraftRequest().applicationId(applicationId);
     CreatePriorAuthorityDraftCommand command =
         new CreatePriorAuthorityDraftCommand(
-            priorAuthorityId,
-            applicationId,
-            null,
-            "{}",
-            1,
-            "PriorAuthority.json",
-            Instant.now(),
-            CALLER);
+            priorAuthorityId, applicationId, null, 1, "PriorAuthority.json", Instant.now(), CALLER);
     when(saveCommandMapper.toCreateCommand(any(), any())).thenReturn(command);
     when(createUseCase.execute(command)).thenReturn(true);
 
@@ -107,14 +100,7 @@ class PriorAuthorityDraftCommandControllerTest {
         new CreatePriorAuthorityDraftRequest().applicationId(applicationId);
     CreatePriorAuthorityDraftCommand command =
         new CreatePriorAuthorityDraftCommand(
-            priorAuthorityId,
-            applicationId,
-            null,
-            "{}",
-            1,
-            "PriorAuthority.json",
-            Instant.now(),
-            CALLER);
+            priorAuthorityId, applicationId, null, 1, "PriorAuthority.json", Instant.now(), CALLER);
     when(saveCommandMapper.toCreateCommand(any(), any())).thenReturn(command);
     when(createUseCase.execute(command)).thenReturn(false);
 
@@ -131,7 +117,7 @@ class PriorAuthorityDraftCommandControllerTest {
     SavePriorAuthorityDraftRequest request = new SavePriorAuthorityDraftRequest();
     UpdatePriorAuthorityDraftCommand command =
         new UpdatePriorAuthorityDraftCommand(
-            priorAuthorityId, null, "{}", 1, "PriorAuthority.json", Instant.now(), CALLER);
+            priorAuthorityId, null, 1, "PriorAuthority.json", Instant.now(), CALLER);
     when(saveCommandMapper.toUpdateCommand(eq(priorAuthorityId), eq(request), any()))
         .thenReturn(command);
 

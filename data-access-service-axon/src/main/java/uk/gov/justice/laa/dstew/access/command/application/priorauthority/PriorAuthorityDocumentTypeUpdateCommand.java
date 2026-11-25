@@ -13,7 +13,6 @@ public record PriorAuthorityDocumentTypeUpdateCommand(
     @TargetEntityId UUID priorAuthorityId,
     UUID documentId,
     String documentType,
-    String serialisedRequest,
     Instant occurredAt,
     AuthenticatedCaller caller)
     implements CallerCommand {}

@@ -48,7 +48,7 @@ class UpdatePriorAuthorityDraftCommandHandlerTest {
         new PriorAuthorityContent(PriorAuthorityType.COUNSEL, "Updated", null, null, null);
     UpdatePriorAuthorityDraftCommand command =
         new UpdatePriorAuthorityDraftCommand(
-            priorAuthorityId, updatedContent, "new", 2, "PriorAuthority.json", OCCURRED_AT, CALLER);
+            priorAuthorityId, updatedContent, 2, "PriorAuthority.json", OCCURRED_AT, CALLER);
     when(priorAuthority.getState())
         .thenReturn(draftState(priorAuthorityId, applicationId, existingContent));
 
@@ -71,7 +71,6 @@ class UpdatePriorAuthorityDraftCommandHandlerTest {
         new UpdatePriorAuthorityDraftCommand(
             priorAuthorityId,
             new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Updated", null, null, null),
-            "new",
             2,
             "PriorAuthority.json",
             OCCURRED_AT,
@@ -95,7 +94,6 @@ class UpdatePriorAuthorityDraftCommandHandlerTest {
         new UpdatePriorAuthorityDraftCommand(
             priorAuthorityId,
             new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Updated", null, null, null),
-            "new",
             2,
             "PriorAuthority.json",
             OCCURRED_AT,

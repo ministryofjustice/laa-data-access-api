@@ -3,7 +3,6 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
-import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.UpdatePriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.Apportionment;
@@ -20,19 +19,12 @@ import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 import uk.gov.justice.laa.dstew.access.util.EnumMapping;
-import uk.gov.justice.laa.dstew.access.util.RequestSerialiser;
 
 /** Maps the generated HTTP request model to the Axon save-prior-authority-draft command. */
 @Component
 public class SavePriorAuthorityDraftCommandMapper {
 
   private static final String SCHEMA_VERSION_NAME = "PriorAuthority.json";
-
-  private final ObjectMapper objectMapper;
-
-  public SavePriorAuthorityDraftCommandMapper(ObjectMapper objectMapper) {
-    this.objectMapper = objectMapper;
-  }
 
   /** Creates a save-draft command for a new draft, with a server-generated submission ID. */
   public CreatePriorAuthorityDraftCommand toCreateCommand(
@@ -48,7 +40,6 @@ public class SavePriorAuthorityDraftCommandMapper {
         UUID.randomUUID(),
         request.getApplicationId(),
         content,
-        serialise(request),
         1,
         SCHEMA_VERSION_NAME,
         Instant.now(),
@@ -66,13 +57,7 @@ public class SavePriorAuthorityDraftCommandMapper {
             request.getCounselDetails(),
             request.getDisbursementDetails());
     return new UpdatePriorAuthorityDraftCommand(
-        priorAuthorityId,
-        content,
-        serialise(request),
-        1,
-        SCHEMA_VERSION_NAME,
-        Instant.now(),
-        caller);
+        priorAuthorityId, content, 1, SCHEMA_VERSION_NAME, Instant.now(), caller);
   }
 
   private PriorAuthorityContent toContent(
@@ -151,9 +136,5 @@ public class SavePriorAuthorityDraftCommandMapper {
 
     return new DisbursementDetails(
         details.getDisbursementPurpose(), details.getDisbursementAmount());
-  }
-
-  private String serialise(Object request) {
-    return RequestSerialiser.serialise(objectMapper, request);
   }
 }

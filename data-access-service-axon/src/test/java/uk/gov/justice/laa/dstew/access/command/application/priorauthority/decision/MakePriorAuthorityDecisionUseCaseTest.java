@@ -29,7 +29,6 @@ class MakePriorAuthorityDecisionUseCaseTest {
             null,
             null,
             Instant.now(),
-            "{}",
             Instant.now());
 
     useCase.execute(command);

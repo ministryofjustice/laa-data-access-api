@@ -95,7 +95,6 @@ class CreatePriorAuthorityDraftUseCaseTest {
         UUID.randomUUID(),
         UUID.randomUUID(),
         null,
-        "{}",
         1,
         "PriorAuthority.json",
         Instant.now(),

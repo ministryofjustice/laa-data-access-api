@@ -118,7 +118,6 @@ class PriorAuthorityStateSeeder {
             priorAuthorityId,
             generated.applicationId(),
             generated.content(),
-            generated.serialisedRequest(),
             generated.schemaVersion(),
             generated.schemaName(),
             generated.occurredAt(),
@@ -191,7 +190,6 @@ class PriorAuthorityStateSeeder {
             null,
             null,
             now,
-            "{}",
             now));
     return awaitPriorAuthority(priorAuthorityId, pa -> DECIDED_STATUS.equals(pa.status()));
   }

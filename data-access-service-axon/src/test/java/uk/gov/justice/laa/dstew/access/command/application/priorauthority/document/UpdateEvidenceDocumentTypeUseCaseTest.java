@@ -29,11 +29,9 @@ class UpdateEvidenceDocumentTypeUseCaseTest {
         new UpdatePriorAuthorityDocumentTypeUseCase(dispatcher);
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
-    String serialisedRequest = "{\"documentType\":\"GATEWAY_EVIDENCE\"}";
 
     UpdatePriorAuthorityDocumentTypeResult result =
-        useCase.execute(
-            priorAuthorityId, documentId, "GATEWAY_EVIDENCE", serialisedRequest, CALLER);
+        useCase.execute(priorAuthorityId, documentId, "GATEWAY_EVIDENCE", CALLER);
 
     ArgumentCaptor<PriorAuthorityDocumentTypeUpdateCommand> commandCaptor =
         ArgumentCaptor.forClass(PriorAuthorityDocumentTypeUpdateCommand.class);
@@ -42,7 +40,6 @@ class UpdateEvidenceDocumentTypeUseCaseTest {
     assertThat(command.priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(command.documentId()).isEqualTo(documentId);
     assertThat(command.documentType()).isEqualTo("GATEWAY_EVIDENCE");
-    assertThat(command.serialisedRequest()).isEqualTo(serialisedRequest);
     assertThat(command.caller()).isEqualTo(CALLER);
     assertThat(command.occurredAt()).isEqualTo(result.updatedAt());
     assertThat(result.documentId()).isEqualTo(documentId);

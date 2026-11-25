@@ -15,12 +15,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
-import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.DeletePriorAuthorityDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.UpdatePriorAuthorityDocumentTypeResult;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.UpdatePriorAuthorityDocumentTypeUseCase;
@@ -40,7 +38,6 @@ class EvidenceDocumentCommandControllerTest {
   @Mock private UpdatePriorAuthorityDocumentTypeUseCase updateTypeUseCase;
   @Mock private DeletePriorAuthorityDocumentUseCase deleteUseCase;
   @Mock private AuthenticatedCallerFactory authenticatedCallerFactory;
-  @Spy private ObjectMapper objectMapper = new ObjectMapper();
 
   @InjectMocks private PriorAuthorityDocumentCommandController controller;
 
@@ -87,13 +84,8 @@ class EvidenceDocumentCommandControllerTest {
     Instant updatedAt = Instant.parse("2026-09-10T12:30:00Z");
     UpdatePriorAuthorityDocumentTypeRequest request =
         new UpdatePriorAuthorityDocumentTypeRequest(DocumentType.GATEWAY_EVIDENCE);
-    String serialisedRequest = "{\"documentType\":\"GATEWAY_EVIDENCE\"}";
     when(updateTypeUseCase.execute(
-            eq(priorAuthorityId),
-            eq(documentId),
-            eq("GATEWAY_EVIDENCE"),
-            eq(serialisedRequest),
-            any()))
+            eq(priorAuthorityId), eq(documentId), eq("GATEWAY_EVIDENCE"), any()))
         .thenReturn(new UpdatePriorAuthorityDocumentTypeResult(documentId, updatedAt));
 
     ResponseEntity<PriorAuthorityDocumentTypeUpdateResponse> response =
@@ -109,12 +101,7 @@ class EvidenceDocumentCommandControllerTest {
     assertThat(response.getBody().getUpdatedAt())
         .isEqualTo(updatedAt.atOffset(java.time.ZoneOffset.UTC));
     verify(updateTypeUseCase)
-        .execute(
-            eq(priorAuthorityId),
-            eq(documentId),
-            eq("GATEWAY_EVIDENCE"),
-            eq(serialisedRequest),
-            any());
+        .execute(eq(priorAuthorityId), eq(documentId), eq("GATEWAY_EVIDENCE"), any());
   }
 
   @Test

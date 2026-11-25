@@ -44,7 +44,6 @@ class PriorAuthorityDeciderTest {
             priorAuthorityId,
             applicationId,
             new PriorAuthorityContent(PriorAuthorityType.EXPERT, null, null, null, null),
-            "{}",
             1,
             "PriorAuthority.json",
             OCCURRED_AT,
@@ -70,7 +69,6 @@ class PriorAuthorityDeciderTest {
             priorAuthorityId,
             applicationId,
             new PriorAuthorityContent(null, null, null, null, null),
-            "{}",
             1,
             "PriorAuthority.json",
             OCCURRED_AT,
@@ -129,7 +127,6 @@ class PriorAuthorityDeciderTest {
             null,
             null,
             OCCURRED_AT,
-            "{\"decision\":\"GRANTED\"}",
             OCCURRED_AT);
 
     Optional<PriorAuthorityDecisionMadeEvent> result =
@@ -211,7 +208,6 @@ class PriorAuthorityDeciderTest {
             null,
             null,
             OCCURRED_AT,
-            "{}",
             OCCURRED_AT);
 
     assertThatThrownBy(() -> PriorAuthorityDecider.decideDecision(state, command))
@@ -235,7 +231,6 @@ class PriorAuthorityDeciderTest {
             null,
             null,
             OCCURRED_AT,
-            "{\"decision\":\"GRANTED\"}",
             OCCURRED_AT);
 
     assertThatThrownBy(() -> PriorAuthorityDecider.decideDecision(state, command))
@@ -260,7 +255,6 @@ class PriorAuthorityDeciderTest {
             null,
             null,
             OCCURRED_AT,
-            "{\"decision\":\"REFUSED\"}",
             OCCURRED_AT);
 
     assertThatThrownBy(() -> PriorAuthorityDecider.decideDecision(state, command))
@@ -285,7 +279,6 @@ class PriorAuthorityDeciderTest {
             null,
             null,
             OCCURRED_AT,
-            "{\"decision\":\"GRANTED\"}",
             OCCURRED_AT);
 
     assertThatThrownBy(() -> PriorAuthorityDecider.decideDecision(state, command))
@@ -310,7 +303,6 @@ class PriorAuthorityDeciderTest {
             null,
             null,
             OCCURRED_AT,
-            "{\"decision\":\"GRANTED\"}",
             OCCURRED_AT);
 
     assertThatThrownBy(() -> PriorAuthorityDecider.decideDecision(state, command))
@@ -319,8 +311,7 @@ class PriorAuthorityDeciderTest {
   }
 
   @Test
-  void
-      givenAlreadyDecidedWithNullDecisionSerialisedRequest_whenDecideDecision_thenThrowsConflict() {
+  void givenAlreadyDecidedAtCurrentVersion_whenDecideDecision_thenThrowsConflict() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityState state = submittedState(priorAuthorityId, applicationId, 1L);
@@ -337,7 +328,6 @@ class PriorAuthorityDeciderTest {
             null,
             null,
             OCCURRED_AT,
-            "{\"decision\":\"GRANTED\"}",
             OCCURRED_AT);
 
     assertThatThrownBy(() -> PriorAuthorityDecider.decideDecision(state, command))
@@ -362,7 +352,6 @@ class PriorAuthorityDeciderTest {
             null,
             null,
             OCCURRED_AT,
-            "{\"decision\":\"GRANTED\"}",
             OCCURRED_AT);
 
     assertThatThrownBy(() -> PriorAuthorityDecider.decideDecision(state, command))
@@ -387,7 +376,6 @@ class PriorAuthorityDeciderTest {
             null,
             null,
             OCCURRED_AT,
-            "{\"decision\":\"GRANTED\"}",
             OCCURRED_AT);
 
     assertThatThrownBy(() -> PriorAuthorityDecider.decideDecision(state, command))
@@ -433,7 +421,6 @@ class PriorAuthorityDeciderTest {
         null,
         null,
         OCCURRED_AT,
-        "{\"decision\":\"GRANTED\"}",
         OCCURRED_AT);
   }
 
@@ -492,7 +479,7 @@ class PriorAuthorityDeciderTest {
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityDocumentTypeUpdateCommand command =
         new PriorAuthorityDocumentTypeUpdateCommand(
-            priorAuthorityId, documentId, "GATEWAY_EVIDENCE", "{}", OCCURRED_AT, CALLER);
+            priorAuthorityId, documentId, "GATEWAY_EVIDENCE", OCCURRED_AT, CALLER);
 
     PriorAuthorityDocumentTypeUpdatedEvent event =
         PriorAuthorityDecider.decideDocumentTypeUpdated(command, applicationId);
@@ -517,7 +504,6 @@ class PriorAuthorityDeciderTest {
         new UpdatePriorAuthorityDraftCommand(
             priorAuthorityId,
             new PriorAuthorityContent(null, "need expert", null, null, null),
-            "{}",
             1,
             "PriorAuthority.json",
             OCCURRED_AT,

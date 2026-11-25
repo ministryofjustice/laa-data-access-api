@@ -22,15 +22,11 @@ public class UpdatePriorAuthorityDocumentTypeUseCase {
   /** Updates the type of an uploaded document in a Prior Authority draft. */
   @AllowApiCaseworker
   public UpdatePriorAuthorityDocumentTypeResult execute(
-      UUID priorAuthorityId,
-      UUID documentId,
-      String documentType,
-      String serialisedRequest,
-      AuthenticatedCaller caller) {
+      UUID priorAuthorityId, UUID documentId, String documentType, AuthenticatedCaller caller) {
     Instant updatedAt = Instant.now();
     dispatcher.dispatch(
         new PriorAuthorityDocumentTypeUpdateCommand(
-            priorAuthorityId, documentId, documentType, serialisedRequest, updatedAt, caller));
+            priorAuthorityId, documentId, documentType, updatedAt, caller));
     return new UpdatePriorAuthorityDocumentTypeResult(documentId, updatedAt);
   }
 }

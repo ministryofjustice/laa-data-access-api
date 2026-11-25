@@ -21,5 +21,4 @@ public record MakePriorAuthorityDecisionCommand(
     DisbursementInformation disbursementInformation,
     ApportionmentInformation apportionmentInformation,
     Instant dateGranted,
-    String serialisedRequest,
     Instant occurredAt) {}

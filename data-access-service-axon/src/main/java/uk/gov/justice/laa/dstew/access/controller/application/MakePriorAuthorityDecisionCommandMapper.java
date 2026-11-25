@@ -3,8 +3,6 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.DisbursementInformation;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ExpertFeeInformation;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.ApportionmentInformation;
@@ -21,12 +19,9 @@ import uk.gov.justice.laa.dstew.access.security.AuthenticatedUserId;
 @Component
 public class MakePriorAuthorityDecisionCommandMapper {
 
-  private final ObjectMapper objectMapper;
   private final AuthenticatedUserId authenticatedUserId;
 
-  public MakePriorAuthorityDecisionCommandMapper(
-      ObjectMapper objectMapper, AuthenticatedUserId authenticatedUserId) {
-    this.objectMapper = objectMapper;
+  public MakePriorAuthorityDecisionCommandMapper(AuthenticatedUserId authenticatedUserId) {
     this.authenticatedUserId = authenticatedUserId;
   }
 
@@ -44,7 +39,6 @@ public class MakePriorAuthorityDecisionCommandMapper {
         disbursementInformation(request.getDisbursement()),
         apportionmentInformation(request.getApportionment()),
         request.getDateGranted().toInstant(),
-        serialise(request),
         Instant.now());
   }
 
@@ -81,14 +75,5 @@ public class MakePriorAuthorityDecisionCommandMapper {
   private String decisionJustification(MakePriorAuthorityDecisionRequest request) {
     String value = request.getDecisionJustification();
     return value == null ? null : value.trim();
-  }
-
-  private String serialise(MakePriorAuthorityDecisionRequest request) {
-    try {
-      return objectMapper.writeValueAsString(request);
-    } catch (JacksonException exception) {
-      throw new IllegalStateException(
-          "Unable to serialise MakePriorAuthorityDecisionRequest", exception);
-    }
   }
 }

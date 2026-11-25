@@ -35,6 +35,6 @@ class UpdatePriorAuthorityDraftUseCaseTest {
 
   private static UpdatePriorAuthorityDraftCommand stubCommand() {
     return new UpdatePriorAuthorityDraftCommand(
-        UUID.randomUUID(), null, "{}", 1, "PriorAuthority.json", Instant.now(), CALLER);
+        UUID.randomUUID(), null, 1, "PriorAuthority.json", Instant.now(), CALLER);
   }
 }

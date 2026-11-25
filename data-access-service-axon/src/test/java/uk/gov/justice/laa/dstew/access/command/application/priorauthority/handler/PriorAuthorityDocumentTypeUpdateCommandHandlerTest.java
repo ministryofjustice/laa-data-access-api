@@ -50,7 +50,7 @@ class PriorAuthorityDocumentTypeUpdateCommandHandlerTest {
     UUID documentId = UUID.randomUUID();
     PriorAuthorityDocumentTypeUpdateCommand command =
         new PriorAuthorityDocumentTypeUpdateCommand(
-            priorAuthorityId, documentId, "GATEWAY_EVIDENCE", "new", OCCURRED_AT, CALLER);
+            priorAuthorityId, documentId, "GATEWAY_EVIDENCE", OCCURRED_AT, CALLER);
 
     when(priorAuthority.getState())
         .thenReturn(draftStateWithDocument(priorAuthorityId, applicationId, documentId));
@@ -73,7 +73,7 @@ class PriorAuthorityDocumentTypeUpdateCommandHandlerTest {
     UUID documentId = UUID.randomUUID();
     PriorAuthorityDocumentTypeUpdateCommand command =
         new PriorAuthorityDocumentTypeUpdateCommand(
-            priorAuthorityId, documentId, "GATEWAY_EVIDENCE", "new", OCCURRED_AT, CALLER);
+            priorAuthorityId, documentId, "GATEWAY_EVIDENCE", OCCURRED_AT, CALLER);
 
     when(priorAuthority.getState()).thenReturn(new PriorAuthorityState());
 
@@ -94,7 +94,7 @@ class PriorAuthorityDocumentTypeUpdateCommandHandlerTest {
     UUID documentId = UUID.randomUUID();
     PriorAuthorityDocumentTypeUpdateCommand command =
         new PriorAuthorityDocumentTypeUpdateCommand(
-            priorAuthorityId, documentId, "GATEWAY_EVIDENCE", "new", OCCURRED_AT, CALLER);
+            priorAuthorityId, documentId, "GATEWAY_EVIDENCE", OCCURRED_AT, CALLER);
 
     when(priorAuthority.getState()).thenReturn(draftState(priorAuthorityId, applicationId));
 
@@ -121,7 +121,7 @@ class PriorAuthorityDocumentTypeUpdateCommandHandlerTest {
     when(priorAuthority.getState()).thenReturn(state);
     PriorAuthorityDocumentTypeUpdateCommand command =
         new PriorAuthorityDocumentTypeUpdateCommand(
-            priorAuthorityId, UUID.randomUUID(), "GATEWAY_EVIDENCE", "new", OCCURRED_AT, CALLER);
+            priorAuthorityId, UUID.randomUUID(), "GATEWAY_EVIDENCE", OCCURRED_AT, CALLER);
 
     assertThatThrownBy(
             () ->
@@ -145,7 +145,7 @@ class PriorAuthorityDocumentTypeUpdateCommandHandlerTest {
     when(priorAuthority.getState()).thenReturn(state);
     PriorAuthorityDocumentTypeUpdateCommand command =
         new PriorAuthorityDocumentTypeUpdateCommand(
-            priorAuthorityId, documentId, "GATEWAY_EVIDENCE", "new", OCCURRED_AT, CALLER);
+            priorAuthorityId, documentId, "GATEWAY_EVIDENCE", OCCURRED_AT, CALLER);
 
     assertThatThrownBy(
             () ->

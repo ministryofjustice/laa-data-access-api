@@ -13,7 +13,6 @@ import uk.gov.justice.laa.dstew.access.security.CallerCommand;
 public record UpdatePriorAuthorityDraftCommand(
     @TargetEntityId UUID priorAuthorityId,
     PriorAuthorityContent content,
-    String serialisedRequest,
     int schemaVersion,
     String schemaName,
     Instant occurredAt,

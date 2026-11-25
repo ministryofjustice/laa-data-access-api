@@ -78,7 +78,6 @@ class MakePriorAuthorityDecisionCommandHandlerTest {
             null,
             null,
             OCCURRED_AT,
-            "{}",
             OCCURRED_AT);
 
     when(priorAuthority.getState()).thenReturn(state);
@@ -154,7 +153,6 @@ class MakePriorAuthorityDecisionCommandHandlerTest {
             null,
             null,
             OCCURRED_AT,
-            "{}",
             OCCURRED_AT);
 
     when(priorAuthority.getState()).thenReturn(state);
@@ -282,7 +280,6 @@ class MakePriorAuthorityDecisionCommandHandlerTest {
         null,
         null,
         OCCURRED_AT,
-        "{}",
         OCCURRED_AT);
   }
 
@@ -302,7 +299,6 @@ class MakePriorAuthorityDecisionCommandHandlerTest {
             null,
             null,
             OCCURRED_AT,
-            "{}",
             OCCURRED_AT);
 
     when(priorAuthority.getPriorAuthorityId()).thenReturn(null);
@@ -334,7 +330,6 @@ class MakePriorAuthorityDecisionCommandHandlerTest {
             null,
             null,
             OCCURRED_AT,
-            "{}",
             OCCURRED_AT);
 
     when(priorAuthority.getPriorAuthorityId()).thenReturn(differentPriorAuthorityId);
