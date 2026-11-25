@@ -15,12 +15,12 @@ public final class ApplicationFixtureFactory {
         "laaReference",
         "BDD-" + applicationId.toString().substring(0, 8),
         "applicationContent",
-        content(proceedingId, officeCode, "Ada"));
-  }
-
-  /** Full application content with a changed client first name; partial content is rejected. */
-  public Map<String, Object> update(UUID proceedingId, String officeCode, String firstName) {
-    return Map.of("applicationContent", content(proceedingId, officeCode, firstName));
+        Map.of(
+            "createdAt", "2026-01-01T00:00:00Z",
+            "submittedAt", "2026-01-01T00:00:00Z",
+            "provider", Map.of("officeCode", officeCode, "contactEmail", "bdd@example.com"),
+            "client", client(),
+            "proceedings", List.of(proceeding(proceedingId))));
   }
 
   /** Builds a decision request; {@code decision} is {@code GRANTED} or {@code REFUSED}. */
@@ -47,18 +47,9 @@ public final class ApplicationFixtureFactory {
     return request;
   }
 
-  private Map<String, Object> content(UUID proceedingId, String officeCode, String firstName) {
-    return Map.of(
-        "createdAt", "2026-01-01T00:00:00Z",
-        "submittedAt", "2026-01-01T00:00:00Z",
-        "provider", Map.of("officeCode", officeCode, "contactEmail", "bdd@example.com"),
-        "client", client(firstName),
-        "proceedings", List.of(proceeding(proceedingId)));
-  }
-
-  private Map<String, Object> client(String firstName) {
+  private Map<String, Object> client() {
     return Map.ofEntries(
-        Map.entry("firstName", firstName),
+        Map.entry("firstName", "Ada"),
         Map.entry("lastName", "Lovelace"),
         Map.entry("dateOfBirth", "1815-12-10"),
         Map.entry("appliedPreviously", false),

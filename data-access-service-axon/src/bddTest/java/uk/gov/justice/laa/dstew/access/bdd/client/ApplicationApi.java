@@ -80,10 +80,6 @@ public final class ApplicationApi {
     return polling.awaitGet("/api/v0/applications/" + applicationId, condition);
   }
 
-  public ApiResponse update(UUID applicationId, Object update) {
-    return apiClient.patch("/api/v0/applications/" + applicationId, update);
-  }
-
   public ApiResponse addNote(UUID applicationId, String note) {
     return apiClient.post(
         "/api/v0/applications/" + applicationId + "/notes", Map.of("notes", note));
