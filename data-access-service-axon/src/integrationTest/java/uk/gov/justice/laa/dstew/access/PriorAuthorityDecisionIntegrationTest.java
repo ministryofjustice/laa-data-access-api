@@ -375,7 +375,7 @@ class PriorAuthorityDecisionIntegrationTest extends BaseIntegrationTest {
             priorAuthorityId.toString(),
             payloadType);
     assertThat(eventIds).hasSize(1);
-    eventContentStore.erase(eventIds, objectMapper.createObjectNode());
+    eventContentStore.erase(eventIds);
     assertThat(storedEvent(priorAuthorityId, payloadType).get("content").toString())
         .isEqualTo("{}");
   }

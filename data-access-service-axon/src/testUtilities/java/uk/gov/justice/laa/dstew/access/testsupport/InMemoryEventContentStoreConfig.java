@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
+import tools.jackson.databind.node.JsonNodeFactory;
 import tools.jackson.databind.node.ObjectNode;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventContentStore;
 
@@ -49,14 +50,16 @@ public class InMemoryEventContentStoreConfig {
     }
 
     @Override
-    public void erase(Collection<String> eventIds, ObjectNode replacement) {
+    public void erase(Collection<String> eventIds) {
       eventIds.stream()
           .filter(rows::containsKey)
           .filter(erased::add)
           .forEach(
               id ->
                   rows.computeIfPresent(
-                      id, (key, row) -> new ContentRow(key, row.tags(), replacement.deepCopy())));
+                      id,
+                      (key, row) ->
+                          new ContentRow(key, row.tags(), JsonNodeFactory.instance.objectNode())));
     }
   }
 }

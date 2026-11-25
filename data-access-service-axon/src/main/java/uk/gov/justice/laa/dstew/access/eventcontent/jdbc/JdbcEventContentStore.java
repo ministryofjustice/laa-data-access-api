@@ -83,7 +83,7 @@ public final class JdbcEventContentStore implements EventContentStore {
   }
 
   @Override
-  public void erase(Collection<String> eventIds, ObjectNode replacement) {
+  public void erase(Collection<String> eventIds) {
     if (eventIds.isEmpty()) {
       return;
     }
@@ -93,10 +93,9 @@ public final class JdbcEventContentStore implements EventContentStore {
               connection.prepareStatement(
                   "UPDATE "
                       + table
-                      + " SET content = ?::jsonb, erased_at = now()"
+                      + " SET content = '{}'::jsonb, erased_at = now()"
                       + " WHERE event_id = ANY (?) AND erased_at IS NULL");
-          statement.setString(1, mapper.writeValueAsString(replacement));
-          statement.setArray(2, connection.createArrayOf("varchar", eventIds.toArray()));
+          statement.setArray(1, connection.createArrayOf("varchar", eventIds.toArray()));
           return statement;
         });
   }

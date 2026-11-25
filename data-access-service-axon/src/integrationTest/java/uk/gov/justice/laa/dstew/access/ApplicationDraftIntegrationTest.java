@@ -904,7 +904,7 @@ class ApplicationDraftIntegrationTest {
         .thenReturn(new SdsUploadResult(null, null, "checksum"));
     final UUID documentId = uploadDocument(applicationId, "original evidence.pdf");
     if (missingFilename) {
-      // Erase the row with default content that lacks only the filename.
+      // Simulate content that lacks only the filename; erase() itself always writes {}.
       jdbcTemplate.update(
           "UPDATE axon.event_content c SET content = c.content - 'originalFilename',"
               + " erased_at = now() FROM axon.domain_event_entry e"

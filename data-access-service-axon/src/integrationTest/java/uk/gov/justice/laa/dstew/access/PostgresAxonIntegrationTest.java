@@ -360,30 +360,14 @@ class PostgresAxonIntegrationTest {
     commandGateway.sendAndWait(uploadCommand(applicationId, "client-report.pdf"));
     String eventId = uploadedEventIds(applicationId).getFirst();
 
-    eventContentStore.erase(List.of(eventId), objectMapper.createObjectNode());
+    eventContentStore.erase(List.of(eventId));
 
     Map<String, Object> erased = contentRow(eventId);
     assertThat(erased.get("content")).isEqualTo("{}");
     assertThat(erased.get("erased_at")).isNotNull();
-    eventContentStore.erase(
-        List.of(eventId), objectMapper.createObjectNode().put("documentType", "OTHER"));
+    eventContentStore.erase(List.of(eventId));
     assertThat(contentRow(eventId)).isEqualTo(erased);
 
-    commandGateway.sendAndWait(uploadCommand(applicationId, "another.pdf"));
-    assertThat(uploadedEventIds(applicationId)).hasSize(2);
-  }
-
-  @Test
-  void givenDefaultContent_whenErased_thenRowHoldsOnlyTheDefaults() {
-    UUID applicationId = UUID.randomUUID();
-    createDocumentDraft(applicationId);
-    commandGateway.sendAndWait(uploadCommand(applicationId, "client-report.pdf"));
-    String eventId = uploadedEventIds(applicationId).getFirst();
-
-    eventContentStore.erase(
-        List.of(eventId), objectMapper.createObjectNode().put("documentType", "OTHER"));
-
-    assertThat(contentRow(eventId).get("content")).isEqualTo("{\"documentType\": \"OTHER\"}");
     commandGateway.sendAndWait(uploadCommand(applicationId, "another.pdf"));
     assertThat(uploadedEventIds(applicationId)).hasSize(2);
   }
@@ -410,7 +394,7 @@ class PostgresAxonIntegrationTest {
                 assertThatThrownBy(() -> jdbcTemplate.update(statement, eventId))
                     .hasStackTraceContaining("Event content is immutable except for erasure"));
 
-    eventContentStore.erase(List.of(eventId), objectMapper.createObjectNode());
+    eventContentStore.erase(List.of(eventId));
     assertThat(
             List.of(
                 "DELETE FROM axon.event_content WHERE event_id = ?",
