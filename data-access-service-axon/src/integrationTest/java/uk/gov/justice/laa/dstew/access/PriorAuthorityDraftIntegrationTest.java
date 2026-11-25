@@ -611,19 +611,25 @@ class PriorAuthorityDraftIntegrationTest {
     assertThat(body.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(body.getSubmittedAt()).isNotNull();
 
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT status FROM axon.prior_authority_current_state WHERE prior_authority_id = ?",
-                String.class,
-                priorAuthorityId))
-        .isEqualTo("SUBMITTED");
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.prior_authority_data"
-                    + " WHERE prior_authority_id = ? AND data_version = 0",
-                Integer.class,
-                priorAuthorityId))
-        .isEqualTo(1);
+    await()
+        .atMost(Duration.ofSeconds(15))
+        .untilAsserted(
+            () -> {
+              assertThat(
+                      jdbcTemplate.queryForObject(
+                          "SELECT status FROM axon.prior_authority_current_state"
+                              + " WHERE prior_authority_id = ?",
+                          String.class,
+                          priorAuthorityId))
+                  .isEqualTo("SUBMITTED");
+              assertThat(
+                      jdbcTemplate.queryForObject(
+                          "SELECT COUNT(*) FROM axon.prior_authority_data"
+                              + " WHERE prior_authority_id = ? AND data_version = 0",
+                          Integer.class,
+                          priorAuthorityId))
+                  .isEqualTo(1);
+            });
 
     ResponseEntity<String> getResponse =
         restTemplate.exchange(
@@ -1356,7 +1362,7 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   @Test
-  void givenSubmittedPriorAuthority_whenDeletePriorAuthorityDocument_thenReturnsNotFound() {
+  void givenSubmittedPriorAuthority_whenDeletePriorAuthorityDocument_thenReturnsBadRequest() {
     UUID applicationId = grantedApplication();
     UUID priorAuthorityId =
         saveDraft(
@@ -1391,7 +1397,7 @@ class PriorAuthorityDraftIntegrationTest {
             new HttpEntity<>(headers()),
             String.class);
 
-    assertThat(deleteResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(deleteResponse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
   }
 
   @Test
