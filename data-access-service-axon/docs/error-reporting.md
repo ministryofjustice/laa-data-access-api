@@ -407,7 +407,7 @@ observability failure from becoming a correctness/availability failure.
 `ReportingErrorHandler` only into pooled-streaming processors: `pooledStreamingProcessor(...)`
 (`workListProjectionProcessor`, `linkedApplicationGroupProjectionProcessor`,
 `linkedGroupWorkItemLifecycleProcessor`, `lifecycleStreamProcessor`) and
-`contentReadingProcessor(...)` (`applicationProjectionProcessor`,
+`projectionProcessor(...)` (`applicationProjectionProcessor`,
 `priorAuthorityProjectionProcessor`). The subscribing
 beans (`applicationGroupRouteProcessor`, `workItemRouteProcessor`,
 `applicationSubmittedPublisherProcessor`) keep `PropagatingErrorHandler.instance()` directly — their

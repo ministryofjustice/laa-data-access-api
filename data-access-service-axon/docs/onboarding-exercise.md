@@ -46,7 +46,7 @@ FROM domain_event_entry
 WHERE aggregate_identifier = 'application-uuid-here'
 ORDER BY sequence_number;
 
-SELECT application_id, version, payload_hash, created_at
+SELECT application_id, version, created_at
 FROM application_data
 WHERE application_id = 'application-uuid-here';
 

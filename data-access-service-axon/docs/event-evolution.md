@@ -5,7 +5,7 @@ Jackson serialization through `EventJson`, the one mapper for event payloads and
 PostgreSQL stores the payload type, optional revision, and serialized bytes in `domain_event_entry`.
 Every event type declares its stored name explicitly, `@Event(namespace = "access", name = ...)`,
 so the payload type is `access.<Name>`, not the Java class name. The stored bytes hold only the
-fields in the event's kept-field schema; content is stored beside them in `event_content` (see
+record components marked `@RetainedField`; content is stored beside them in `event_content` (see
 [ADR 0007](adr/0007-event-content-is-stored-beside-its-event.md)).
 
 Changing a Java event record does not change events already stored in the database.
@@ -50,7 +50,9 @@ Required work includes:
 - make construction/deserialization tolerate it;
 - keep event-sourcing and projection handlers compatible;
 - rely on the existing [stored event fixtures](#stored-event-fixtures), which already hold the
-  old JSON and accept an added field; a kept field added this way must be nullable in its schema;
+  old JSON and accept an added field; a kept field added this way must have a nullable type, not
+  a primitive, because older events lack it. Mark it `@RetainedField(nullable = true)` only if new
+  events may also leave it null; otherwise the separator rejects a new event without it;
 - verify replay against PostgreSQL serialization.
 
 Do not reuse an existing field with a new meaning. That is a semantic breaking change even if JSON
@@ -79,7 +81,7 @@ PostgreSQL tests verify persisted suffixes and absence of full filenames from ev
 `PriorAuthorityDraftUpdatedEvent` retains its original three kept fields:
 `priorAuthorityId`, `parentApplicationId`, and `occurredAt`. Its owner ID is now annotated
 with `@EventTag(key = "PriorAuthorityAggregate")`, and the aggregate explicitly handles
-the event, replacing the draft body and raw request from erasable event content. This associates new draft saves with the
+the event, replacing the draft body from erasable event content. This associates new draft saves with the
 same optimistic-concurrency stream as document mutations. A stale append rolls back
 its draft write, allowing the existing bounded dispatcher retry to reload current state.
 
@@ -102,13 +104,13 @@ accepted changes and both owner-stream events survive without sensitive event fi
 
 ### Prior Authority submission and decision content
 
-`PriorAuthoritySubmittedEvent` adds the erasable `content` and `serialisedRequest`, and
-`PriorAuthorityDecisionMadeEvent` adds the erasable `expertFee`, `disbursementInformation`,
-`apportionmentInformation` and `serialisedRequest`. All are content, so the kept-field schemas and
-stored payload bytes are unchanged. Each compact constructor normalises an absent content field to
-erased, so an event whose row has been erased still deserializes and folds; its submitted payload
-then reads as erased and a decision that needs to write a new `prior_authority_data` version
-returns not found. Kept fields, including `dataVersion`, are unchanged.
+`PriorAuthoritySubmittedEvent` adds the erasable `content`, and
+`PriorAuthorityDecisionMadeEvent` adds the erasable `expertFee`, `disbursementInformation` and
+`apportionmentInformation`. All are content, so the retained fields and stored payload bytes are
+unchanged. Content fields are nullable, so an event whose row has been erased still deserializes
+and folds; its submitted payload then reads as erased in aggregate state and a decision that needs
+to write a new `prior_authority_data` version returns not found. Kept fields, including
+`dataVersion`, are unchanged.
 
 `PriorAuthoritySubmitted` had no content fields before, so a Submitted event stored before this
 change has no content row and now fails to load with `MissingEventContentException`. No upcaster
@@ -170,7 +172,7 @@ projection replay tests, and PostgreSQL integration coverage.
 
 Axon writes the `@Event` version to `domain_event_entry.payload_revision`; no event declares one,
 so every row has the default `0.0.1`. Nothing reads it to choose a decoder today: the separator
-selects the kept-field schema by type name alone, and the current record decodes every stored
+selects the retained fields by type name alone, and the current record decodes every stored
 row. A first upcaster must make the revision mean something on both halves of the event, the
 kept payload and its content row.
 
@@ -187,8 +189,8 @@ each history's fixtures share IDs. `StoredEventCompatibilityTest` checks that:
 - the type has a content row exactly when it has content fields;
 - each fixture decodes into the current record, and every stored value, at any depth, survives
   re-serialising in the same row (kept or content) it was stored in; fields added since may
-  appear, and the re-split event passes the kept-field schema;
-- with an erased (`{}`) content row each content field loads as erased, matching
+  appear;
+- with an erased (`{}`) content row each content field loads as `null` (erased), matching
   `EventContentSeparator.erase`; a content type with no row is rejected, a content-free one is not;
 - the Prior Authority and Application fixtures fold through the real evolve functions to a decided
   aggregate with its content.
@@ -201,7 +203,9 @@ because the mapper rejects `null` for primitives.
 
 The policy is:
 
-- never edit, regenerate or delete a fixture: it is the stored form of rows that exist;
+- never edit, regenerate or delete a fixture: it is the stored form of rows that exist. The one
+  exception came before any deployment: the nine `v1` fixtures that held `serialisedRequest` had
+  that key removed from their content row when the field was removed from events;
 - adding a field, at any depth, needs no new fixture: older events lack it, so it loads as `null`,
   erased or its default, and readers must accept that;
 - renaming, removing, retyping or reclassifying a stored field fails the test; add an upcaster
@@ -212,24 +216,26 @@ The policy is:
 
 ### What common changes need
 
-| Change | Kept schema | Event record | Upcaster | New fixture |
+| Change | `@RetainedField` review | Event record | Upcaster | New fixture |
 |---|---|---|---|---|
 | New value in an enum carried as content | — | — | — | — |
-| New value in a kept enum (`ApplicationDecisionMade`, work-item events) | Add to `enum`, with review | — | — | — |
+| New value in a kept enum (`ApplicationDecisionMade`, work-item events) | Review the new value | — | — | — |
 | New nested object in a request, returned to clients only | — | — | — | — |
 | New field in a content class the aggregate uses for a new rule | — | Add it | — | — |
-| New kept field, for a rule that must hold after erasure | Add it as nullable, with review | Add it | — | — |
+| New kept field, for a rule that must hold after erasure | Mark it (`nullable = true` only if new events may omit it), with review | Add it with a nullable type | — | — |
 | Rename a content or kept field | If kept | Rename | Yes | Yes |
 | Change a field's type | If kept | Change | Yes | Yes |
 | Remove a stored field | If kept | Remove | Yes, to drop it | Yes |
-| Move a field between kept and content | Change, with review | Change | Yes, plus migration | Yes |
-| New event type | New file | New record with `@Event` name | — | `v1.json` |
+| Move a field between kept and content | Add or remove the annotation, with review | Change | Yes, plus migration | Yes |
+| Allow or stop allowing a null kept field on append | Change `nullable`, with review | — | — | — |
+| New event type | Mark each kept component | New record with `@Event` name | — | `v1.json` |
 | API-only change (computed field, renamed response field) | — | — | — | — |
 
 Notes:
 
-- The full request is stored as content in `serialisedRequest`, so a new request field is
-  captured without any event change. Only a read model that must show it changes.
+- Raw requests are not stored. A new request field changes no event unless the aggregate or a
+  read model needs it; then add it as content, or as a kept field with review, and accept that
+  older events lack it.
 - Evolve functions already handle erased content, so an older event without a new content field
   reads like an erased one. A new kept field is `null` on older events: the evolve function
   treats that as a defined default, or a migration event sets it.

@@ -168,7 +168,7 @@ FROM application_current_state
 ORDER BY modified_at DESC;
 
 -- Available immutable data versions; avoid selecting payload in shared logs
-SELECT application_id, version, payload_hash, created_at
+SELECT application_id, version, created_at
 FROM application_data
 ORDER BY application_id, version;
 

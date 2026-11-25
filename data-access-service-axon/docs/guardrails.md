@@ -47,18 +47,22 @@ group lead and membership. Do not duplicate group membership rules in controller
 ### Events are persisted contracts
 
 An event record is not an ordinary refactorable DTO. Its `@Event` name, serialized fields,
-kept-field schema, revision, and meaning may be stored for years. Read [Event evolution](event-evolution.md)
+`@RetainedField` set, revision, and meaning may be stored for years. Read [Event evolution](event-evolution.md)
 before renaming, moving, or changing one.
 
 ### Keep events thin and reviewed
 
-Do not add application content, individuals, proceedings, certificates, note text, serialized
-requests, or free-text descriptions to events as kept fields. Carry them as erasable content and,
-while readers still hydrate from it, also append them to `application_data` and reference the new
-version. Identifiers may still be personal data and also require review. A field the event's
-kept-field schema does not list is content: it must be `Erasable` and no decider rule may depend
-on it. Never delete an `event_content` row: erasure replaces its content, and a missing row fails
-loading (see [ADR 0007](adr/0007-event-content-is-stored-beside-its-event.md)).
+Do not add application content, individuals, proceedings, certificates, note text, or free-text
+descriptions to events as kept fields. Carry them as erasable content and, while readers still
+hydrate from it, also append them to `application_data` and reference the new version. Do not
+store raw serialized requests in events or data stores; carry a request fingerprint when a retry
+must be recognised. Identifiers may still be personal data and also require review. A component
+the event does not mark `@RetainedField` is content: it must be a plain `@Nullable` type, never
+`Erasable`, and no decider rule may depend on it. A retained field must be non-null on append
+unless it is marked `@RetainedField(nullable = true)`; the separator rejects it otherwise. Never
+delete an `event_content` row: erasure
+replaces its content with `{}`, and a missing row fails loading (see
+[ADR 0007](adr/0007-event-content-is-stored-beside-its-event.md)).
 
 ### Do not nest events inside events
 

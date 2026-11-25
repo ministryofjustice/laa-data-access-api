@@ -14,10 +14,11 @@ rebuilt without changing aggregate event streams or immutable application-data v
 | `work-list-projection` | Pooled streaming | `work_list_item` |
 | `application-group-route` | Subscribing | `application_group_route`, synchronously in the command transaction |
 
-Processors receive events with their content erased, except the registered content readers
-(`application-projection` and `prior-authority-projection`), whose event source rejoins content
-from `event_content`. Adding a processor to `RegisteredContentReaders` needs review of what content
-it stores and how erasure reaches it. See
+Processors receive events with their content fields `null`, except those for projection classes
+marked `@ReadsEventContent` (`ApplicationProjection` on `application-projection` and
+`PriorAuthorityProjection` on `prior-authority-projection`), whose event source rejoins content
+from `event_content` by event identifier. Adding `@ReadsEventContent` to a projection needs review
+of what content it stores and how erasure reaches it. See
 [ADR 0007](adr/0007-event-content-is-stored-beside-its-event.md).
 
 `application-projection` owns the event-derived `application_current_state.submitted_at`.

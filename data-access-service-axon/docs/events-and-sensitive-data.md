@@ -49,7 +49,7 @@ status is `APPLICATION_IN_PROGRESS`. The draft payload's intended submission sta
 lifecycle guard: the aggregate tracks the draft lifecycle with `state.status == null`.
 
 Application draft content is held only in events. `ApplicationDraftStartedEvent` carries the
-draft's application content, request JSON and potential duplicates, and each
+draft's application content and potential duplicates, and each
 `ApplicationDocumentUploadedEvent` carries the document's original filename. All of these are stored
 as erasable content in `axon.event_content`, apart from the kept event fields (see
 [ADR 0007](adr/0007-event-content-is-stored-beside-its-event.md)). Aggregate state folds them as
@@ -62,8 +62,8 @@ so document downloads still read from the projection. Submission clears that col
 
 Submitted Application content is also carried in events, as a delta: each event holds only the
 content it introduces. `ApplicationCreatedEvent` and `ApplicationUpdatedEvent` carry the parsed
-application content and request JSON, `NoteCreatedEvent` the note text, and
-`ApplicationDecisionMadeEvent` the merits decisions, certificate, request JSON and description.
+application content, `NoteCreatedEvent` the note text, and `ApplicationDecisionMadeEvent` the
+merits decisions, certificate and description.
 Proceeding IDs are kept fields on Created and Updated, and the decision request fingerprint is a
 kept field on DecisionMade, so decision validation and auto-grant retry matching still work after
 content is erased. DecisionMade also keeps the decision value for each proceeding
@@ -73,10 +73,10 @@ Command handlers that build the next payload read it from there instead of from 
 but still write each new version to `application_data`. API reads, projections and history
 descriptions are unchanged: they still hydrate from `application_data`.
 
-Prior Authority content follows the same pattern. Draft and document events carry the draft body,
-request JSON and document metadata. `PriorAuthoritySubmittedEvent` carries a copy of the submitted
-content and request JSON, and `PriorAuthorityDecisionMadeEvent` carries the decision
-justification, amounts, dates, expert, disbursement and apportionment details and request JSON.
+Prior Authority content follows the same pattern. Draft and document events carry the draft body
+and document metadata. `PriorAuthoritySubmittedEvent` carries a copy of the submitted content, and
+`PriorAuthorityDecisionMadeEvent` carries the decision justification, amounts, dates, expert,
+disbursement and apportionment details.
 The kept fields include `dataVersion`, `billingType`, `priorAuthorityType` and `overallDecision`,
 so decision validation and conflicts still work after content is erased. Aggregate state folds
 the submitted payload as an `Erasable`; the decision handler builds the next `prior_authority_data`
@@ -110,24 +110,32 @@ historical sensitive-data versions. Application-level retention removes those ve
 
 ## Event content
 
-The content events do carry is stored beside them rather than in them. Each stored event type has
-a kept-field schema in `src/main/resources/event-schemas/access.<Name>.json`; on append, fields the
-schema does not list are written to `event_content`, keyed by event identifier, in the same
-transaction. Content fields are `Erasable<T>`. Erasure keeps the row, replacing its content with
-`{}` or defaults and stamping `erased_at`, and the event still loads with those fields erased. A
+The content events do carry is stored beside them rather than in them. Each stored event is a
+record whose kept components are annotated `@RetainedField`; on append, every other field is
+written to `event_content`, keyed by event identifier, in the same transaction. A retained field
+must be non-null on append unless it is marked `@RetainedField(nullable = true)`; otherwise the
+separator rejects the event with `KeptFieldViolationException`. Content fields are
+plain `@Nullable` types on the event. Evolve functions convert them once to `Erasable<T>` in
+aggregate state, where reading an erased value throws. Erasure keeps the row, replacing its
+content with `{}` and stamping `erased_at`, and the event still loads with those fields `null`. A
 missing row for an event type with content fields is an error, not erased content. Aggregates load
-with content rejoined; only the processors listed in `RegisteredContentReaders` receive it. Every
-other processor, and application history, sees kept fields only. See
+with content rejoined by event identifier; only projections marked `@ReadsEventContent`
+(`ApplicationProjection` and `PriorAuthorityProjection`) receive it. Every other processor, and
+application history, sees kept fields only. See
 [ADR 0007](adr/0007-event-content-is-stored-beside-its-event.md) for the classification rule and
 the content fields of each event.
+
+Request bodies are not stored, in events or in the data stores. Commands that must recognise a
+retry carry a fingerprint of the request, computed in the controller mapper, and the events keep
+it (`requestFingerprint`, `decisionRequestFingerprint`).
 
 ## What is stored where
 
 | Store | Typical contents | Purpose |
 |---|---|---|
 | Axon event store | IDs, timestamps, status/type, version pointers, decision outcome, group membership | Durable business timeline and aggregate control state |
-| `event_content` | Draft and submitted Application and Prior Authority content, request JSON, notes, decision details, potential duplicates, document metadata | Erasable content of individual events |
-| `application_data` | Application content, individuals, proceedings, certificates, notes, request JSON, free-text descriptions | Immutable versioned sensitive payloads |
+| `event_content` | Draft and submitted Application and Prior Authority content, notes, decision details, potential duplicates, document metadata | Erasable content of individual events |
+| `application_data` | Application content, individuals, proceedings, certificates, notes, free-text descriptions | Immutable versioned sensitive payloads |
 | `application_current_state` | IDs, status, timestamps, versions, caseworker ID and other thin query state | Disposable current-state projection |
 | `lifecycle_stream` | Genesis application ID, event identifier and name, timestamp | Disposable pointers from which history is read; descriptions are hydrated when queried |
 
@@ -185,8 +193,10 @@ When a new operation contains sensitive or free-text data:
 
 1. add the complete new state to `ApplicationDataPayload`;
 2. append a new `application_data` version in the command handler;
-3. put only routing, concurrency, and non-sensitive control fields in the event, list exactly
-   those fields in its kept-field schema, and make any other field `Erasable`;
+3. put only routing, concurrency, and non-sensitive control fields in the event, mark exactly
+   those components `@RetainedField` (with `nullable = true` only where the value may be absent
+   on append), and make any other component a `@Nullable` content field;
+   never store the raw request, and carry a request fingerprint if a retry must be recognised;
 4. include `applicationId` and `applicationDataVersion` when consumers need hydration;
 5. update aggregate event-sourcing state;
 6. update the current-state projection as needed, cover lifecycle-stream pointers on replay,

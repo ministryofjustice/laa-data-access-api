@@ -41,8 +41,8 @@ cleanup is best-effort without automatic retry.
 ## Prior Authority concurrency and retries
 
 Draft-body saves and document upload, type update, and deletion append events tagged for the same
-`PriorAuthorityAggregate` stream. A draft update replaces the body and raw request folded by the
-aggregate. It advances stream concurrency, not the immutable submitted `dataVersion`.
+`PriorAuthorityAggregate` stream. A draft update replaces the body folded by the aggregate. It
+advances stream concurrency, not the immutable submitted `dataVersion`.
 
 The draft write and event append share the command transaction. If two commands read stale state,
 a competing stream append can reject one attempt and roll back its draft write.

@@ -31,7 +31,8 @@ commandGateway.sendAndWait(decisionCommandMapper.toCommand(id, request));
 `MakeDecisionCommandMapper` maps the public request to `MakeApplicationDecisionCommand`. It also:
 
 - maps each proceeding decision into an internal record;
-- serializes the original request for audit storage outside the event stream;
+- computes a fingerprint of the serialized request, so a matching retry can be recognised; the
+  request itself is not stored;
 - extracts the free-text event description;
 - captures `Instant.now()` once as the operation time.
 
@@ -89,7 +90,7 @@ The aggregate reads the complete payload selected by its current pointer:
 ```
 
 It builds a complete updated `ApplicationDataPayload`, preserving unchanged fields and adding the
-decision, certificate, serialized request, and free-text description. It then chooses
+decision, certificate, and free-text description. It then chooses
 `applicationDataVersion + 1` and appends that immutable row.
 
 This read is command handling, not aggregate replay. Event-sourcing handlers never query
@@ -106,8 +107,8 @@ contains:
 - overall outcome and auto-granted flag;
 - occurrence time.
 
-It does not contain proceedings, certificate content, serialized request, or event description.
-Those remain in the referenced immutable payload.
+It does not contain proceedings, certificate content, or event description. Those remain in the
+referenced immutable payload. The request itself is not stored anywhere.
 
 The aggregate's event-sourcing handler advances both version fields. If the append fails, the event
 is never applied. If transaction commit fails, the data insert and event are rolled back together.

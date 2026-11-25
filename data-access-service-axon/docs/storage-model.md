@@ -17,7 +17,6 @@ erDiagram
         uuid application_id PK
         bigint version PK
         jsonb payload
-        string payload_hash
         timestamptz created_at
     }
     APPLICATION_CURRENT_STATE {
@@ -73,7 +72,7 @@ data, and retention must be able to delete application rows while thin events re
 | Table | Role | Authoritative? | Mutable? | Reset/replay? | Retention behaviour |
 |---|---|---:|---:|---:|---|
 | `domain_event_entry` | Aggregate event streams | Yes, for control state and transitions | Append-only | Source of replay | Retained by this design |
-| `event_content` | Erasable content of individual events, keyed by event identifier | Yes, for that content | Insert-only; deletes and updates rejected except erasure | No; rejoined on load | Erasure replaces the content and stamps `erased_at`; the row is kept |
+| `event_content` | Erasable content of individual events, keyed by event identifier | Yes, for that content | Insert-only; deletes and updates rejected except erasure | No; rejoined on load | Erasure replaces the content with `{}` and stamps `erased_at`; the row is kept |
 | `snapshot_event_entry` | Optional aggregate snapshots | No; optimization only | Replaceable | Rebuilt/discarded | Must not be the only source |
 | `application_data` | Complete sensitive payload versions | Yes, for detailed content | Append-only | Not a projection | Deleted only through retention function |
 | `application_current_state` | Current application query model | No | Yes | Yes | Pointer may outlive deleted payload |
@@ -82,11 +81,16 @@ data, and retention must be able to delete application rows while thin events re
 | `token_entry` | Tracking processor positions and claims | Operational state | Yes, via Axon | Reset through processor APIs | Not application retention data |
 | `caseworkers` | Caseworker reference directory | Yes for caseworker existence | Yes | No | Requires its own policy |
 
-Stored event payloads hold only the fields listed in each event type's kept-field schema; the rest
-of the event is a row in `event_content`, written in the same transaction and joined back when an
-aggregate loads. Its foreign key to `domain_event_entry` is deferred to the end of the transaction.
+Stored event payloads hold only the record components each event type marks `@RetainedField`; the
+rest of the event is a row in `event_content`, written in the same transaction. When an aggregate
+loads, its events are read first and their rows are then fetched in one query by event
+identifier and joined back. The row holds the event identifier, the content and `erased_at`; it
+has no tags. Its foreign key to `domain_event_entry` is deferred to the end of the transaction.
 Every event whose type has content fields has a row; a missing row is an error, not erased content.
 See [ADR 0007](adr/0007-event-content-is-stored-beside-its-event.md).
+
+`application_data`, `prior_authority_data` and `prior_authority_draft` hold no request body and no
+`payload_hash`; `V40__drop_payload_hash_columns.sql` dropped those columns.
 
 ## Event and data version relationship
 

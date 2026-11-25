@@ -70,7 +70,7 @@ Use ordinary JUnit and Mockito when Axon's runtime is not the behaviour under te
 - `ApplicationExceptionHandler` status and safe Problem Details;
 - projection handler database updates;
 - group-router command mapping and failure propagation;
-- application-data hashing and persistence mapping.
+- request fingerprinting in controller mappers and application-data persistence mapping.
 
 Projection unit tests should cover missing rows, idempotency, reset handlers, and hydration
 fallbacks where relevant.
