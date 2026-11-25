@@ -78,6 +78,6 @@ public record PriorAuthorityResult(
   }
 
   private static DisbursementDetails toDisbursementDetails(PriorAuthorityContent content) {
-    return content.disbursementDetails() == null ? null : content.disbursementDetails();
+    return content.disbursementDetails();
   }
 }
