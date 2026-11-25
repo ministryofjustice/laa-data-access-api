@@ -89,7 +89,6 @@ class ApplicationCommandHandlerSupportTest {
                 "APPLICATION_SUBMITTED",
                 "LAA-123",
                 Map.of("a", "b"),
-                "{}",
                 List.of(),
                 Map.of(documentId, "evidence.pdf")));
   }
@@ -254,7 +253,6 @@ class ApplicationCommandHandlerSupportTest {
         created.officeCode(),
         created.laaReference(),
         created.proceedingIds(),
-        null,
         null);
   }
 
@@ -269,7 +267,6 @@ class ApplicationCommandHandlerSupportTest {
         "APPLICATION_SUBMITTED",
         "LAA-123",
         content,
-        "{}",
         List.of());
   }
 

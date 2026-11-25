@@ -23,7 +23,6 @@ public record ApplicationCreationDetails(
     String categoryOfLawCode,
     String matterTypeCode,
     List<Proceeding> proceedings,
-    String serialisedRequest,
     Instant occurredAt,
     List<PotentialDuplicate> potentialDuplicates) {
 

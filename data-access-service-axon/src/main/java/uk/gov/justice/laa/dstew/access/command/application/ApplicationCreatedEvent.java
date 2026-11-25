@@ -15,8 +15,8 @@ import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 
 /**
- * Establishes an Application aggregate. The submitted content and request are erasable content;
- * proceeding IDs are kept as linking keys.
+ * Establishes an Application aggregate. The submitted content is erasable content; proceeding IDs
+ * are kept as linking keys.
  */
 @Event(namespace = "access", name = "ApplicationCreated")
 public record ApplicationCreatedEvent(
@@ -30,8 +30,7 @@ public record ApplicationCreatedEvent(
     @RetainedField String officeCode,
     @RetainedField String laaReference,
     @RetainedField List<UUID> proceedingIds,
-    @Nullable ParsedAppContentDetails content,
-    @Nullable String serialisedRequest)
+    @Nullable ParsedAppContentDetails content)
     implements GenesisScoped {
 
   /** Normalises missing proceeding IDs to none. */
@@ -61,7 +60,6 @@ public record ApplicationCreatedEvent(
         officeCode,
         laaReference,
         List.of(),
-        null,
         null);
   }
 

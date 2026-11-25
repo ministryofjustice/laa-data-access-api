@@ -33,7 +33,6 @@ public class SubmitApplicationDraftCommandHandler {
             draft.status(),
             draft.laaReference(),
             draft.applicationContent(),
-            draft.serialisedRequest(),
             application.getState().getSchemaVersion(),
             draft.potentialDuplicates());
     long applicationDataVersion = 0L;

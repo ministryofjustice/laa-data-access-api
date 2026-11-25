@@ -90,7 +90,7 @@ class ApplicationProjectionSequencingIntegrationTest {
         new ApplicationCreatedEvent(
             applicationId,
             0L,
-            PayloadFingerprint.compute(details.serialisedRequest()),
+            PayloadFingerprint.compute("{}"),
             details.status(),
             details.schemaVersion(),
             createdAt,
@@ -109,7 +109,6 @@ class ApplicationProjectionSequencingIntegrationTest {
             "APPLICATION_SUBMITTED",
             "LAA-123",
             Map.of(),
-            "{}",
             List.of()));
     applicationProjection.on(event);
 
@@ -141,7 +140,7 @@ class ApplicationProjectionSequencingIntegrationTest {
         new ApplicationCreatedEvent(
             applicationId,
             0L,
-            PayloadFingerprint.compute(details.serialisedRequest()),
+            PayloadFingerprint.compute("{}"),
             details.status(),
             details.schemaVersion(),
             createdAt,

@@ -149,12 +149,10 @@ class ErasureReplayTest {
         .ignoringFields(
             "uploadedDocuments",
             "draftApplicationContent",
-            "draftSerialisedRequest",
             "draftPotentialDuplicates",
             "draftDocumentFilenames")
         .isEqualTo(full);
     assertThat(erased.getDraftApplicationContent().isErased()).isTrue();
-    assertThat(erased.getDraftSerialisedRequest().isErased()).isTrue();
     assertThat(erased.getDraftPotentialDuplicates().isErased()).isTrue();
     assertThat(erased.getDraftDocumentFilenames())
         .containsOnlyKeys(documentId)
@@ -300,8 +298,7 @@ class ErasureReplayTest {
             .client(ApplicationClient.builder().firstName("Jane").lastName("Doe").build())
             .proceedings(
                 List.of(Proceeding.builder().id(proceedingId).leadProceeding(true).build()))
-            .build(),
-        "{\"client\":\"Jane Doe\"}");
+            .build());
   }
 
   private Object decide(ApplicationState state, long expectedVersion, UUID decidedProceedingId) {
@@ -329,7 +326,6 @@ class ErasureReplayTest {
         "APPLICATION_SUBMITTED",
         "LAA-123",
         Map.<String, Object>of("applicant", "Jane Doe"),
-        "{\"applicant\":\"Jane Doe\"}",
         List.of(new PotentialDuplicate("LAA-456")));
   }
 

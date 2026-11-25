@@ -43,7 +43,6 @@ public final class ApplicationEvolve {
     state.content = createdContent(state, event);
     state.draftStatus = null;
     state.draftApplicationContent = Erasable.erased();
-    state.draftSerialisedRequest = Erasable.erased();
     state.draftPotentialDuplicates = Erasable.erased();
     state.draftDocumentFilenames.clear();
   }
@@ -57,7 +56,6 @@ public final class ApplicationEvolve {
     state.laaReference = event.laaReference();
     state.draftStatus = event.status();
     state.draftApplicationContent = Erasable.of(event.applicationContent());
-    state.draftSerialisedRequest = Erasable.of(event.serialisedRequest());
     state.draftPotentialDuplicates = Erasable.of(event.potentialDuplicates());
   }
 
@@ -171,7 +169,7 @@ public final class ApplicationEvolve {
 
   private static Erasable<ApplicationDataPayload> createdContent(
       ApplicationState state, ApplicationCreatedEvent event) {
-    if (event.content() == null || event.serialisedRequest() == null) {
+    if (event.content() == null) {
       return Erasable.erased();
     }
     ApplicationDataPayload payload =

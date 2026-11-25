@@ -35,7 +35,6 @@ public class ApplicationState {
   // Draft content, held only until submission.
   String draftStatus;
   Erasable<Map<String, Object>> draftApplicationContent = Erasable.erased();
-  Erasable<String> draftSerialisedRequest = Erasable.erased();
   Erasable<List<PotentialDuplicate>> draftPotentialDuplicates = Erasable.erased();
   Map<UUID, Erasable<String>> draftDocumentFilenames = new LinkedHashMap<>();
   // Kept linking keys and decision fingerprint, available after content is erased.

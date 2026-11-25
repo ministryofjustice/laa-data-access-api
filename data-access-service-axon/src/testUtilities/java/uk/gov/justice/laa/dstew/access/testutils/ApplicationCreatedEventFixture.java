@@ -24,7 +24,7 @@ public final class ApplicationCreatedEventFixture {
   public static ApplicationCreatedEvent applicationCreatedEvent(
       UUID applicationId, ApplicationCreationDetails details) {
     return ApplicationDecider.decideSubmitDraft(
-        applicationId, 0L, PayloadFingerprint.compute(details.serialisedRequest()), details);
+        applicationId, 0L, PayloadFingerprint.compute("{}"), details);
   }
 
   /** Creates minimal creation details with stable values for the supplied identifier. */
@@ -53,7 +53,6 @@ public final class ApplicationCreatedEventFixture {
                 .matterType("special children act (SCA)")
                 .matterTypeCode("KPBLW")
                 .build()),
-        "{}",
         Instant.parse("2026-07-15T08:00:00Z"),
         List.of());
   }

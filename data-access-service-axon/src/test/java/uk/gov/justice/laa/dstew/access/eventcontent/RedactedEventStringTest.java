@@ -83,8 +83,7 @@ class RedactedEventStringTest {
             "office",
             "reference",
             List.of(),
-            null,
-            CONTENT_SECRET),
+            ParsedAppContentDetails.builder().categoryOfLawCode(CONTENT_SECRET).build()),
         new ApplicationDocumentUploadedEvent(
             ID, ID, null, Instant.EPOCH, null, null, "checksum", null, 1L, null, CONTENT_SECRET),
         new ApplicationDecisionMadeEvent(
@@ -107,8 +106,7 @@ class RedactedEventStringTest {
             "office",
             "DRAFT",
             "reference",
-            null,
-            CONTENT_SECRET,
+            Map.of("applicant", CONTENT_SECRET),
             null),
         new ApplicationUpdatedEvent(
             ID,

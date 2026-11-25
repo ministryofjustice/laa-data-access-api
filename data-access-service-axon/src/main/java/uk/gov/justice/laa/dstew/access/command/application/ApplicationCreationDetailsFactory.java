@@ -40,7 +40,6 @@ public class ApplicationCreationDetailsFactory {
         command.status(),
         command.laaReference(),
         command.applicationContent(),
-        command.serialisedRequest(),
         command.schemaVersion(),
         command.potentialDuplicates());
   }
@@ -54,10 +53,8 @@ public class ApplicationCreationDetailsFactory {
       String status,
       String laaReference,
       Map<String, Object> applicationContent,
-      String serialisedRequest,
       int schemaVersion) {
-    return prepare(
-        status, laaReference, applicationContent, serialisedRequest, schemaVersion, List.of());
+    return prepare(status, laaReference, applicationContent, schemaVersion, List.of());
   }
 
   /**
@@ -69,12 +66,10 @@ public class ApplicationCreationDetailsFactory {
       String status,
       String laaReference,
       Map<String, Object> applicationContent,
-      String serialisedRequest,
       int schemaVersion,
       List<PotentialDuplicate> potentialDuplicates) {
     ParsedAppContentDetails parsed = applicationContentParser.parse(applicationContent);
-    return toCreationDetails(
-        status, laaReference, serialisedRequest, schemaVersion, parsed, potentialDuplicates);
+    return toCreationDetails(status, laaReference, schemaVersion, parsed, potentialDuplicates);
   }
 
   /**
@@ -91,7 +86,6 @@ public class ApplicationCreationDetailsFactory {
   private ApplicationCreationDetails toCreationDetails(
       String status,
       String laaReference,
-      String serialisedRequest,
       int schemaVersion,
       ParsedAppContentDetails parsed,
       List<PotentialDuplicate> potentialDuplicates) {
@@ -109,7 +103,6 @@ public class ApplicationCreationDetailsFactory {
         parsed.categoryOfLawCode(),
         parsed.matterTypeCode(),
         parsed.proceedings(),
-        serialisedRequest,
         Instant.now(clock),
         potentialDuplicates);
   }

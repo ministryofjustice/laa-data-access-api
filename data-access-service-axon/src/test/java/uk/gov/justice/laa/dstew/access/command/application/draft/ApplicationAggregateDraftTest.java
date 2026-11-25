@@ -134,7 +134,6 @@ class ApplicationAggregateDraftTest {
             "APPLICATION_SUBMITTED",
             "LAA-123",
             content,
-            "{}",
             1,
             List.of(new PotentialDuplicate("LAA-456"))))
         .thenReturn(details);
@@ -261,7 +260,6 @@ class ApplicationAggregateDraftTest {
                 "APPLICATION_SUBMITTED",
                 "LAA-123",
                 applicationContent,
-                serialisedRequest,
                 duplicates));
   }
 
@@ -397,8 +395,7 @@ class ApplicationAggregateDraftTest {
         draftStarted(
             applicationId, PayloadFingerprint.compute("{}"), startedAt, applicationContent);
     ApplicationCreationDetails details = applicationCreationDetails(applicationId);
-    when(creationDetailsFactory.prepare(any(), any(), any(), any(), anyInt(), any()))
-        .thenReturn(details);
+    when(creationDetailsFactory.prepare(any(), any(), any(), anyInt(), any())).thenReturn(details);
 
     fixture
         .given()
@@ -422,8 +419,7 @@ class ApplicationAggregateDraftTest {
     Map<String, Object> applicationContent =
         validApplicationContent(applicationId, UUID.randomUUID());
     ApplicationCreationDetails details = applicationCreationDetails(applicationId);
-    when(creationDetailsFactory.prepare(any(), any(), any(), any(), anyInt(), any()))
-        .thenReturn(details);
+    when(creationDetailsFactory.prepare(any(), any(), any(), anyInt(), any())).thenReturn(details);
     fixture
         .given()
         .events(draftStarted(applicationId, "draft-fingerprint", startedAt, applicationContent))
@@ -483,7 +479,6 @@ class ApplicationAggregateDraftTest {
         "APPLICATION_SUBMITTED",
         "LAA-123",
         content,
-        "{}",
         List.of(new PotentialDuplicate("LAA-456")));
   }
 
@@ -496,7 +491,6 @@ class ApplicationAggregateDraftTest {
         null,
         "APPLICATION_SUBMITTED",
         "LAA-123",
-        null,
         null,
         null);
   }

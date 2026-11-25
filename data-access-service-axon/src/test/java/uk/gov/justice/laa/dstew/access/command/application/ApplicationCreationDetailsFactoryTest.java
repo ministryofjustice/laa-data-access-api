@@ -91,7 +91,6 @@ class ApplicationCreationDetailsFactoryTest {
             command.status(),
             command.laaReference(),
             command.applicationContent(),
-            command.serialisedRequest(),
             command.schemaVersion());
 
     assertThat(details.status()).isEqualTo("APPLICATION_SUBMITTED");
@@ -111,7 +110,6 @@ class ApplicationCreationDetailsFactoryTest {
             command.status(),
             command.laaReference(),
             command.applicationContent(),
-            command.serialisedRequest(),
             command.schemaVersion());
 
     assertThat(details.opponents()).isEmpty();
@@ -130,7 +128,6 @@ class ApplicationCreationDetailsFactoryTest {
             command.status(),
             command.laaReference(),
             command.applicationContent(),
-            command.serialisedRequest(),
             command.schemaVersion());
 
     assertThat(details.proceedings()).hasSize(1);
@@ -162,7 +159,6 @@ class ApplicationCreationDetailsFactoryTest {
             "categoryOfLawCode",
             "matterTypeCode",
             "proceedings",
-            "serialisedRequest",
             "occurredAt",
             "potentialDuplicates");
   }

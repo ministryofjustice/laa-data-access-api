@@ -63,7 +63,6 @@ public class GenesisIdsTest {
                 "APPLICATION_SUBMITTED",
                 "LAA-1",
                 Map.of(),
-                "{}",
                 List.of()),
             APP),
         scoped(new ApplicationUpdatedEvent(APP, 1L, 1L, "A", "B", OCCURRED_AT), APP),

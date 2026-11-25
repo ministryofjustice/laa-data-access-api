@@ -501,8 +501,7 @@ class ApplicationAggregateTest {
             created.officeCode(),
             created.laaReference(),
             created.proceedingIds(),
-            created.content(),
-            created.serialisedRequest());
+            created.content());
 
     fixture
         .given()
@@ -797,7 +796,6 @@ class ApplicationAggregateTest {
                 "APPLICATION_SUBMITTED",
                 "LAA-123",
                 null,
-                null,
                 null))
         .when()
         .command(
@@ -955,7 +953,6 @@ class ApplicationAggregateTest {
         "APPLICATION_SUBMITTED",
         "LAA-123",
         Map.of(),
-        "{}",
         List.of());
   }
 
@@ -1002,7 +999,6 @@ class ApplicationAggregateTest {
                 .categoryOfLawCode(original.categoryOfLawCode())
                 .matterTypeCode(original.matterTypeCode())
                 .build()),
-        original.serialisedRequest(),
         original.occurredAt(),
         List.of());
   }
@@ -1307,7 +1303,6 @@ class ApplicationAggregateTest {
         created.officeCode(),
         created.laaReference(),
         created.proceedingIds(),
-        null,
         null);
   }
 

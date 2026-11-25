@@ -232,7 +232,6 @@ class ApplicationProjectionTest {
         "APPLICATION_SUBMITTED",
         "LAA-123",
         Map.of(),
-        "{}",
         List.of());
   }
 

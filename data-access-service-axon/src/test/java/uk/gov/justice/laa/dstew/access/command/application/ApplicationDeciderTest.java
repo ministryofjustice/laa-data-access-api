@@ -293,7 +293,6 @@ class ApplicationDeciderTest {
         .isEqualTo(details.proceedings().stream().map(Proceeding::getId).toList());
     assertThat(event.content().proceedings()).isEqualTo(details.proceedings());
     assertThat(event.content().provider()).isEqualTo(details.provider());
-    assertThat(event.serialisedRequest()).isEqualTo(details.serialisedRequest());
   }
 
   @Test
@@ -359,8 +358,7 @@ class ApplicationDeciderTest {
             "officeCode",
             "laaReference",
             "proceedingIds",
-            "content",
-            "serialisedRequest");
+            "content");
   }
 
   // ── decideStartDraft / decideSubmitDraft ─────────────────────
@@ -381,7 +379,6 @@ class ApplicationDeciderTest {
             "APPLICATION_SUBMITTED",
             "LAA-123",
             Map.of("key", "value"),
-            "{}",
             List.of());
 
     List<Object> events = ApplicationDecider.decideStartDraft(state, draft);
@@ -445,7 +442,7 @@ class ApplicationDeciderTest {
   void givenDetails_whenDecideSubmitDraft_thenReturnsCreatedEventWithVersionZero() {
     UUID applicationId = UUID.randomUUID();
     ApplicationCreationDetails details = applicationCreationDetails(applicationId);
-    String fingerprint = PayloadFingerprint.compute(details.serialisedRequest());
+    String fingerprint = PayloadFingerprint.compute("{}");
 
     ApplicationCreatedEvent event =
         ApplicationDecider.decideSubmitDraft(applicationId, 0L, fingerprint, details);
@@ -735,7 +732,6 @@ class ApplicationDeciderTest {
         null,
         null,
         List.of(),
-        "{}",
         Instant.parse("2026-07-15T08:00:00Z"),
         List.of());
   }

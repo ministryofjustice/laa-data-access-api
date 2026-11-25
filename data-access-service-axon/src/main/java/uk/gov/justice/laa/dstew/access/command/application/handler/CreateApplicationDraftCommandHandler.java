@@ -43,7 +43,6 @@ public class CreateApplicationDraftCommandHandler {
                   command.status(),
                   command.laaReference(),
                   command.applicationContent(),
-                  command.serialisedRequest(),
                   command.potentialDuplicates()))
           .forEach(eventAppender::append);
     } else {

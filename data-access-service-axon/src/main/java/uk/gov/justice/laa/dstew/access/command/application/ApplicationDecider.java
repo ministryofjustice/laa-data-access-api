@@ -453,8 +453,7 @@ public final class ApplicationDecider {
             .submittedAt(details.submittedAt())
             .usedDelegatedFunctions(details.usedDelegatedFunctions())
             .proceedings(details.proceedings())
-            .build(),
-        details.serialisedRequest());
+            .build());
   }
 
   private static List<UUID> proceedingIds(List<Proceeding> proceedings) {

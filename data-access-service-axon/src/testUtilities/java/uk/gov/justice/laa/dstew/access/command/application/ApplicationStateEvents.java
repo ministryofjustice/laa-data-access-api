@@ -100,8 +100,7 @@ public final class ApplicationStateEvents {
         null,
         null,
         List.of(),
-        ParsedAppContentDetails.builder().proceedings(List.of()).build(),
-        "{}");
+        ParsedAppContentDetails.builder().proceedings(List.of()).build());
   }
 
   private static ApplicationReadyForManualAssessmentEvent ready(UUID applicationId) {

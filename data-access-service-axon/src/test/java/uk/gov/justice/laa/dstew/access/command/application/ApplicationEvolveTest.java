@@ -296,9 +296,9 @@ class ApplicationEvolveTest {
             created.proceedingIds(),
             created.content());
 
-    assertThat(fold(withoutRequest(created)).content.isErased()).isTrue();
+    assertThat(fold(withoutContent(created)).content.isErased()).isTrue();
     assertThat(fold(created, withoutContent(updated)).content.isErased()).isTrue();
-    assertThat(fold(withoutRequest(created), updated).content.isErased()).isTrue();
+    assertThat(fold(withoutContent(created), updated).content.isErased()).isTrue();
     assertThat(fold(created, new NoteCreatedEvent(applicationId, 1L, at)).content.isErased())
         .isTrue();
   }
@@ -334,7 +334,7 @@ class ApplicationEvolveTest {
     return state;
   }
 
-  private static ApplicationCreatedEvent withoutRequest(ApplicationCreatedEvent event) {
+  private static ApplicationCreatedEvent withoutContent(ApplicationCreatedEvent event) {
     return new ApplicationCreatedEvent(
         event.applicationId(),
         event.applicationDataVersion(),
@@ -346,7 +346,6 @@ class ApplicationEvolveTest {
         event.officeCode(),
         event.laaReference(),
         event.proceedingIds(),
-        event.content(),
         null);
   }
 

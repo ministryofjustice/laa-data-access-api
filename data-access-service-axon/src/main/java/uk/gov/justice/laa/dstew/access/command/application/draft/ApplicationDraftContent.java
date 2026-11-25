@@ -14,6 +14,5 @@ public record ApplicationDraftContent(
     String status,
     String laaReference,
     Map<String, Object> applicationContent,
-    String serialisedRequest,
     List<PotentialDuplicate> potentialDuplicates,
     Map<UUID, String> documentFilenames) {}

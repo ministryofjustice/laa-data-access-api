@@ -67,9 +67,7 @@ final class ApplicationCommandHandlerSupport {
       return Optional.empty();
     }
     ApplicationState state = application.getState();
-    if (state.getStatus() != null
-        || state.getDraftApplicationContent().isErased()
-        || state.getDraftSerialisedRequest().isErased()) {
+    if (state.getStatus() != null || state.getDraftApplicationContent().isErased()) {
       return Optional.empty();
     }
     Map<UUID, String> filenames = new LinkedHashMap<>();
@@ -86,7 +84,6 @@ final class ApplicationCommandHandlerSupport {
             state.getDraftStatus(),
             state.getLaaReference(),
             state.getDraftApplicationContent().value(),
-            state.getDraftSerialisedRequest().value(),
             state.getDraftPotentialDuplicates().orElse(null),
             filenames));
   }

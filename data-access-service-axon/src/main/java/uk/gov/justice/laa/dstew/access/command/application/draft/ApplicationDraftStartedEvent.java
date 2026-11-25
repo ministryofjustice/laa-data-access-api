@@ -27,7 +27,6 @@ public record ApplicationDraftStartedEvent(
     @RetainedField String status,
     @RetainedField String laaReference,
     @Nullable Map<String, Object> applicationContent,
-    @Nullable String serialisedRequest,
     @Nullable List<PotentialDuplicate> potentialDuplicates)
     implements GenesisScoped {
 
