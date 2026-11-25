@@ -12,13 +12,16 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.Expert
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.ApportionmentInformation;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 
-/** Sensitive data associated with one prior-authority submission. */
+/**
+ * Sensitive data associated with one prior-authority submission. Unknown properties are ignored so
+ * that rows written before the stored request was removed still load.
+ */
 @With
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record PriorAuthorityDataPayload(
     UUID priorAuthorityId,
     UUID applicationId,
     PriorAuthorityContent content,
-    String serialisedRequest,
     Instant submittedAt,
     DecisionDetails decisionDetails,
     String officeCode,
@@ -48,10 +51,8 @@ public record PriorAuthorityDataPayload(
       UUID priorAuthorityId,
       UUID applicationId,
       PriorAuthorityContent content,
-      String serialisedRequest,
       Instant submittedAt) {
-    this(
-        priorAuthorityId, applicationId, content, serialisedRequest, submittedAt, null, null, null);
+    this(priorAuthorityId, applicationId, content, submittedAt, null, null, null);
   }
 
   /** Returns a complete new data version containing the supplied decision details. */

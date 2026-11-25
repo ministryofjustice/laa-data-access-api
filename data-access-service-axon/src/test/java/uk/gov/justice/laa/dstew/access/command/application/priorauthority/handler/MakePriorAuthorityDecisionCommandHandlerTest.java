@@ -63,7 +63,7 @@ class MakePriorAuthorityDecisionCommandHandlerTest {
     PriorAuthorityContent content =
         new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Need review", null, null, null);
     PriorAuthorityDataPayload current =
-        new PriorAuthorityDataPayload(priorAuthorityId, applicationId, content, "{}", OCCURRED_AT);
+        new PriorAuthorityDataPayload(priorAuthorityId, applicationId, content, OCCURRED_AT);
     setField(state, "priorAuthorityId", priorAuthorityId);
     setField(state, "submission", Erasable.of(current));
     MakePriorAuthorityDecisionCommand command =
@@ -136,7 +136,6 @@ class MakePriorAuthorityDecisionCommandHandlerTest {
             priorAuthorityId,
             applicationId,
             new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Need review", null, null, null),
-            "{}",
             OCCURRED_AT);
     setField(state, "priorAuthorityId", priorAuthorityId);
     setField(state, "submission", Erasable.of(current));

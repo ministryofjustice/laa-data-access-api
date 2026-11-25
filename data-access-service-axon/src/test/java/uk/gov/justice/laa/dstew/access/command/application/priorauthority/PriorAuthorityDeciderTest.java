@@ -99,7 +99,7 @@ class PriorAuthorityDeciderTest {
             4L,
             "FIXED_RATE",
             new PriorAuthorityDataPayload(
-                priorAuthorityId, state.applicationId, SUBMITTED_CONTENT, "{\"submit\":1}", null));
+                priorAuthorityId, state.applicationId, SUBMITTED_CONTENT, null));
 
     assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(event.applicationId()).isEqualTo(state.applicationId);

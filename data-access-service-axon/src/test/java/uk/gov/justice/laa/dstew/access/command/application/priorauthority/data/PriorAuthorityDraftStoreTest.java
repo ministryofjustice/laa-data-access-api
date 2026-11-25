@@ -33,8 +33,7 @@ class PriorAuthorityDraftStoreTest {
         new PriorAuthorityContent(PriorAuthorityType.EXPERT, null, null, null, null);
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
     PriorAuthorityDataPayload payload =
-        new PriorAuthorityDataPayload(
-            priorAuthorityId, applicationId, content, "request-json", occurredAt);
+        new PriorAuthorityDataPayload(priorAuthorityId, applicationId, content, occurredAt);
 
     when(repository.findById(priorAuthorityId)).thenReturn(Optional.empty());
 
@@ -63,8 +62,7 @@ class PriorAuthorityDraftStoreTest {
             .updatedAt(originalCreatedAt)
             .build();
     PriorAuthorityDataPayload payload =
-        new PriorAuthorityDataPayload(
-            priorAuthorityId, applicationId, null, "second-request", secondOccurredAt);
+        new PriorAuthorityDataPayload(priorAuthorityId, applicationId, null, secondOccurredAt);
 
     when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(existing));
 
@@ -80,8 +78,7 @@ class PriorAuthorityDraftStoreTest {
   void givenStoredDraft_whenGet_thenReturnsPayload() {
     UUID priorAuthorityId = UUID.randomUUID();
     PriorAuthorityDataPayload expectedPayload =
-        new PriorAuthorityDataPayload(
-            priorAuthorityId, UUID.randomUUID(), null, "req", Instant.now());
+        new PriorAuthorityDataPayload(priorAuthorityId, UUID.randomUUID(), null, Instant.now());
     when(repository.findById(priorAuthorityId))
         .thenReturn(Optional.of(PriorAuthorityDraft.builder().payload(expectedPayload).build()));
 

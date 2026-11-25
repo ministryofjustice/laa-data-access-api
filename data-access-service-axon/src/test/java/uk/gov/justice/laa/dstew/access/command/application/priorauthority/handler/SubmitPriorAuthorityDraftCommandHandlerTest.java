@@ -69,7 +69,7 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
             PriorAuthorityType.EXPERT, "Need urgent review", null, null, null);
     PriorAuthorityDataPayload payload =
         new PriorAuthorityDataPayload(
-            priorAuthorityId, applicationId, content, null, Instant.parse("2026-08-31T09:00:00Z"));
+            priorAuthorityId, applicationId, content, Instant.parse("2026-08-31T09:00:00Z"));
     SubmitPriorAuthorityDraftCommand command =
         new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT, CALLER);
     PriorAuthorityState state =
@@ -144,7 +144,7 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
     PriorAuthorityContent content =
         new PriorAuthorityContent(null, "No type yet", null, null, null);
     PriorAuthorityDataPayload payload =
-        new PriorAuthorityDataPayload(priorAuthorityId, applicationId, content, "{}", OCCURRED_AT);
+        new PriorAuthorityDataPayload(priorAuthorityId, applicationId, content, OCCURRED_AT);
     SubmitPriorAuthorityDraftCommand command =
         new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT, CALLER);
     PriorAuthorityState state =
@@ -201,7 +201,7 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
             null,
             null);
     PriorAuthorityDataPayload payload =
-        new PriorAuthorityDataPayload(priorAuthorityId, applicationId, content, "{}", OCCURRED_AT);
+        new PriorAuthorityDataPayload(priorAuthorityId, applicationId, content, OCCURRED_AT);
     SubmitPriorAuthorityDraftCommand command =
         new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT, CALLER);
     PriorAuthorityState state =
@@ -242,7 +242,7 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityDataPayload payload =
-        new PriorAuthorityDataPayload(priorAuthorityId, applicationId, content, "{}", OCCURRED_AT);
+        new PriorAuthorityDataPayload(priorAuthorityId, applicationId, content, OCCURRED_AT);
     SubmitPriorAuthorityDraftCommand command =
         new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT, CALLER);
     PriorAuthorityState state =

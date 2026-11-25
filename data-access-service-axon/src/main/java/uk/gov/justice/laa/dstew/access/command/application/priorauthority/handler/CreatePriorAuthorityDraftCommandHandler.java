@@ -47,7 +47,6 @@ public class CreatePriorAuthorityDraftCommandHandler {
             command.priorAuthorityId(),
             command.applicationId(),
             command.content(),
-            command.serialisedRequest(),
             command.occurredAt(),
             null,
             officeCode,

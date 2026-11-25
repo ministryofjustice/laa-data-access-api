@@ -40,10 +40,7 @@ public class UpdatePriorAuthorityDraftCommandHandler {
     draftStore.upsert(
         command.priorAuthorityId(),
         existingDraft.applicationId(),
-        existingDraft
-            .withContent(content)
-            .withSerialisedRequest(command.serialisedRequest())
-            .withSubmittedAt(command.occurredAt()),
+        existingDraft.withContent(content).withSubmittedAt(command.occurredAt()),
         command.occurredAt());
     eventAppender.append(
         PriorAuthorityDecider.decideDraftUpdated(command, priorAuthority.getState(), content));

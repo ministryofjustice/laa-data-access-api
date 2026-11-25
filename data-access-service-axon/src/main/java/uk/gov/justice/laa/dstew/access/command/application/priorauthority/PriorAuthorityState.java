@@ -51,7 +51,6 @@ public class PriorAuthorityState {
             priorAuthorityId,
             applicationId,
             draftContent.value(),
-            null,
             draftModifiedAt,
             null,
             officeCode,

@@ -44,9 +44,7 @@ public class PriorAuthorityDocumentTypeUpdateCommandHandler {
     draftStore.upsert(
         command.priorAuthorityId(),
         existingDraft.applicationId(),
-        existingDraft
-            .withSerialisedRequest(command.serialisedRequest())
-            .withSubmittedAt(command.occurredAt()),
+        existingDraft.withSubmittedAt(command.occurredAt()),
         command.occurredAt());
     eventAppender.append(
         PriorAuthorityDecider.decideDocumentTypeUpdated(

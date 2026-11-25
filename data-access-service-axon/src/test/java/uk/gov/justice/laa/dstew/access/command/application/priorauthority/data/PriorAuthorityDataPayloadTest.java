@@ -45,7 +45,6 @@ class PriorAuthorityDataPayloadTest {
     assertThat(decided.priorAuthorityId()).isEqualTo(original.priorAuthorityId());
     assertThat(decided.applicationId()).isEqualTo(original.applicationId());
     assertThat(decided.content()).isEqualTo(original.content());
-    assertThat(decided.serialisedRequest()).isEqualTo(original.serialisedRequest());
     assertThat(decided.submittedAt()).isEqualTo(original.submittedAt());
 
     assertThat(decided.decision()).isEqualTo("GRANTED");
@@ -67,7 +66,6 @@ class PriorAuthorityDataPayloadTest {
             UUID.randomUUID(),
             UUID.randomUUID(),
             new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Need expert", null, null, null),
-            "{}",
             SUBMITTED_AT,
             decisionDetails,
             null,
@@ -86,7 +84,6 @@ class PriorAuthorityDataPayloadTest {
             UUID.randomUUID(),
             UUID.randomUUID(),
             new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Need expert", null, null, null),
-            "{}",
             SUBMITTED_AT,
             null,
             "1A001B",
@@ -105,7 +102,6 @@ class PriorAuthorityDataPayloadTest {
             UUID.randomUUID(),
             UUID.randomUUID(),
             new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Need expert", null, null, null),
-            "{}",
             SUBMITTED_AT,
             null,
             "1A001B",
@@ -162,7 +158,6 @@ class PriorAuthorityDataPayloadTest {
         UUID.randomUUID(),
         UUID.randomUUID(),
         new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Need expert", null, null, null),
-        "{}",
         SUBMITTED_AT);
   }
 

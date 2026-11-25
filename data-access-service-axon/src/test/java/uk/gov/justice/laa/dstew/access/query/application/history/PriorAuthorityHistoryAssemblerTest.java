@@ -411,7 +411,6 @@ class PriorAuthorityHistoryAssemblerTest {
             priorAuthorityId,
             applicationId,
             content,
-            null,
             Instant.parse("2026-08-01T09:30:00Z"),
             new PriorAuthorityDataPayload.DecisionDetails(
                 decision, decisionJustification, null, null, null, null, null),

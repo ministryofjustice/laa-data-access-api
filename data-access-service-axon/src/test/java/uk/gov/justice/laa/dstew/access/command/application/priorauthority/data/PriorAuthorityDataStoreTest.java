@@ -47,8 +47,7 @@ class PriorAuthorityDataStoreTest {
         new PriorAuthorityContent(PriorAuthorityType.EXPERT, null, null, null, null);
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
     PriorAuthorityDataPayload payload =
-        new PriorAuthorityDataPayload(
-            priorAuthorityId, applicationId, content, "request-json", occurredAt);
+        new PriorAuthorityDataPayload(priorAuthorityId, applicationId, content, occurredAt);
 
     store.append(priorAuthorityId, 0L, applicationId, payload, occurredAt);
 
@@ -72,7 +71,7 @@ class PriorAuthorityDataStoreTest {
                     1L,
                     UUID.randomUUID(),
                     new PriorAuthorityDataPayload(
-                        UUID.randomUUID(), UUID.randomUUID(), null, "req", Instant.now()),
+                        UUID.randomUUID(), UUID.randomUUID(), null, Instant.now()),
                     Instant.now()))
         .isInstanceOf(DataIntegrityViolationException.class)
         .hasMessageContaining("duplicate prior authority data version");
@@ -83,7 +82,7 @@ class PriorAuthorityDataStoreTest {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityDataPayload expectedPayload =
-        new PriorAuthorityDataPayload(priorAuthorityId, applicationId, null, "req", Instant.now());
+        new PriorAuthorityDataPayload(priorAuthorityId, applicationId, null, Instant.now());
     PriorAuthorityDataId id = new PriorAuthorityDataId(priorAuthorityId, 2L);
     when(repository.findById(id))
         .thenReturn(
@@ -124,7 +123,7 @@ class PriorAuthorityDataStoreTest {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityDataPayload payload =
-        new PriorAuthorityDataPayload(priorAuthorityId, applicationId, null, "req", Instant.now());
+        new PriorAuthorityDataPayload(priorAuthorityId, applicationId, null, Instant.now());
     PriorAuthorityDataId id = new PriorAuthorityDataId(priorAuthorityId, 2L);
     when(repository.findById(id))
         .thenReturn(Optional.of(PriorAuthorityData.builder().id(id).payload(payload).build()));

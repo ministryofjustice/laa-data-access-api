@@ -238,7 +238,6 @@ class PriorAuthorityProjectionTest {
                 priorAuthorityId,
                 applicationId,
                 new PriorAuthorityContent(EXPERT, "Expert required", null, null, null),
-                "{}",
                 Instant.now())
             .withDocumentFilename(documentId, "evidence.pdf");
     when(readQueryGateway.findPriorAuthority(any(), any())).thenReturn(Optional.of(model));
@@ -293,7 +292,7 @@ class PriorAuthorityProjectionTest {
             .uploadedDocuments(List.of(metadata.withFileSuffix(".PDF")))
             .build();
     PriorAuthorityDataPayload payload =
-        new PriorAuthorityDataPayload(priorAuthorityId, UUID.randomUUID(), null, "{}", uploadedAt)
+        new PriorAuthorityDataPayload(priorAuthorityId, UUID.randomUUID(), null, uploadedAt)
             .withDocumentFilename(documentId, "evidence.PDF");
     when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(model));
     if ("DRAFT".equals(status)) {
@@ -377,7 +376,7 @@ class PriorAuthorityProjectionTest {
       when(dataStore.get(priorAuthorityId, 2L))
           .thenReturn(
               new PriorAuthorityDataPayload(
-                  priorAuthorityId, UUID.randomUUID(), null, "{}", Instant.now()));
+                  priorAuthorityId, UUID.randomUUID(), null, Instant.now()));
     }
 
     EvidenceDocument document =
@@ -465,7 +464,7 @@ class PriorAuthorityProjectionTest {
         .thenReturn(
             Optional.of(
                 new PriorAuthorityDataPayload(
-                    priorAuthorityId, applicationId, content, "{}", Instant.now())));
+                    priorAuthorityId, applicationId, content, Instant.now())));
 
     PriorAuthorityResult result =
         projection.handle(new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId));
@@ -502,8 +501,7 @@ class PriorAuthorityProjectionTest {
     when(readQueryGateway.findPriorAuthority(any(), any())).thenReturn(Optional.of(model));
     when(dataStore.get(priorAuthorityId, 4L))
         .thenReturn(
-            new PriorAuthorityDataPayload(
-                priorAuthorityId, applicationId, content, "{}", submittedAt));
+            new PriorAuthorityDataPayload(priorAuthorityId, applicationId, content, submittedAt));
 
     PriorAuthorityResult result =
         projection.handle(new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId));
@@ -682,7 +680,6 @@ class PriorAuthorityProjectionTest {
                 priorAuthorityId,
                 applicationId,
                 content,
-                "{}",
                 Instant.now(),
                 new PriorAuthorityDataPayload.DecisionDetails(
                     "GRANTED",
@@ -736,7 +733,7 @@ class PriorAuthorityProjectionTest {
     when(dataStore.get(priorAuthorityId, 1L))
         .thenReturn(
             new PriorAuthorityDataPayload(
-                priorAuthorityId, model.getApplicationId(), content, "{}", Instant.now()));
+                priorAuthorityId, model.getApplicationId(), content, Instant.now()));
 
     return projection.handle(new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId));
   }

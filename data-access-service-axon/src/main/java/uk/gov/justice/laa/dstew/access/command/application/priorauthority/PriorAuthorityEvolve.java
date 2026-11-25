@@ -133,7 +133,6 @@ public final class PriorAuthorityEvolve {
             event.priorAuthorityId(),
             event.applicationId(),
             event.content(),
-            null,
             event.occurredAt(),
             null,
             state.officeCode,
