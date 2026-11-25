@@ -1,4 +1,4 @@
-@smokeTest @prior-authority
+@smoke @prior-authority
 Feature: Manage a Prior Authority draft and its supporting documents
   As user
   I want to manage a Prior Authority draft and its supporting documents
@@ -6,6 +6,7 @@ Feature: Manage a Prior Authority draft and its supporting documents
 
   Background: User create draft PA application
     Given I am logged in as "smoke-test"
+    And I create a draft application
     And I submit the draft application
     And The application is granted
     And I create a prior authority draft for the application
@@ -28,7 +29,7 @@ Feature: Manage a Prior Authority draft and its supporting documents
 
   @deletePADocument
   Scenario: Delete a supporting document from a Prior Authority draft
-    And I upload a document to the prior authority
+    And I upload a document to the prior authority draft
     When I delete the uploaded prior authority document
     Then the prior authority draft does not include that document
 

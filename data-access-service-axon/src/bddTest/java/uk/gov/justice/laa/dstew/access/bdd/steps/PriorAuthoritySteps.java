@@ -46,6 +46,7 @@ public final class PriorAuthoritySteps {
     assertAndRecord("I upload a document to the prior authority", response, 201);
     assertEquals(DOCUMENT_FILE_NAME, response.body().path("fileName").asText());
     assertNotNull(response.body().path("documentId").asText(null));
+    context.documentId(UUID.fromString(response.body().path("documentId").asText()));
   }
 
   @When("I submit the prior authority draft")
