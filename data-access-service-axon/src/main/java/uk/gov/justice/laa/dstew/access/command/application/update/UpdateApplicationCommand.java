@@ -12,5 +12,4 @@ public record UpdateApplicationCommand(
     @TargetEntityId UUID applicationId,
     String status,
     Map<String, Object> applicationContent,
-    String serialisedRequest,
     Instant occurredAt) {}

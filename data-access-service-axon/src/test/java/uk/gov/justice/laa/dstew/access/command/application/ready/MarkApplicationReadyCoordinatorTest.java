@@ -105,6 +105,6 @@ class MarkApplicationReadyCoordinatorTest {
   }
 
   private MarkApplicationReadyCommand command() {
-    return new MarkApplicationReadyCommand(APPLICATION_ID, 0L, "{}", OCCURRED_AT);
+    return new MarkApplicationReadyCommand(APPLICATION_ID, 0L, OCCURRED_AT);
   }
 }

@@ -39,7 +39,7 @@ class ApplicationUpdateDetailsFactoryTest {
     when(applicationContentParser.parse(content)).thenReturn(parsed);
     UpdateApplicationCommand command =
         new UpdateApplicationCommand(
-            applicationId, "APPLICATION_SUBMITTED", content, "{}", Instant.now());
+            applicationId, "APPLICATION_SUBMITTED", content, Instant.now());
     ApplicationDataPayload current =
         ApplicationDataPayload.from(applicationCreationDetails(applicationId));
 

@@ -5,8 +5,6 @@ import java.time.Instant;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 
@@ -14,17 +12,15 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 @Component
 public class UpdateApplicationCommandMapper {
 
-  private final ObjectMapper objectMapper;
   private final Clock clock;
 
   /** Creates the mapper with the system UTC clock. */
   @Autowired
-  public UpdateApplicationCommandMapper(ObjectMapper objectMapper) {
-    this(objectMapper, Clock.systemUTC());
+  public UpdateApplicationCommandMapper() {
+    this(Clock.systemUTC());
   }
 
-  UpdateApplicationCommandMapper(ObjectMapper objectMapper, Clock clock) {
-    this.objectMapper = objectMapper;
+  UpdateApplicationCommandMapper(Clock clock) {
     this.clock = clock;
   }
 
@@ -34,15 +30,6 @@ public class UpdateApplicationCommandMapper {
         id,
         request.getStatus() == null ? null : request.getStatus().name(),
         request.getApplicationContent(),
-        serialise(request),
         Instant.now(clock));
-  }
-
-  private String serialise(ApplicationUpdateRequest request) {
-    try {
-      return objectMapper.writeValueAsString(request);
-    } catch (JacksonException exception) {
-      throw new IllegalStateException("Unable to serialise ApplicationUpdateRequest", exception);
-    }
   }
 }

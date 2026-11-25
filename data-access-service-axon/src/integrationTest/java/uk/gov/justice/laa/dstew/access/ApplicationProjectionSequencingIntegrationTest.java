@@ -207,9 +207,7 @@ class ApplicationProjectionSequencingIntegrationTest {
     gate.arm(
         NoteCreatedEvent.class, applicationId, LinkedApplicationGroupCreatedEvent.class, groupId);
     try {
-      commands.sendAndWait(
-          new CreateNoteCommand(
-              applicationId, "test note", "{\"note\":\"test note\"}", Instant.now()));
+      commands.sendAndWait(new CreateNoteCommand(applicationId, "test note", Instant.now()));
       gate.awaitBlocked();
       commands.sendAndWait(
           new EstablishLinkedApplicationGroupCommand(

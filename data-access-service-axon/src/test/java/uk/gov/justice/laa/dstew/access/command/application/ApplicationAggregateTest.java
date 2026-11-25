@@ -458,7 +458,7 @@ class ApplicationAggregateTest {
         .given()
         .events(applicationCreatedEvent(applicationId, details))
         .when()
-        .command(new MarkApplicationReadyCommand(applicationId, 0L, "{}", occurredAt))
+        .command(new MarkApplicationReadyCommand(applicationId, 0L, occurredAt))
         .then()
         .resultMessagePayload(ReadyApplicationResult.RECORDED)
         .events(new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, occurredAt));
@@ -477,7 +477,7 @@ class ApplicationAggregateTest {
         .given()
         .events(applicationCreatedEvent(applicationId, details))
         .when()
-        .command(new MarkApplicationReadyCommand(applicationId, 0L, "{}", occurredAt))
+        .command(new MarkApplicationReadyCommand(applicationId, 0L, occurredAt))
         .then()
         .exception(IllegalStateException.class)
         .noEvents();
@@ -496,7 +496,7 @@ class ApplicationAggregateTest {
         .when()
         .command(
             new MarkApplicationReadyCommand(
-                applicationId, 0L, "{}", Instant.parse("2026-07-21T09:31:00Z")))
+                applicationId, 0L, Instant.parse("2026-07-21T09:31:00Z")))
         .then()
         .resultMessagePayload(ReadyApplicationResult.ALREADY_RECORDED)
         .noEvents();
@@ -514,7 +514,7 @@ class ApplicationAggregateTest {
         .when()
         .command(
             new MarkApplicationReadyCommand(
-                applicationId, 1L, "{}", Instant.parse("2026-07-21T09:31:00Z")))
+                applicationId, 1L, Instant.parse("2026-07-21T09:31:00Z")))
         .then()
         .exception(ApplicationAutoGrantOutcomeConflictException.class)
         .noEvents();
@@ -530,7 +530,7 @@ class ApplicationAggregateTest {
         .when()
         .command(
             new MarkApplicationReadyCommand(
-                applicationId, 2L, "{}", Instant.parse("2026-07-21T09:31:00Z")))
+                applicationId, 2L, Instant.parse("2026-07-21T09:31:00Z")))
         .then()
         .exception(ApplicationVersionConflictException.class)
         .noEvents();
@@ -560,7 +560,7 @@ class ApplicationAggregateTest {
         .when()
         .command(
             new MarkApplicationReadyCommand(
-                applicationId, 0L, "{}", Instant.parse("2026-07-21T09:31:00Z")))
+                applicationId, 0L, Instant.parse("2026-07-21T09:31:00Z")))
         .then()
         .exception(InvalidApplicationStateException.class)
         .noEvents();
@@ -653,7 +653,7 @@ class ApplicationAggregateTest {
         .given()
         .events(created)
         .when()
-        .command(new CreateNoteCommand(applicationId, "My note", "{}", occurredAt))
+        .command(new CreateNoteCommand(applicationId, "My note", occurredAt))
         .then()
         .success()
         .events(new NoteCreatedEvent(applicationId, 1L, occurredAt, "My note"));
@@ -923,7 +923,7 @@ class ApplicationAggregateTest {
         .given()
         .events(erasedApplicationCreated(applicationId))
         .when()
-        .command(new CreateNoteCommand(applicationId, "My note", "{}", Instant.now()))
+        .command(new CreateNoteCommand(applicationId, "My note", Instant.now()))
         .then()
         .exception(EntityNotFoundException.class)
         .noEvents();
@@ -935,7 +935,7 @@ class ApplicationAggregateTest {
         .given()
         .noPriorActivity()
         .when()
-        .command(new CreateNoteCommand(UUID.randomUUID(), "My note", "{}", Instant.now()))
+        .command(new CreateNoteCommand(UUID.randomUUID(), "My note", Instant.now()))
         .then()
         .exception(EntityNotFoundException.class)
         .noEvents();
@@ -1103,7 +1103,7 @@ class ApplicationAggregateTest {
         .when()
         .command(
             new UpdateApplicationCommand(
-                applicationId, "APPLICATION_SUBMITTED", Map.of(), "{}", occurredAt))
+                applicationId, "APPLICATION_SUBMITTED", Map.of(), occurredAt))
         .then()
         .success()
         .events(
@@ -1140,7 +1140,6 @@ class ApplicationAggregateTest {
                 applicationId,
                 "APPLICATION_SUBMITTED",
                 Map.of(),
-                "{}",
                 Instant.parse("2026-07-22T10:00:00Z")))
         .then()
         .exception(IllegalStateException.class)
@@ -1155,7 +1154,7 @@ class ApplicationAggregateTest {
         .when()
         .command(
             new UpdateApplicationCommand(
-                UUID.randomUUID(), "APPLICATION_SUBMITTED", Map.of(), "{}", Instant.now()))
+                UUID.randomUUID(), "APPLICATION_SUBMITTED", Map.of(), Instant.now()))
         .then()
         .exception(EntityNotFoundException.class)
         .noEvents();
@@ -1173,7 +1172,7 @@ class ApplicationAggregateTest {
         .given()
         .events(applicationCreatedEvent(applicationId))
         .when()
-        .command(new UpdateApplicationCommand(applicationId, null, Map.of(), "{}", occurredAt))
+        .command(new UpdateApplicationCommand(applicationId, null, Map.of(), occurredAt))
         .then()
         .success();
   }
@@ -1356,7 +1355,7 @@ class ApplicationAggregateTest {
         .given()
         .events(applicationCreatedEvent(applicationId, details))
         .when()
-        .command(new UpdateApplicationCommand(applicationId, null, Map.of(), "{}", occurredAt))
+        .command(new UpdateApplicationCommand(applicationId, null, Map.of(), occurredAt))
         .then()
         .success();
   }
@@ -1376,7 +1375,7 @@ class ApplicationAggregateTest {
         .when()
         .command(
             new UpdateApplicationCommand(
-                applicationId, "APPLICATION_SUBMITTED", Map.of(), "{}", occurredAt))
+                applicationId, "APPLICATION_SUBMITTED", Map.of(), occurredAt))
         .then()
         .success();
   }
@@ -1395,7 +1394,7 @@ class ApplicationAggregateTest {
         .when()
         .command(
             new UpdateApplicationCommand(
-                applicationId, "APPLICATION_SUBMITTED", Map.of(), "{}", occurredAt))
+                applicationId, "APPLICATION_SUBMITTED", Map.of(), occurredAt))
         .then()
         .success();
   }
@@ -1415,7 +1414,7 @@ class ApplicationAggregateTest {
         .when()
         .command(
             new UpdateApplicationCommand(
-                applicationId, "APPLICATION_GRANTED", Map.of(), "{}", occurredAt))
+                applicationId, "APPLICATION_GRANTED", Map.of(), occurredAt))
         .then()
         .success();
   }

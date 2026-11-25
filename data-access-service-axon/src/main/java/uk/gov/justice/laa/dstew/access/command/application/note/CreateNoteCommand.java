@@ -8,7 +8,4 @@ import org.axonframework.modelling.annotation.TargetEntityId;
 /** Routes a note-creation request to the correct Application aggregate stream. */
 @Command(routingKey = "applicationId")
 public record CreateNoteCommand(
-    @TargetEntityId UUID applicationId,
-    String noteText,
-    String serialisedNoteRequest,
-    Instant occurredAt) {}
+    @TargetEntityId UUID applicationId, String noteText, Instant occurredAt) {}

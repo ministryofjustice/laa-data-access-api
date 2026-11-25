@@ -11,28 +11,23 @@ import org.jspecify.annotations.Nullable;
 public record MarkApplicationReadyCommand(
     @TargetEntityId UUID applicationId,
     Long expectedApplicationVersion,
-    String serialisedRequest,
     Instant occurredAt,
     @Nullable UUID linkedGroupId) {
 
   /** Creates a command without a linked-group route. */
   public MarkApplicationReadyCommand(
-      UUID applicationId,
-      Long expectedApplicationVersion,
-      String serialisedRequest,
-      Instant occurredAt) {
-    this(applicationId, expectedApplicationVersion, serialisedRequest, occurredAt, null);
+      UUID applicationId, Long expectedApplicationVersion, Instant occurredAt) {
+    this(applicationId, expectedApplicationVersion, occurredAt, null);
   }
 
   /** Creates a version-independent command for the auto-grant outcome endpoint. */
-  public MarkApplicationReadyCommand(
-      UUID applicationId, String serialisedRequest, Instant occurredAt) {
-    this(applicationId, null, serialisedRequest, occurredAt, null);
+  public MarkApplicationReadyCommand(UUID applicationId, Instant occurredAt) {
+    this(applicationId, null, occurredAt, null);
   }
 
   /** Returns this command routed with the supplied linked-group ID. */
   public MarkApplicationReadyCommand withLinkedGroupId(@Nullable UUID linkedGroupId) {
     return new MarkApplicationReadyCommand(
-        applicationId, expectedApplicationVersion, serialisedRequest, occurredAt, linkedGroupId);
+        applicationId, expectedApplicationVersion, occurredAt, linkedGroupId);
   }
 }

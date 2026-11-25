@@ -27,7 +27,7 @@ public class AutoGrantOutcomeCommandMapper {
   public Object toCommand(UUID applicationId, AutoGrantOutcomeRequest request) {
     validateDiscriminator(request);
     if (request instanceof ManualOutcomeRequest) {
-      return new MarkApplicationReadyCommand(applicationId, serialise(request), Instant.now());
+      return new MarkApplicationReadyCommand(applicationId, Instant.now());
     }
     if (request instanceof AutoGrantedOutcomeRequest autogranted) {
       return new RecordAutoGrantedOutcomeCommand(

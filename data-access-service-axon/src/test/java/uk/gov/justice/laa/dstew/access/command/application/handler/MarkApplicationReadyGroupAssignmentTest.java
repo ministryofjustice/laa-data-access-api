@@ -91,7 +91,7 @@ class MarkApplicationReadyGroupAssignmentTest {
     givenMember(OTHER_MEMBER_ID, activeUnassigned(OTHER_MEMBER_ID));
 
     handler.handle(
-        new MarkApplicationReadyCommand(APPLICATION_ID, 2L, "{}", OCCURRED_AT)
+        new MarkApplicationReadyCommand(APPLICATION_ID, 2L, OCCURRED_AT)
             .withLinkedGroupId(GROUP_ID),
         application,
         applicationDataStore,
@@ -168,7 +168,7 @@ class MarkApplicationReadyGroupAssignmentTest {
   }
 
   private MarkApplicationReadyCommand command() {
-    return new MarkApplicationReadyCommand(APPLICATION_ID, 0L, "{}", OCCURRED_AT)
+    return new MarkApplicationReadyCommand(APPLICATION_ID, 0L, OCCURRED_AT)
         .withLinkedGroupId(GROUP_ID);
   }
 

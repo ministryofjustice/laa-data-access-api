@@ -111,13 +111,12 @@ class ErasureReplayTest {
         erased,
         state ->
             ApplicationDecider.decideReady(
-                state, new MarkApplicationReadyCommand(applicationId, 0L, "{}", AT)));
+                state, new MarkApplicationReadyCommand(applicationId, 0L, AT)));
     assertSameDecision(
         full,
         erased,
         state ->
-            ApplicationDecider.decideNote(
-                state, new CreateNoteCommand(applicationId, "note", "{}", AT)));
+            ApplicationDecider.decideNote(state, new CreateNoteCommand(applicationId, "note", AT)));
     assertSameDecision(full, erased, state -> decide(state, 1L, proceedingId));
     assertSameDecision(full, erased, state -> decide(state, 1L, UUID.randomUUID()));
     assertSameDecision(full, erased, state -> decide(state, 0L, proceedingId));

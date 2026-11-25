@@ -30,6 +30,6 @@ class CreateNoteUseCaseTest {
   }
 
   private CreateNoteCommand stubCommand() {
-    return new CreateNoteCommand(UUID.randomUUID(), "note text", "{}", Instant.now());
+    return new CreateNoteCommand(UUID.randomUUID(), "note text", Instant.now());
   }
 }

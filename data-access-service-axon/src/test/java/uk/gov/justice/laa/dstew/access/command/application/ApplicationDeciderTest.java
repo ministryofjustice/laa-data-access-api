@@ -664,7 +664,7 @@ class ApplicationDeciderTest {
 
     NoteCreatedEvent event =
         ApplicationDecider.decideNote(
-            state, new CreateNoteCommand(applicationId, "My note", "{}", TIMESTAMP));
+            state, new CreateNoteCommand(applicationId, "My note", TIMESTAMP));
 
     assertThat(event.applicationId()).isEqualTo(applicationId);
     assertThat(event.applicationDataVersion()).isEqualTo(1L);

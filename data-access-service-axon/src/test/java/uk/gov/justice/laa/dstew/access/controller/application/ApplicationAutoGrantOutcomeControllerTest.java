@@ -38,8 +38,7 @@ public class ApplicationAutoGrantOutcomeControllerTest {
   void givenReadinessRecorded_whenMarkApplicationReady_thenReturnsNoContent() {
     UUID id = UUID.randomUUID();
     ManualOutcomeRequest request = new ManualOutcomeRequest(AutoGrantOutcome.MANUAL);
-    MarkApplicationReadyCommand command =
-        new MarkApplicationReadyCommand(id, 2L, "{}", Instant.now());
+    MarkApplicationReadyCommand command = new MarkApplicationReadyCommand(id, 2L, Instant.now());
     when(autoGrantOutcomeCommandMapper.toCommand(id, request)).thenReturn(command);
     when(recordAutoGrantOutcomeUseCase.recordReady(command))
         .thenReturn(ReadyApplicationResult.RECORDED);
@@ -52,8 +51,7 @@ public class ApplicationAutoGrantOutcomeControllerTest {
   void givenReadinessAlreadyRecorded_whenMarkApplicationReady_thenReturnsOk() {
     UUID id = UUID.randomUUID();
     ManualOutcomeRequest request = new ManualOutcomeRequest(AutoGrantOutcome.MANUAL);
-    MarkApplicationReadyCommand command =
-        new MarkApplicationReadyCommand(id, 2L, "{}", Instant.now());
+    MarkApplicationReadyCommand command = new MarkApplicationReadyCommand(id, 2L, Instant.now());
     when(autoGrantOutcomeCommandMapper.toCommand(id, request)).thenReturn(command);
     when(recordAutoGrantOutcomeUseCase.recordReady(command))
         .thenReturn(ReadyApplicationResult.ALREADY_RECORDED);

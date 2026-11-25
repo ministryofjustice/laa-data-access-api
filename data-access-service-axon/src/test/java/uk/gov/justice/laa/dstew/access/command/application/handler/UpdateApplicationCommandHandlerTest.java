@@ -47,7 +47,7 @@ class UpdateApplicationCommandHandlerTest {
     UUID applicationId = UUID.randomUUID();
     ApplicationState state = state(applicationId, current, "APPLICATION_SUBMITTED", 2L, 5L);
     UpdateApplicationCommand command =
-        new UpdateApplicationCommand(applicationId, null, Map.of(), "{}", OCCURRED_AT);
+        new UpdateApplicationCommand(applicationId, null, Map.of(), OCCURRED_AT);
 
     when(detailsFactory.parse(command)).thenReturn(PARSED);
     when(detailsFactory.prepare(PARSED, command, current, false)).thenReturn(updated);
@@ -76,8 +76,7 @@ class UpdateApplicationCommandHandlerTest {
     UUID applicationId = UUID.randomUUID();
     ApplicationState state = state(applicationId, current, "APPLICATION_IN_PROGRESS", 4L, 7L);
     UpdateApplicationCommand command =
-        new UpdateApplicationCommand(
-            applicationId, "APPLICATION_SUBMITTED", Map.of(), "{}", OCCURRED_AT);
+        new UpdateApplicationCommand(applicationId, "APPLICATION_SUBMITTED", Map.of(), OCCURRED_AT);
 
     when(detailsFactory.parse(command)).thenReturn(PARSED);
     when(detailsFactory.prepare(PARSED, command, current, true)).thenReturn(updated);
@@ -106,8 +105,7 @@ class UpdateApplicationCommandHandlerTest {
     UUID applicationId = UUID.randomUUID();
     ApplicationState state = state(applicationId, current, "APPLICATION_IN_PROGRESS", 1L, 2L);
     UpdateApplicationCommand command =
-        new UpdateApplicationCommand(
-            applicationId, "APPLICATION_GRANTED", Map.of(), "{}", OCCURRED_AT);
+        new UpdateApplicationCommand(applicationId, "APPLICATION_GRANTED", Map.of(), OCCURRED_AT);
 
     when(detailsFactory.parse(command)).thenReturn(PARSED);
     when(detailsFactory.prepare(PARSED, command, current, false)).thenReturn(updated);
