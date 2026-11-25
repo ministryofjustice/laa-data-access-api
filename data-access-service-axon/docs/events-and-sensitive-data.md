@@ -49,29 +49,30 @@ status is `APPLICATION_IN_PROGRESS`. The draft payload's intended submission sta
 lifecycle guard: the aggregate tracks the draft lifecycle with `state.status == null`.
 
 Application draft content is held only in events. `ApplicationDraftStartedEvent` carries the
-draft's application content and potential duplicates, and each
-`ApplicationDocumentUploadedEvent` carries the document's original filename. All of these are stored
-as erasable content in `axon.event_content`, apart from the kept event fields (see
-[ADR 0007](adr/0007-event-content-is-stored-beside-its-event.md)). Aggregate state folds them as
-`Erasable` values. Submission reads the draft and its filenames from the aggregate, and copies them
-into version 0 of immutable `application_data` before emitting `ApplicationCreatedEvent`. A draft
-whose content has been erased counts as absent. Subsequent immutable content updates preserve the
-filename map. Projected `DocumentMetadata` does not contain the filename; until submission, the
-Application projection keeps draft filenames in `application_current_state.draft_document_filenames`
-so document downloads still read from the projection. Submission clears that column.
+draft's application content and potential duplicates, and each `ApplicationDocumentUploadedEvent`
+carries the document's original filename. All of these are stored as erasable content in
+`axon.event_content`, apart from the kept event fields (see [ADR
+0007](adr/0007-event-content-is-stored-beside-its-event.md)). Aggregate state folds them as
+nullable values exposed as `Optional`. Submission reads the draft and its filenames from the
+aggregate, and copies them into version 0 of immutable `application_data` before emitting
+`ApplicationCreatedEvent`. A draft whose content has been erased counts as absent. Subsequent
+immutable content updates preserve the filename map. Projected `DocumentMetadata` does not contain
+the filename; until submission, the Application projection keeps draft filenames in
+`application_current_state.draft_document_filenames` so document downloads still read from the
+projection. Submission clears that column.
 
 Submitted Application content is also carried in events, as a delta: each event holds only the
 content it introduces. `ApplicationCreatedEvent` and `ApplicationUpdatedEvent` carry the parsed
 application content, `NoteCreatedEvent` the note text, and `ApplicationDecisionMadeEvent` the
-merits decisions, certificate and description.
-Proceeding IDs are kept fields on Created and Updated, and the decision request fingerprint is a
-kept field on DecisionMade, so decision validation and auto-grant retry matching still work after
-content is erased. DecisionMade also keeps the decision value for each proceeding
-(`proceedingDecisions`): it is not personal data and informs retention schedules. Merits reasons
-and justifications remain content. Aggregate state folds the current payload as an `Erasable`.
-Command handlers that build the next payload read it from there instead of from `application_data`,
-but still write each new version to `application_data`. API reads, projections and history
-descriptions are unchanged: they still hydrate from `application_data`.
+merits decisions, certificate and description. Proceeding IDs are kept fields on Created and
+Updated, and the decision request fingerprint is a kept field on DecisionMade, so decision
+validation and auto-grant retry matching still work after content is erased. DecisionMade also
+keeps the decision value for each proceeding (`proceedingDecisions`): it is not personal data and
+informs retention schedules. Merits reasons and justifications remain content. Aggregate state
+folds the current payload as a nullable field with an `Optional` accessor. Command handlers that
+build the next payload read it from there instead of from `application_data`, but still write each
+new version to `application_data`. API reads, projections and history descriptions are unchanged:
+they still hydrate from `application_data`.
 
 Prior Authority content follows the same pattern. Draft and document events carry the draft body
 and document metadata. `PriorAuthoritySubmittedEvent` carries a copy of the submitted content, and
@@ -79,10 +80,10 @@ and document metadata. `PriorAuthoritySubmittedEvent` carries a copy of the subm
 disbursement and apportionment details.
 The kept fields include `dataVersion`, `billingType`, `priorAuthorityType` and `overallDecision`,
 so decision validation and conflicts still work after content is erased. Aggregate state folds
-the submitted payload as an `Erasable`; the decision handler builds the next `prior_authority_data`
-version from it and returns not found when it has been erased. `prior_authority_data` and
-`prior_authority_draft` are still written, and API reads, projections and history descriptions
-still read from them.
+the submitted payload as a nullable field with an `Optional` accessor; the decision handler builds
+the next `prior_authority_data` version from it and returns not found when it has been erased.
+`prior_authority_data` and `prior_authority_draft` are still written, and API reads, projections
+and history descriptions still read from them.
 
 The exact file suffix, such as `.PDF`, is non-sensitive storage metadata. Application and Prior
 Authority upload events persist it as optional `fileSuffix`; aggregate state and projected
@@ -115,9 +116,10 @@ record whose kept components are annotated `@RetainedField`; on append, every ot
 written to `event_content`, keyed by event identifier, in the same transaction. A retained field
 must be non-null on append unless it is marked `@RetainedField(nullable = true)`; otherwise the
 separator rejects the event with `KeptFieldViolationException`. Content fields are
-plain `@Nullable` types on the event. Evolve functions convert them once to `Erasable<T>` in
-aggregate state, where reading an erased value throws. Erasure keeps the row, replacing its
-content with `{}` and stamping `erased_at`, and the event still loads with those fields `null`. A
+plain `@Nullable` types on the event. Evolve functions copy them into nullable state fields
+(null means erased), which state exposes through `Optional` accessors. Erasure keeps the row,
+replacing its content with `{}` and stamping `erased_at`, and the event still loads with those
+fields `null`. A
 missing row for an event type with content fields is an error, not erased content. Aggregates load
 with content rejoined by event identifier; only projections marked `@ReadsEventContent`
 (`ApplicationProjection` and `PriorAuthorityProjection`) receive it. Every other processor, and

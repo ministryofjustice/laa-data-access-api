@@ -156,17 +156,18 @@ is needed after erasure needs its own solution.
 
 Content fields on events are plain types marked `@Nullable`; `null` means absent or erased. An
 event therefore loads whether its row holds the original content or `{}` after erasure, and when
-read with kept fields only. Evolve functions convert each content field once, with
-`Erasable.of(...)`, into `Erasable<T>` in aggregate state (`ApplicationState`,
-`PriorAuthorityState`). Erased is a real state there: reading an erased value throws
-`ContentErasedException`, so every use of content by a command is visible. Events never hold
-`Erasable`, and projections that read content handle `null` themselves. A record's default
-`toString()` would print its content, so every event with content fields overrides it with
+read with kept fields only. Evolve functions copy content into nullable state fields in
+`ApplicationState` and `PriorAuthorityState`. State exposes them only through `Optional`
+accessors, so a command must handle the empty case, typically with
+`orElseThrow(ContentErasedException::new)` or a specific not-found error. Projections that read
+content handle `null` themselves. `Erasable<T>` was removed in favour of nullable fields with
+`Optional` accessors: it carried no information beyond `null`, and no decider read it. A record's
+default `toString()` would print its content, so every event with content fields overrides it with
 `RedactedEventString`, which prints retained values and `<content>` in place of any content value;
 logging an event, or an Axon message describing it, never writes personal data.
-`EventContentArchitectureTest` fails the build if an event with content fields does not declare that
-override, and `ReportingErrorHandler` reports only the processor name and the number of failed
-events, never the event message.
+`EventContentArchitectureTest` fails the build if an event with content fields does not declare
+that override, and `ReportingErrorHandler` reports only the processor name and the number of
+failed events, never the event message.
 
 **Invariant:** with all content erased, every aggregate loads and every command decides as it
 would with content. `ErasureReplayTest` folds Application and Prior Authority histories through
@@ -236,11 +237,10 @@ split on append, so stored events that lack a field added later still load.
 
 `EventContentArchitectureTest` checks that every event is a record, that its retained components
 use supported value types, that no primitive retained component is marked nullable, that the
-nullable retained components match the list pinned in the test, and that no event component is
-`Erasable`. Apart from the null check, retained values are not validated on append: their Java
-types are the check, so a retained field must not be free text. Adding, removing, retyping or
-changing the nullability of a retained field changes what is kept permanently and needs data
-stewardship review.
+nullable retained components match the list pinned in the test. Apart from the null check,
+retained values are not validated on append: their Java types are the check, so a retained field
+must not be free text. Adding, removing, retyping or changing the nullability of a retained field
+changes what is kept permanently and needs data stewardship review.
 
 Kept fields were first listed in one JSON Schema resource file per event type. The schemas
 repeated the record in a second file that could drift from it, so they were replaced by the
@@ -282,7 +282,7 @@ keeps decimals exact through trees. Anything that parses stored payloads or cont
 
 ### Where it hooks into Axon
 
-The content model and port (`Erasable`, `RetainedField`, `ReadsEventContent`, `EventJson`,
+The content model and port (`RetainedField`, `ReadsEventContent`, `EventJson`,
 `EventContentSeparator`, `EventContentStore`) are framework-neutral, in `eventcontent`. Only
 thin adapters know about Axon (`eventcontent.axon`) or JDBC (`eventcontent.jdbc`).
 
@@ -308,10 +308,8 @@ thin adapters know about Axon (`eventcontent.axon`) or JDBC (`eventcontent.jdbc`
 
 `EventContentArchitectureTest` enforces that every event is a record whose `@RetainedField`
 components use supported types, with `nullable = true` only on the pinned non-primitive
-components, and which has no `Erasable` component; only `eventcontent` and
-classes named `*Evolve`, `*State`, `*Decider`, `*CommandHandler` or `*CommandHandlerSupport` read
-`Erasable` values; only `eventcontent` adapters and processor configuration use the content
-store and Axon adapter; and nothing declares snapshots.
+components; only `eventcontent` adapters and processor configuration use the content store and
+Axon adapter; and nothing declares snapshots.
 
 ### No snapshots
 

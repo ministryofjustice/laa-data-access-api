@@ -8,12 +8,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.jspecify.annotations.Nullable;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 
 /** State object reconstructed by folding a PriorAuthority aggregate's event stream. */
 @Getter
@@ -33,10 +34,16 @@ public class PriorAuthorityState {
   String priorAuthorityType;
   String billingType;
   List<DocumentMetadata> uploadedDocuments = new ArrayList<>();
-  Erasable<PriorAuthorityContent> draftContent = Erasable.erased();
+
+  @Getter(AccessLevel.NONE)
+  @Nullable PriorAuthorityContent draftContent;
+
   Instant draftModifiedAt;
-  Map<UUID, Erasable<String>> documentFilenames = new LinkedHashMap<>();
-  Erasable<PriorAuthorityDataPayload> submission = Erasable.erased();
+  // A null value means the filename has been erased; the key is kept.
+  Map<UUID, @Nullable String> documentFilenames = new LinkedHashMap<>();
+
+  @Getter(AccessLevel.NONE)
+  @Nullable PriorAuthorityDataPayload submission;
 
   /**
    * Returns the open draft folded from the event stream: empty if the draft does not exist, has
@@ -50,7 +57,7 @@ public class PriorAuthorityState {
         new PriorAuthorityDataPayload(
             priorAuthorityId,
             applicationId,
-            draftContent.value(),
+            draftContent,
             draftModifiedAt,
             null,
             officeCode,
@@ -64,10 +71,10 @@ public class PriorAuthorityState {
    * written for the existing read paths.
    */
   public Optional<PriorAuthorityDataPayload> submittedPayload() {
-    if (priorAuthorityId == null || !submitted || submission.isErased()) {
+    if (priorAuthorityId == null || !submitted) {
       return Optional.empty();
     }
-    return Optional.of(submission.value());
+    return Optional.ofNullable(submission);
   }
 
   /** Command pre-check: return no draft body, and only the filename requested for SDS cleanup. */
@@ -75,21 +82,19 @@ public class PriorAuthorityState {
     if (!hasOpenDraft()) {
       return PriorAuthorityDraftSummary.NONE;
     }
-    var filename = documentFilenames.get(documentId);
-    return new PriorAuthorityDraftSummary(
-        applicationId, filename == null ? null : filename.orElse(null));
+    return new PriorAuthorityDraftSummary(applicationId, documentFilenames.get(documentId));
   }
 
   private boolean hasOpenDraft() {
-    return priorAuthorityId != null && !submitted && !draftContent.isErased();
+    return priorAuthorityId != null && !submitted && draftContent != null;
   }
 
   Map<UUID, String> retainedFilenames() {
     Map<UUID, String> filenames = new LinkedHashMap<>();
     documentFilenames.forEach(
         (documentId, filename) -> {
-          if (!filename.isErased()) {
-            filenames.put(documentId, filename.value());
+          if (filename != null) {
+            filenames.put(documentId, filename);
           }
         });
     return filenames;

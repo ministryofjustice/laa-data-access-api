@@ -10,6 +10,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftContent;
+import uk.gov.justice.laa.dstew.access.eventcontent.ContentErasedException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -32,7 +33,7 @@ final class ApplicationCommandHandlerSupport {
    */
   static void requireContentNotErased(ApplicationAggregate application) {
     ApplicationState state = application.getState();
-    if (state.isSubmissionRecorded() && state.getContent().isErased()) {
+    if (state.isSubmissionRecorded() && state.content().isEmpty()) {
       throw new EntityNotFoundException(application.getApplicationId());
     }
   }
@@ -67,41 +68,41 @@ final class ApplicationCommandHandlerSupport {
       return Optional.empty();
     }
     ApplicationState state = application.getState();
-    if (state.getStatus() != null || state.getDraftApplicationContent().isErased()) {
+    if (state.getStatus() != null) {
       return Optional.empty();
     }
-    Map<UUID, String> filenames = new LinkedHashMap<>();
-    state
-        .getDraftDocumentFilenames()
-        .forEach(
-            (documentId, filename) -> {
-              if (!filename.isErased()) {
-                filenames.put(documentId, filename.value());
-              }
-            });
-    return Optional.of(
-        new ApplicationDraftContent(
-            state.getDraftStatus(),
-            state.getLaaReference(),
-            state.getDraftApplicationContent().value(),
-            state.getDraftPotentialDuplicates().orElse(null),
-            filenames));
+    return state
+        .draftApplicationContent()
+        .map(
+            applicationContent ->
+                new ApplicationDraftContent(
+                    state.getDraftStatus(),
+                    state.getLaaReference(),
+                    applicationContent,
+                    state.draftPotentialDuplicates().orElse(null),
+                    retainedFilenames(state.getDraftDocumentFilenames())));
+  }
+
+  private static Map<UUID, String> retainedFilenames(Map<UUID, String> filenames) {
+    Map<UUID, String> retained = new LinkedHashMap<>();
+    filenames.forEach(
+        (documentId, filename) -> {
+          if (filename != null) {
+            retained.put(documentId, filename);
+          }
+        });
+    return retained;
   }
 
   /**
    * Returns the Application's current submitted content, folded from its events. Used only to keep
    * writing {@code application_data} until the readers move to events.
    *
-   * @throws IllegalStateException if there is no content; handlers call {@link
+   * @throws ContentErasedException if there is no content; handlers call {@link
    *     #requireContentNotErased} first, so this means a draft reached a submitted-only command
    */
   static ApplicationDataPayload currentContent(ApplicationAggregate application) {
-    var content = application.getState().getContent();
-    if (content.isErased()) {
-      throw new IllegalStateException(
-          "Application content has been erased: " + application.getApplicationId());
-    }
-    return content.value();
+    return application.getState().content().orElseThrow(ContentErasedException::new);
   }
 
   @SuppressWarnings("unchecked")

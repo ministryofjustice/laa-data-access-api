@@ -72,6 +72,15 @@ class ErasureReplayTest {
   private final UUID proceedingId = UUID.randomUUID();
 
   @Test
+  void givenNoSubmission_whenPayloadRead_thenEmpty() {
+    PriorAuthorityState state = new PriorAuthorityState();
+    assertThat(state.submittedPayload()).isEmpty();
+
+    PriorAuthorityEvolve.apply(state, started());
+    assertThat(state.submittedPayload()).isEmpty();
+  }
+
+  @Test
   void givenApplicationHistory_whenContentErased_thenOnlyContentFieldsDifferAndDecisionsMatch() {
     List<Object> history =
         List.of(
@@ -100,8 +109,8 @@ class ErasureReplayTest {
         .usingRecursiveComparison()
         .ignoringFields("uploadedDocuments", "draftDocumentFilenames", "content")
         .isEqualTo(full);
-    assertThat(full.getContent().isErased()).isFalse();
-    assertThat(erased.getContent().isErased()).isTrue();
+    assertThat(full.content()).isPresent();
+    assertThat(erased.content()).isEmpty();
     assertThat(erased.getProceedingIds()).containsExactly(proceedingId);
     assertThat(erased.getUploadedDocuments())
         .isEqualTo(full.getUploadedDocuments().stream().map(this::withoutContent).toList());
@@ -151,11 +160,11 @@ class ErasureReplayTest {
             "draftPotentialDuplicates",
             "draftDocumentFilenames")
         .isEqualTo(full);
-    assertThat(erased.getDraftApplicationContent().isErased()).isTrue();
-    assertThat(erased.getDraftPotentialDuplicates().isErased()).isTrue();
+    assertThat(erased.draftApplicationContent()).isEmpty();
+    assertThat(erased.draftPotentialDuplicates()).isEmpty();
     assertThat(erased.getDraftDocumentFilenames())
         .containsOnlyKeys(documentId)
-        .allSatisfy((id, filename) -> assertThat(filename.isErased()).isTrue());
+        .allSatisfy((id, filename) -> assertThat(filename).isNull());
 
     assertSameDecision(
         full, erased, state -> ApplicationDecider.decideStartDraft(state, 1, "fingerprint"));
@@ -192,8 +201,8 @@ class ErasureReplayTest {
 
     assertThat(erased).usingRecursiveComparison().ignoringFields("content").isEqualTo(full);
     assertThat(erased.getProceedingDecisions()).containsExactly(Map.entry(proceedingId, "GRANTED"));
-    assertThat(full.getContent().isErased()).isFalse();
-    assertThat(erased.getContent().isErased()).isTrue();
+    assertThat(full.content()).isPresent();
+    assertThat(erased.content()).isEmpty();
     assertSameDecision(
         full,
         erased,

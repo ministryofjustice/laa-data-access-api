@@ -23,6 +23,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationEvolve;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftContent;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
+import uk.gov.justice.laa.dstew.access.eventcontent.ContentErasedException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -139,6 +140,18 @@ class ApplicationCommandHandlerSupportTest {
     ApplicationEvolve.apply(state, draftStarted(applicationId, Map.of()));
 
     ApplicationCommandHandlerSupport.requireContentNotErased(mockApplication(applicationId, state));
+  }
+
+  @Test
+  void givenErasedContent_whenCurrentContent_thenThrowsContentErased() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationState state = new ApplicationState();
+
+    assertThatThrownBy(
+            () ->
+                ApplicationCommandHandlerSupport.currentContent(
+                    mockApplication(applicationId, state)))
+        .isInstanceOf(ContentErasedException.class);
   }
 
   @Test

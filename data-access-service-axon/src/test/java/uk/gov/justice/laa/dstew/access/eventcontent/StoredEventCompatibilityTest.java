@@ -309,8 +309,7 @@ class StoredEventCompatibilityTest {
         .singleElement()
         .satisfies(
             document -> assertThat(document.documentId()).isEqualTo(APPLICATION_DOCUMENT_ID));
-    assertThat(state.getContent().isErased()).isFalse();
-    var content = state.getContent().value();
+    var content = state.content().orElseThrow();
     assertThat(content.laaReference()).isEqualTo("LAA-FIXTURE-1");
     assertThat(content.client().getFirstName()).isEqualTo("Fixture");
     assertThat(content.provider().getContactEmail()).isEqualTo("updated-provider@example.com");

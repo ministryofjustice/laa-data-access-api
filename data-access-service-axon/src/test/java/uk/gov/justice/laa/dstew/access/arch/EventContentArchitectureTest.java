@@ -1,9 +1,5 @@
 package uk.gov.justice.laa.dstew.access.arch;
 
-import static com.tngtech.archunit.base.DescribedPredicate.describe;
-import static com.tngtech.archunit.core.domain.JavaCall.Predicates.target;
-import static com.tngtech.archunit.core.domain.properties.HasName.Predicates.nameMatching;
-import static com.tngtech.archunit.core.domain.properties.HasOwner.Predicates.With.owner;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static java.util.Map.entry;
@@ -27,7 +23,6 @@ import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.annotation.Event;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.command.EventTypes;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.eventcontent.ReadsEventContent;
 import uk.gov.justice.laa.dstew.access.eventcontent.RedactedEventString;
 import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
@@ -75,36 +70,6 @@ class EventContentArchitectureTest {
           // Shared test helpers, such as the in-memory content store, are not production code.
           .withImportOption(location -> !location.contains("/testUtilities/"))
           .importPackages(ROOT);
-
-  /**
-   * Events carry content as plain nullable values; aggregate state holds it as {@link Erasable}.
-   * Only the command side may unwrap it: evolve functions, whose erasure is covered by
-   * ErasureReplayTest, aggregate state, deciders and command handlers, which treat erased content
-   * explicitly. Projections read plain event fields and never see an {@link Erasable}.
-   */
-  @Test
-  void onlyEvolveStateDeciderAndCommandHandlersReadErasable() {
-    noClasses()
-        .that()
-        .resideOutsideOfPackage(ROOT + ".eventcontent..")
-        .and()
-        .haveSimpleNameNotEndingWith("Evolve")
-        .and()
-        .haveSimpleNameNotEndingWith("State")
-        .and()
-        .haveSimpleNameNotEndingWith("Decider")
-        .and()
-        .haveSimpleNameNotEndingWith("CommandHandler")
-        .and()
-        .haveSimpleNameNotEndingWith("CommandHandlerSupport")
-        .should()
-        .callMethodWhere(
-            target(owner(describe("Erasable", owner -> owner.isEquivalentTo(Erasable.class))))
-                .and(target(nameMatching("value|orElse|map|isErased"))))
-        .because(
-            "only aggregate state and the command side may unwrap content, which may be erased")
-        .check(classes);
-  }
 
   @Test
   void onlyEventContentAndProcessorConfigTouchContentStorage() {
@@ -194,17 +159,6 @@ class EventContentArchitectureTest {
                     Collectors.mapping(RecordComponent::getName, Collectors.toSet())));
 
     assertThat(nullable).isEqualTo(NULLABLE_RETAINED_FIELDS);
-  }
-
-  @Test
-  void givenEventComponents_whenInspected_thenNoneIsErasable() {
-    var erasable =
-        eventComponents()
-            .filter(component -> component.getType() == Erasable.class)
-            .map(EventContentArchitectureTest::nameOf)
-            .toList();
-
-    assertThat(erasable).as("event components declared Erasable").isEmpty();
   }
 
   /**

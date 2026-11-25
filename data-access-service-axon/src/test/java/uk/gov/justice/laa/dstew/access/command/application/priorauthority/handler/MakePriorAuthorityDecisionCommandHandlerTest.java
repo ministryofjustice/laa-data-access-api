@@ -30,7 +30,6 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decisi
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -65,7 +64,7 @@ class MakePriorAuthorityDecisionCommandHandlerTest {
     PriorAuthorityDataPayload current =
         new PriorAuthorityDataPayload(priorAuthorityId, applicationId, content, OCCURRED_AT);
     setField(state, "priorAuthorityId", priorAuthorityId);
-    setField(state, "submission", Erasable.of(current));
+    setField(state, "submission", current);
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
             priorAuthorityId,
@@ -137,7 +136,7 @@ class MakePriorAuthorityDecisionCommandHandlerTest {
             new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Need review", null, null, null),
             OCCURRED_AT);
     setField(state, "priorAuthorityId", priorAuthorityId);
-    setField(state, "submission", Erasable.of(current));
+    setField(state, "submission", current);
     TimeRequested timeRequested = new TimeRequested(3, 15);
     ExpertFeeInformation expertFee =
         ExpertFeeInformation.builder().grantedTime(timeRequested).build();

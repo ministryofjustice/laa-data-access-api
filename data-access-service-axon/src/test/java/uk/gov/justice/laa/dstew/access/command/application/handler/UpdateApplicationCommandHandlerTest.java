@@ -23,7 +23,6 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataS
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdateDetailsFactory;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationCommand;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 
 @ExtendWith(MockitoExtension.class)
 class UpdateApplicationCommandHandlerTest {
@@ -137,7 +136,7 @@ class UpdateApplicationCommandHandlerTest {
       long dataVersion) {
     ApplicationState state = new ApplicationState();
     setField(state, "applicationId", applicationId);
-    setField(state, "content", Erasable.of(content));
+    setField(state, "content", content);
     setField(state, "status", status);
     setField(state, "applicationVersion", applicationVersion);
     setField(state, "applicationDataVersion", dataVersion);

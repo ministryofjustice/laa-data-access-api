@@ -28,7 +28,6 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMerit
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
 @ExtendWith(MockitoExtension.class)
@@ -171,7 +170,7 @@ class MakeApplicationDecisionCommandHandlerTest {
 
   @SuppressWarnings("unchecked")
   private static void withContent(ApplicationState state, ApplicationDataPayload content) {
-    setField(state, "content", Erasable.of(content));
+    setField(state, "content", content);
     try {
       Field field = ApplicationState.class.getDeclaredField("proceedingIds");
       field.setAccessible(true);

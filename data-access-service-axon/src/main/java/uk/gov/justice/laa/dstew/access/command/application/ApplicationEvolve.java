@@ -6,6 +6,7 @@ import java.util.Objects;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import org.jspecify.annotations.Nullable;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
@@ -18,7 +19,6 @@ import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpd
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 
 /** Event-fold functions for {@link ApplicationState}. */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -42,8 +42,8 @@ public final class ApplicationEvolve {
     state.proceedingDecisions.clear();
     state.content = createdContent(state, event);
     state.draftStatus = null;
-    state.draftApplicationContent = Erasable.erased();
-    state.draftPotentialDuplicates = Erasable.erased();
+    state.draftApplicationContent = null;
+    state.draftPotentialDuplicates = null;
     state.draftDocumentFilenames.clear();
   }
 
@@ -55,8 +55,8 @@ public final class ApplicationEvolve {
     state.officeCode = event.officeCode();
     state.laaReference = event.laaReference();
     state.draftStatus = event.status();
-    state.draftApplicationContent = Erasable.of(event.applicationContent());
-    state.draftPotentialDuplicates = Erasable.of(event.potentialDuplicates());
+    state.draftApplicationContent = event.applicationContent();
+    state.draftPotentialDuplicates = event.potentialDuplicates();
   }
 
   /** Applies an {@link ApplicationUpdatedEvent} to the given state. */
@@ -73,24 +73,20 @@ public final class ApplicationEvolve {
     }
     var update = event.content();
     state.content =
-        state.content.isErased() || update == null
-            ? Erasable.erased()
-            : Erasable.of(
-                state
-                    .content
-                    .value()
-                    .withApplicationUpdate(
-                        update.client(),
-                        update.provider(),
-                        update.opponents(),
-                        update.submittedAt(),
-                        update.usedDelegatedFunctions(),
-                        update.categoryOfLaw(),
-                        update.matterType(),
-                        update.categoryOfLawCode(),
-                        update.matterTypeCode(),
-                        update.proceedings(),
-                        event.enteredSubmitted()));
+        state.content == null || update == null
+            ? null
+            : state.content.withApplicationUpdate(
+                update.client(),
+                update.provider(),
+                update.opponents(),
+                update.submittedAt(),
+                update.usedDelegatedFunctions(),
+                update.categoryOfLaw(),
+                update.matterType(),
+                update.categoryOfLawCode(),
+                update.matterTypeCode(),
+                update.proceedings(),
+                event.enteredSubmitted());
   }
 
   /** Applies an {@link ApplicationDecisionMadeEvent} to the given state. */
@@ -107,15 +103,15 @@ public final class ApplicationEvolve {
     state.overallDecision = event.overallDecision();
     state.decisionRequestFingerprint = event.decisionRequestFingerprint();
     state.proceedingDecisions.putAll(event.proceedingDecisions());
-    state.content =
-        state.content.map(
-            content ->
-                content.withDecision(
-                    event.overallDecision(),
-                    event.autoGranted(),
-                    mergedMeritsDecisions(content, event),
-                    event.certificate(),
-                    event.eventDescription()));
+    if (state.content != null) {
+      state.content =
+          state.content.withDecision(
+              event.overallDecision(),
+              event.autoGranted(),
+              mergedMeritsDecisions(state.content, event),
+              event.certificate(),
+              event.eventDescription());
+    }
   }
 
   /** Applies an {@link ApplicationReadyForManualAssessmentEvent} to the given state. */
@@ -123,7 +119,9 @@ public final class ApplicationEvolve {
     state.applicationVersion = event.applicationVersion();
     state.applicationDataVersion = event.applicationDataVersion();
     state.autoGranted = AutoGrantedState.MANUAL;
-    state.content = state.content.map(ApplicationDataPayload::withManualAssessmentRequired);
+    if (state.content != null) {
+      state.content = state.content.withManualAssessmentRequired();
+    }
   }
 
   /** Applies a generic direct assignment event to the owning application state. */
@@ -143,9 +141,9 @@ public final class ApplicationEvolve {
     state.applicationDataVersion = event.applicationDataVersion();
     // applicationVersion intentionally not updated — notes are decoupled from optimistic locking
     state.content =
-        state.content.isErased() || event.noteText() == null
-            ? Erasable.erased()
-            : Erasable.of(state.content.value().withNote(event.noteText(), event.occurredAt()));
+        state.content == null || event.noteText() == null
+            ? null
+            : state.content.withNote(event.noteText(), event.occurredAt());
   }
 
   /** Applies an {@link ApplicationDocumentUploadedEvent} to the given state. */
@@ -161,25 +159,25 @@ public final class ApplicationEvolve {
             event.sourceService(),
             false,
             event.fileSuffix()));
-    state.draftDocumentFilenames.put(event.documentId(), Erasable.of(event.originalFilename()));
+    state.draftDocumentFilenames.put(event.documentId(), event.originalFilename());
     if (event.applicationDataVersion() != null) {
       state.applicationDataVersion = event.applicationDataVersion();
     }
   }
 
-  private static Erasable<ApplicationDataPayload> createdContent(
+  private static @Nullable ApplicationDataPayload createdContent(
       ApplicationState state, ApplicationCreatedEvent event) {
     if (event.content() == null) {
-      return Erasable.erased();
+      return null;
     }
     ApplicationDataPayload payload =
         ApplicationDataPayload.from(event.laaReference(), event.content());
-    for (Map.Entry<UUID, Erasable<String>> filename : state.draftDocumentFilenames.entrySet()) {
-      if (!filename.getValue().isErased()) {
-        payload = payload.withDocumentFilename(filename.getKey(), filename.getValue().value());
+    for (var filename : state.draftDocumentFilenames.entrySet()) {
+      if (filename.getValue() != null) {
+        payload = payload.withDocumentFilename(filename.getKey(), filename.getValue());
       }
     }
-    return Erasable.of(payload);
+    return payload;
   }
 
   private static Map<UUID, ApplicationMeritsDecision> mergedMeritsDecisions(

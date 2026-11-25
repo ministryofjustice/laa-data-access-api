@@ -57,8 +57,9 @@ descriptions to events as kept fields. Carry them as erasable content and, while
 hydrate from it, also append them to `application_data` and reference the new version. Do not
 store raw serialized requests in events or data stores; carry a request fingerprint when a retry
 must be recognised. Identifiers may still be personal data and also require review. A component
-the event does not mark `@RetainedField` is content: it must be a plain `@Nullable` type, never
-`Erasable`, and no decider rule may depend on it. A retained field must be non-null on append
+the event does not mark `@RetainedField` is content: it must be a plain `@Nullable` type on the
+event and a nullable field with an `Optional` accessor in aggregate state; no decider rule may
+depend on it. A retained field must be non-null on append
 unless it is marked `@RetainedField(nullable = true)`; the separator rejects it otherwise. Never
 delete an `event_content` row: erasure
 replaces its content with `{}`, and a missing row fails loading (see

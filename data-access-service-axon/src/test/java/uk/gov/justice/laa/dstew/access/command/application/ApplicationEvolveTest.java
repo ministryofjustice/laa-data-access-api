@@ -20,7 +20,6 @@ import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 
 /** Unit tests for {@link ApplicationEvolve} decision-fold behaviour. */
 class ApplicationEvolveTest {
@@ -254,7 +253,7 @@ class ApplicationEvolveTest {
             null,
             "second"));
 
-    assertThat(state.content.value())
+    assertThat(state.content)
         .isEqualTo(
             ApplicationDataPayload.from(details)
                 .withManualAssessmentRequired()
@@ -296,11 +295,10 @@ class ApplicationEvolveTest {
             created.proceedingIds(),
             created.content());
 
-    assertThat(fold(withoutContent(created)).content.isErased()).isTrue();
-    assertThat(fold(created, withoutContent(updated)).content.isErased()).isTrue();
-    assertThat(fold(withoutContent(created), updated).content.isErased()).isTrue();
-    assertThat(fold(created, new NoteCreatedEvent(applicationId, 1L, at)).content.isErased())
-        .isTrue();
+    assertThat(fold(withoutContent(created)).content()).isEmpty();
+    assertThat(fold(created, withoutContent(updated)).content()).isEmpty();
+    assertThat(fold(withoutContent(created), updated).content()).isEmpty();
+    assertThat(fold(created, new NoteCreatedEvent(applicationId, 1L, at)).content()).isEmpty();
   }
 
   @Test
@@ -309,15 +307,15 @@ class ApplicationEvolveTest {
     UUID keptDocumentId = UUID.randomUUID();
     UUID erasedDocumentId = UUID.randomUUID();
     ApplicationState state = new ApplicationState();
-    state.draftDocumentFilenames.put(keptDocumentId, Erasable.of("evidence.pdf"));
-    state.draftDocumentFilenames.put(erasedDocumentId, Erasable.erased());
+    state.draftDocumentFilenames.put(keptDocumentId, "evidence.pdf");
+    state.draftDocumentFilenames.put(erasedDocumentId, null);
 
     ApplicationEvolve.apply(
         state,
         ApplicationDecider.decideSubmitDraft(
             applicationId, 0L, "fingerprint", applicationCreationDetails(applicationId)));
 
-    assertThat(state.content.value().documentFilenames())
+    assertThat(state.content.documentFilenames())
         .containsExactlyEntriesOf(Map.of(keptDocumentId, "evidence.pdf"));
   }
 
