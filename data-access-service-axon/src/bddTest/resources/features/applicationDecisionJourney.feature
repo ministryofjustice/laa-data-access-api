@@ -1,4 +1,4 @@
-@smokeTest @applicationDecisionJourney
+@smoke @applicationDecisionJourney
 Feature: caseworker makes decision on applications 'Manual' granted
   As a caseworker
   I want to be able to make a decision on an application that has been granted 'Manual'
