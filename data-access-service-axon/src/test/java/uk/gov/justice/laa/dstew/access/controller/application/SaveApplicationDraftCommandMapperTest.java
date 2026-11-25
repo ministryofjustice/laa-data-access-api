@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -15,6 +14,7 @@ import tools.jackson.databind.json.JsonMapper;
 import uk.gov.justice.laa.dstew.access.command.application.draft.CreateApplicationDraftCommand;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDraftRequest;
+import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
 class SaveApplicationDraftCommandMapperTest {
 
@@ -56,7 +56,7 @@ class SaveApplicationDraftCommandMapperTest {
   }
 
   @Test
-  void givenRequest_whenCreateMapped_thenContentIsSerialised() {
+  void givenRequest_whenCreateMapped_thenFingerprintsSerialisedRequest() {
     CreateApplicationDraftRequest request =
         CreateApplicationDraftRequest.builder()
             .id(UUID.randomUUID())
@@ -66,9 +66,9 @@ class SaveApplicationDraftCommandMapperTest {
 
     CreateApplicationDraftCommand command = mapper.toCreateCommand(request, 1);
 
-    assertThat(command.serialisedRequest()).contains("LAA-123");
-    assertThatCode(() -> JsonMapper.builder().build().readTree(command.serialisedRequest()))
-        .doesNotThrowAnyException();
+    assertThat(command.requestFingerprint())
+        .isEqualTo(
+            PayloadFingerprint.compute(JsonMapper.builder().build().writeValueAsString(request)));
   }
 
   @Test

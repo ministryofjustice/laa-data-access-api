@@ -11,6 +11,7 @@ import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
+import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
 /** Maps the outcome-specific auto-grant contract to existing domain commands. */
 @Component
@@ -30,7 +31,10 @@ public class AutoGrantOutcomeCommandMapper {
     }
     if (request instanceof AutoGrantedOutcomeRequest autogranted) {
       return new RecordAutoGrantedOutcomeCommand(
-          applicationId, autogranted.getCertificate(), serialise(request), Instant.now());
+          applicationId,
+          autogranted.getCertificate(),
+          PayloadFingerprint.compute(serialise(request)),
+          Instant.now());
     }
     throw new IllegalArgumentException("Unsupported auto-grant outcome request");
   }

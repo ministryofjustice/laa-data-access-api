@@ -17,6 +17,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplication
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
+import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
 class AutoGrantOutcomeCommandMapperTest {
 
@@ -31,7 +32,7 @@ class AutoGrantOutcomeCommandMapperTest {
     var command = (MarkApplicationReadyCommand) mapper.toCommand(id, request);
 
     assertThat(command.applicationId()).isEqualTo(id);
-    assertThat(command.serialisedRequest()).contains("MANUAL");
+    assertThat(command.expectedApplicationVersion()).isNull();
   }
 
   @Test
@@ -45,6 +46,9 @@ class AutoGrantOutcomeCommandMapperTest {
 
     assertThat(command.applicationId()).isEqualTo(id);
     assertThat(command.certificate()).containsEntry("certificateNumber", "AUTO-2126");
+    assertThat(command.requestFingerprint())
+        .isEqualTo(
+            PayloadFingerprint.compute(JsonMapper.builder().build().writeValueAsString(request)));
   }
 
   @Test
@@ -76,7 +80,8 @@ class AutoGrantOutcomeCommandMapperTest {
     assertThatThrownBy(
             () ->
                 failingMapper.toCommand(
-                    UUID.randomUUID(), new ManualOutcomeRequest(AutoGrantOutcome.MANUAL)))
+                    UUID.randomUUID(),
+                    new AutoGrantedOutcomeRequest(AutoGrantOutcome.AUTOGRANTED, Map.of())))
         .isInstanceOf(IllegalStateException.class);
   }
 }

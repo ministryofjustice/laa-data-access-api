@@ -211,7 +211,7 @@ class ApplicationAggregateDraftTest {
                 null,
                 null,
                 Map.of(),
-                "{}",
+                PayloadFingerprint.compute("{}"),
                 1,
                 "BaseCivilApplication.json",
                 Instant.now(),
@@ -225,8 +225,7 @@ class ApplicationAggregateDraftTest {
   void givenNoApplication_whenCreateDraft_thenEmitsDraftStartedEventCarryingContent() {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
-    String serialisedRequest = "{}";
-    String fingerprint = PayloadFingerprint.compute(serialisedRequest);
+    String fingerprint = PayloadFingerprint.compute("{}");
     Map<String, Object> applicationContent =
         validApplicationContent(applicationId, UUID.randomUUID());
     List<PotentialDuplicate> duplicates = List.of(new PotentialDuplicate("LAA-456"));
@@ -237,7 +236,7 @@ class ApplicationAggregateDraftTest {
             "APPLICATION_SUBMITTED",
             "LAA-123",
             applicationContent,
-            serialisedRequest,
+            fingerprint,
             1,
             "BaseCivilApplication.json",
             occurredAt,
@@ -278,7 +277,7 @@ class ApplicationAggregateDraftTest {
             null,
             null,
             Map.of(),
-            "{}",
+            PayloadFingerprint.compute("{}"),
             1,
             "BaseCivilApplication.json",
             occurredAt.plusSeconds(60),
@@ -299,10 +298,9 @@ class ApplicationAggregateDraftTest {
       givenDraftInProgress_whenCreateDraftAgainWithDifferentSchemaVersion_thenThrowsConflictAndPersistsNothing() {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
-    String serialisedRequest = "{}";
+    String fingerprint = PayloadFingerprint.compute("{}");
     ApplicationDraftStartedEvent existingEvent =
-        draftStarted(
-            applicationId, PayloadFingerprint.compute(serialisedRequest), occurredAt, Map.of());
+        draftStarted(applicationId, fingerprint, occurredAt, Map.of());
 
     CreateApplicationDraftCommand retryWithDifferentSchemaVersion =
         new CreateApplicationDraftCommand(
@@ -310,7 +308,7 @@ class ApplicationAggregateDraftTest {
             null,
             null,
             Map.of(),
-            serialisedRequest,
+            fingerprint,
             2,
             "BaseCivilApplication.json",
             occurredAt.plusSeconds(60),
@@ -330,10 +328,9 @@ class ApplicationAggregateDraftTest {
   void givenDraftInProgress_whenIdenticalRetry_thenSucceedsIdempotently() {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
-    String serialisedRequest = "{}";
+    String fingerprint = PayloadFingerprint.compute("{}");
     ApplicationDraftStartedEvent existingEvent =
-        draftStarted(
-            applicationId, PayloadFingerprint.compute(serialisedRequest), occurredAt, Map.of());
+        draftStarted(applicationId, fingerprint, occurredAt, Map.of());
 
     CreateApplicationDraftCommand retryCommand =
         new CreateApplicationDraftCommand(
@@ -341,7 +338,7 @@ class ApplicationAggregateDraftTest {
             null,
             null,
             Map.of(),
-            serialisedRequest,
+            fingerprint,
             1,
             "BaseCivilApplication.json",
             occurredAt.plusSeconds(60),
@@ -368,7 +365,7 @@ class ApplicationAggregateDraftTest {
             null,
             null,
             Map.of(),
-            "{}",
+            PayloadFingerprint.compute("{}"),
             1,
             "BaseCivilApplication.json",
             Instant.now(),

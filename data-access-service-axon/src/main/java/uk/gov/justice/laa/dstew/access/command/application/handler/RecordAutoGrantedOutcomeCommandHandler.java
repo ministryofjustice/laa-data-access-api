@@ -52,7 +52,7 @@ public class RecordAutoGrantedOutcomeCommandHandler {
     if (state.getAutoGranted() != AutoGrantedState.AUTOGRANTED) {
       return;
     }
-    if (!ApplicationDecider.isSameAutoGrantRequest(state, command.serialisedRequest())) {
+    if (!ApplicationDecider.isSameAutoGrantRequest(state, command.requestFingerprint())) {
       throw new ApplicationAutoGrantOutcomeConflictException(command.applicationId());
     }
   }
@@ -73,7 +73,7 @@ public class RecordAutoGrantedOutcomeCommandHandler {
         DecisionValue.GRANTED.name(),
         grantedProceedings,
         command.certificate(),
-        command.serialisedRequest(),
+        command.requestFingerprint(),
         "Autogranted",
         command.occurredAt());
   }

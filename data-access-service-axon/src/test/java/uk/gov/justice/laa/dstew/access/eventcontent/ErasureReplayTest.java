@@ -196,9 +196,17 @@ class ErasureReplayTest {
     assertThat(full.getContent().isErased()).isFalse();
     assertThat(erased.getContent().isErased()).isTrue();
     assertSameDecision(
-        full, erased, state -> ApplicationDecider.isSameAutoGrantRequest(state, DECISION_REQUEST));
+        full,
+        erased,
+        state ->
+            ApplicationDecider.isSameAutoGrantRequest(
+                state, PayloadFingerprint.compute(DECISION_REQUEST)));
     assertSameDecision(
-        full, erased, state -> ApplicationDecider.isSameAutoGrantRequest(state, "{\"other\":1}"));
+        full,
+        erased,
+        state ->
+            ApplicationDecider.isSameAutoGrantRequest(
+                state, PayloadFingerprint.compute("{\"other\":1}")));
     assertSameDecision(full, erased, state -> decide(state, 2L, proceedingId));
   }
 

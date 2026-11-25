@@ -32,7 +32,7 @@ class MakeApplicationDecisionCommandTest {
             "REFUSED",
             List.of(proceeding),
             certificate,
-            "{}",
+            "fingerprint",
             "decision",
             OCCURRED_AT);
 
@@ -42,7 +42,7 @@ class MakeApplicationDecisionCommandTest {
     assertThat(command.overallDecision()).isEqualTo("REFUSED");
     assertThat(command.proceedings()).containsExactly(proceeding);
     assertThat(command.certificate()).containsEntry("reference", "CERT-123");
-    assertThat(command.serialisedRequest()).isEqualTo("{}");
+    assertThat(command.requestFingerprint()).isEqualTo("fingerprint");
     assertThat(command.eventDescription()).isEqualTo("decision");
     assertThat(command.occurredAt()).isEqualTo(OCCURRED_AT);
   }

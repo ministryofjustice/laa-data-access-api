@@ -18,7 +18,7 @@ public record CreateApplicationCommand(
     String status,
     String laaReference,
     Map<String, Object> applicationContent,
-    String serialisedRequest,
+    String requestFingerprint,
     int schemaVersion,
     String schemaName,
     List<PotentialDuplicate> potentialDuplicates) {}

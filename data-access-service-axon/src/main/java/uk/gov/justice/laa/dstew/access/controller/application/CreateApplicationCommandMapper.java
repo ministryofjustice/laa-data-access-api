@@ -5,6 +5,7 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
 /** Maps the generated HTTP request model to the Axon create command. */
 @Component
@@ -23,7 +24,7 @@ public class CreateApplicationCommandMapper {
         request.getStatus() == null ? null : request.getStatus().name(),
         request.getLaaReference(),
         request.getApplicationContent(),
-        serialise(request),
+        PayloadFingerprint.compute(serialise(request)),
         schemaVersion,
         "BaseCivilApplication.json",
         request.getPotentialDuplicates());

@@ -16,7 +16,7 @@ public record MakeApplicationDecisionCommand(
     String overallDecision,
     List<MakeDecisionProceeding> proceedings,
     Map<String, Object> certificate,
-    String serialisedRequest,
+    String requestFingerprint,
     String eventDescription,
     Instant occurredAt) {
 

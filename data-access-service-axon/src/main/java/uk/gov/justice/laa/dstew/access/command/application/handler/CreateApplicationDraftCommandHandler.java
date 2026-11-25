@@ -12,7 +12,6 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationDecider;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.draft.CreateApplicationDraftCommand;
-import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 
 /** Handles creation of application drafts. */
@@ -29,7 +28,6 @@ public class CreateApplicationDraftCommandHandler {
       EventAppender eventAppender) {
     jsonSchemaValidator.validate(
         command.applicationContent(), command.schemaName(), command.schemaVersion());
-    String fingerprint = PayloadFingerprint.compute(command.serialisedRequest());
     if (application == null || application.getApplicationId() == null) {
       factory.validate(command.applicationContent());
       ApplicationDecider.decideStartDraft(
@@ -37,7 +35,7 @@ public class CreateApplicationDraftCommandHandler {
               new ApplicationDraftStartedEvent(
                   command.applicationId(),
                   command.schemaVersion(),
-                  fingerprint,
+                  command.requestFingerprint(),
                   command.occurredAt(),
                   ApplicationCommandHandlerSupport.officeCode(command.applicationContent()),
                   command.status(),
@@ -47,7 +45,7 @@ public class CreateApplicationDraftCommandHandler {
           .forEach(eventAppender::append);
     } else {
       ApplicationDecider.decideStartDraft(
-          application.getState(), command.schemaVersion(), fingerprint);
+          application.getState(), command.schemaVersion(), command.requestFingerprint());
     }
     return command.applicationId();
   }

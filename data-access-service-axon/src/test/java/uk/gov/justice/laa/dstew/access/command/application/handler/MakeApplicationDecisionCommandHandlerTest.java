@@ -58,7 +58,7 @@ class MakeApplicationDecisionCommandHandlerTest {
             "GRANTED",
             List.of(new MakeDecisionProceeding(proceedingId, "GRANTED", "reason", "just")),
             certificate,
-            "{}",
+            PayloadFingerprint.compute("{}"),
             "decision made",
             OCCURRED_AT);
 
@@ -113,7 +113,7 @@ class MakeApplicationDecisionCommandHandlerTest {
             List.of(
                 new MakeDecisionProceeding(newProceedingId, "REFUSED", "new reason", "new just")),
             Map.of("reference", "CERT-2"),
-            "{}",
+            PayloadFingerprint.compute("{}"),
             "decision made",
             OCCURRED_AT);
     withContent(state, current);

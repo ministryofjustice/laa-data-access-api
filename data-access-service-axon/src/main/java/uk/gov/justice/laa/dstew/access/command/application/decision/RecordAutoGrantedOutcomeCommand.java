@@ -11,7 +11,7 @@ import org.axonframework.modelling.annotation.TargetEntityId;
 public record RecordAutoGrantedOutcomeCommand(
     @TargetEntityId UUID applicationId,
     Map<String, Object> certificate,
-    String serialisedRequest,
+    String requestFingerprint,
     Instant occurredAt) {
 
   public RecordAutoGrantedOutcomeCommand {

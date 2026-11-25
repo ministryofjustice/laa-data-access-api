@@ -39,7 +39,6 @@ import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictExce
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Decision functions: derive events from current state and command inputs. */
@@ -290,7 +289,7 @@ public final class ApplicationDecider {
         command.overallDecision(),
         autoGranted,
         command.occurredAt(),
-        fingerprint(command.serialisedRequest()),
+        command.requestFingerprint(),
         Map.copyOf(meritsDecisions),
         DecisionValue.GRANTED.name().equals(command.overallDecision())
             ? command.certificate()
@@ -308,12 +307,8 @@ public final class ApplicationDecider {
    * Returns whether an automatic grant has already been recorded for the same request, compared by
    * the kept fingerprint so that the answer is the same once content is erased.
    */
-  public static boolean isSameAutoGrantRequest(ApplicationState state, String serialisedRequest) {
-    return Objects.equals(state.decisionRequestFingerprint, fingerprint(serialisedRequest));
-  }
-
-  private static String fingerprint(String serialisedRequest) {
-    return serialisedRequest == null ? null : PayloadFingerprint.compute(serialisedRequest);
+  public static boolean isSameAutoGrantRequest(ApplicationState state, String requestFingerprint) {
+    return Objects.equals(state.decisionRequestFingerprint, requestFingerprint);
   }
 
   /** Ensures a standalone manual decision is made by its current assignment owner. */

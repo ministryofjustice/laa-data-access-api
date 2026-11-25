@@ -477,7 +477,7 @@ class ApplicationDeciderTest {
                 "REFUSED",
                 List.of(new MakeDecisionProceeding(proceedingId, "REFUSED", "reason", "just")),
                 null,
-                "{}",
+                PayloadFingerprint.compute("{}"),
                 "desc",
                 occurredAt));
 
@@ -507,7 +507,7 @@ class ApplicationDeciderTest {
             "REFUSED",
             List.of(new MakeDecisionProceeding(UUID.randomUUID(), "REFUSED", "r", "just")),
             null,
-            "{}",
+            PayloadFingerprint.compute("{}"),
             null,
             TIMESTAMP);
     state.proceedingIds.add(UUID.randomUUID());
@@ -522,7 +522,15 @@ class ApplicationDeciderTest {
     ApplicationState state = stateAfterCreate(applicationId, "fp", 1);
     MakeApplicationDecisionCommand command =
         new MakeApplicationDecisionCommand(
-            applicationId, null, 0L, "REFUSED", List.of(), null, "{}", null, TIMESTAMP);
+            applicationId,
+            null,
+            0L,
+            "REFUSED",
+            List.of(),
+            null,
+            PayloadFingerprint.compute("{}"),
+            null,
+            TIMESTAMP);
     state.proceedingIds.add(UUID.randomUUID());
 
     assertThatThrownBy(() -> ApplicationDecider.decideDecision(state, command))
@@ -542,7 +550,7 @@ class ApplicationDeciderTest {
             "GRANTED",
             List.of(new MakeDecisionProceeding(proceedingId, "GRANTED", "r", "just")),
             null, // missing certificate
-            "{}",
+            PayloadFingerprint.compute("{}"),
             null,
             TIMESTAMP);
     state.proceedingIds.add(proceedingId);
@@ -565,7 +573,7 @@ class ApplicationDeciderTest {
             "REFUSED",
             List.of(new MakeDecisionProceeding(unknownProceedingId, "REFUSED", "r", "just")),
             null,
-            "{}",
+            PayloadFingerprint.compute("{}"),
             null,
             TIMESTAMP);
     state.proceedingIds.add(knownProceedingId);
@@ -589,7 +597,7 @@ class ApplicationDeciderTest {
             "REFUSED",
             List.of(proceeding, proceeding),
             null,
-            "{}",
+            PayloadFingerprint.compute("{}"),
             null,
             TIMESTAMP);
     state.proceedingIds.add(proceedingId);
@@ -610,7 +618,15 @@ class ApplicationDeciderTest {
     ApplicationDecider.validateManualDecisionAssignment(
         state,
         new MakeApplicationDecisionCommand(
-            applicationId, caseworkerId, 0L, "REFUSED", List.of(), null, "{}", null, TIMESTAMP));
+            applicationId,
+            caseworkerId,
+            0L,
+            "REFUSED",
+            List.of(),
+            null,
+            PayloadFingerprint.compute("{}"),
+            null,
+            TIMESTAMP));
   }
 
   @Test
@@ -632,7 +648,7 @@ class ApplicationDeciderTest {
                         "REFUSED",
                         List.of(),
                         null,
-                        "{}",
+                        PayloadFingerprint.compute("{}"),
                         null,
                         TIMESTAMP)))
         .isInstanceOf(WorkItemAssignmentConflictException.class);

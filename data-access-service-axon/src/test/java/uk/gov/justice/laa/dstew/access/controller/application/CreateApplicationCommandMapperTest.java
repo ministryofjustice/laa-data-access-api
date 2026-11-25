@@ -16,6 +16,7 @@ import tools.jackson.databind.json.JsonMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
+import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
 class CreateApplicationCommandMapperTest {
 
@@ -62,6 +63,39 @@ class CreateApplicationCommandMapperTest {
     assertThat(command.laaReference()).isEqualTo("LAA-123");
     assertThat(command.applicationContent()).containsEntry("key", "value");
     assertThat(command.schemaVersion()).isEqualTo(2);
+  }
+
+  @Test
+  void givenRequest_whenMapped_thenFingerprintsSerialisedRequest() {
+    var request = request(UUID.randomUUID());
+
+    var command = mapper.toCommand(request, 1);
+
+    assertThat(command.requestFingerprint())
+        .isEqualTo(
+            PayloadFingerprint.compute(JsonMapper.builder().build().writeValueAsString(request)));
+  }
+
+  @Test
+  void givenSameRequestMappedTwice_whenCompared_thenFingerprintsMatch() {
+    UUID id = UUID.randomUUID();
+
+    assertThat(mapper.toCommand(request(id), 1).requestFingerprint())
+        .isEqualTo(mapper.toCommand(request(id), 1).requestFingerprint());
+  }
+
+  @Test
+  void givenDifferentRequests_whenMapped_thenFingerprintsDiffer() {
+    UUID id = UUID.randomUUID();
+    var changed =
+        ApplicationCreateRequest.builder()
+            .id(id)
+            .laaReference("LAA-999")
+            .applicationContent(Map.of())
+            .build();
+
+    assertThat(mapper.toCommand(changed, 1).requestFingerprint())
+        .isNotEqualTo(mapper.toCommand(request(id), 1).requestFingerprint());
   }
 
   @Test

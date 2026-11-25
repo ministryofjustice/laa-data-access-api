@@ -10,6 +10,7 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicat
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
+import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
 /** Maps the make-decision HTTP contract to an Axon command. */
 @Component
@@ -31,7 +32,7 @@ public class MakeDecisionCommandMapper {
         request.getOverallDecision().name(),
         proceedings(request.getProceedings()),
         request.getCertificate(),
-        serialise(request),
+        PayloadFingerprint.compute(serialise(request)),
         request.getEventHistory() == null ? null : request.getEventHistory().getEventDescription(),
         Instant.now());
   }

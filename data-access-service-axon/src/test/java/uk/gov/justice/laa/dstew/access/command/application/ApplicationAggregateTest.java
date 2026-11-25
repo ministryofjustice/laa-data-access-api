@@ -31,6 +31,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import tools.jackson.databind.json.JsonMapper;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetails;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
@@ -62,11 +63,14 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicatio
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdateDetailsFactory;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationCommand;
+import uk.gov.justice.laa.dstew.access.controller.application.CreateApplicationCommandMapper;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -166,7 +170,7 @@ class ApplicationAggregateTest {
         .given()
         .noPriorActivity()
         .when()
-        .command(createCommand(applicationId, "{}"))
+        .command(createCommand(applicationId, PayloadFingerprint.compute("{}")))
         .then()
         .resultMessagePayload(applicationId)
         .events(expected);
@@ -181,14 +185,14 @@ class ApplicationAggregateTest {
         .given()
         .events(existing)
         .when()
-        .command(createCommand(applicationId, "{}"))
+        .command(createCommand(applicationId, PayloadFingerprint.compute("{}")))
         .then()
         .resultMessagePayload(applicationId)
         .noEvents();
   }
 
   @Test
-  void givenExistingApplication_whenDifferentSerialisedRequest_thenRejectsWithConflict() {
+  void givenExistingApplication_whenDifferentRequestFingerprint_thenRejectsWithConflict() {
     UUID applicationId = UUID.randomUUID();
     ApplicationCreatedEvent existing = applicationCreatedEvent(applicationId);
 
@@ -196,7 +200,54 @@ class ApplicationAggregateTest {
         .given()
         .events(existing)
         .when()
-        .command(createCommand(applicationId, "{\"different\":true}"))
+        .command(createCommand(applicationId, PayloadFingerprint.compute("{\"different\":true}")))
+        .then()
+        .exception(ApplicationCreationConflictException.class)
+        .noEvents();
+  }
+
+  @Test
+  void givenCreatedFromRequest_whenSameRequestMappedAgain_thenSucceedsIdempotently() {
+    UUID applicationId = UUID.randomUUID();
+    var mapper = new CreateApplicationCommandMapper(JsonMapper.builder().build());
+    var content = validApplicationContent(applicationId, proceedingIdFor(applicationId));
+    var request = createRequest(applicationId, "LAA-123", content);
+    var first = mapper.toCommand(request, 1);
+    ApplicationCreatedEvent existing =
+        ApplicationDecider.decideSubmitDraft(
+            applicationId,
+            0L,
+            first.requestFingerprint(),
+            applicationCreationDetails(applicationId));
+
+    fixture
+        .given()
+        .events(existing)
+        .when()
+        .command(mapper.toCommand(request, 1))
+        .then()
+        .resultMessagePayload(applicationId)
+        .noEvents();
+  }
+
+  @Test
+  void givenCreatedFromRequest_whenDifferentRequestMapped_thenRejectsWithConflict() {
+    UUID applicationId = UUID.randomUUID();
+    var mapper = new CreateApplicationCommandMapper(JsonMapper.builder().build());
+    var content = validApplicationContent(applicationId, proceedingIdFor(applicationId));
+    var first = mapper.toCommand(createRequest(applicationId, "LAA-123", content), 1);
+    ApplicationCreatedEvent existing =
+        ApplicationDecider.decideSubmitDraft(
+            applicationId,
+            0L,
+            first.requestFingerprint(),
+            applicationCreationDetails(applicationId));
+
+    fixture
+        .given()
+        .events(existing)
+        .when()
+        .command(mapper.toCommand(createRequest(applicationId, "LAA-999", content), 1))
         .then()
         .exception(ApplicationCreationConflictException.class)
         .noEvents();
@@ -211,7 +262,7 @@ class ApplicationAggregateTest {
         .given()
         .events(existing)
         .when()
-        .command(createCommandWithSchema(applicationId, "{}", 2))
+        .command(createCommandWithSchema(applicationId, PayloadFingerprint.compute("{}"), 2))
         .then()
         .exception(ApplicationCreationConflictException.class)
         .noEvents();
@@ -241,7 +292,7 @@ class ApplicationAggregateTest {
                 List.of(
                     new MakeDecisionProceeding(proceedingId, "REFUSED", "reason", "justification")),
                 null,
-                "{\"overallDecision\":\"REFUSED\"}",
+                PayloadFingerprint.compute("{\"overallDecision\":\"REFUSED\"}"),
                 "Decision recorded",
                 occurredAt))
         .then()
@@ -281,7 +332,7 @@ class ApplicationAggregateTest {
                 List.of(
                     new MakeDecisionProceeding(proceedingId, "REFUSED", "reason", "justification")),
                 null,
-                "{\"overallDecision\":\"REFUSED\"}",
+                PayloadFingerprint.compute("{\"overallDecision\":\"REFUSED\"}"),
                 "Decision recorded",
                 occurredAt))
         .then()
@@ -362,7 +413,7 @@ class ApplicationAggregateTest {
                 List.of(
                     new MakeDecisionProceeding(proceedingId, "REFUSED", "reason", "justification")),
                 null,
-                "{}",
+                PayloadFingerprint.compute("{}"),
                 null,
                 secondOccurredAt))
         .then()
@@ -528,7 +579,15 @@ class ApplicationAggregateTest {
         .when()
         .command(
             new MakeApplicationDecisionCommand(
-                applicationId, null, 1L, "GRANTED", List.of(), null, "{}", null, Instant.now()))
+                applicationId,
+                null,
+                1L,
+                "GRANTED",
+                List.of(),
+                null,
+                PayloadFingerprint.compute("{}"),
+                null,
+                Instant.now()))
         .then()
         .exception(ValidationException.class)
         .noEvents();
@@ -574,7 +633,7 @@ class ApplicationAggregateTest {
                 "REFUSED",
                 List.of(proceeding, proceeding),
                 null,
-                "{}",
+                PayloadFingerprint.compute("{}"),
                 null,
                 Instant.now()))
         .then()
@@ -935,8 +994,18 @@ class ApplicationAggregateTest {
                             configuration -> mock(JsonSchemaValidator.class))));
   }
 
-  private CreateApplicationCommand createCommand(UUID applicationId, String serialisedRequest) {
-    return createCommandWithSchema(applicationId, serialisedRequest, 1);
+  private CreateApplicationCommand createCommand(UUID applicationId, String requestFingerprint) {
+    return createCommandWithSchema(applicationId, requestFingerprint, 1);
+  }
+
+  private static ApplicationCreateRequest createRequest(
+      UUID applicationId, String laaReference, Map<String, Object> content) {
+    return ApplicationCreateRequest.builder()
+        .id(applicationId)
+        .status(ApplicationStatus.APPLICATION_SUBMITTED)
+        .laaReference(laaReference)
+        .applicationContent(content)
+        .build();
   }
 
   private ApplicationDraftStartedEvent draftStartedEvent(UUID applicationId) {
@@ -970,7 +1039,7 @@ class ApplicationAggregateTest {
         decision,
         List.of(new MakeDecisionProceeding(proceedingId, decision, "reason", justification)),
         certificate,
-        "{}",
+        PayloadFingerprint.compute("{}"),
         null,
         Instant.now());
   }
@@ -1004,13 +1073,13 @@ class ApplicationAggregateTest {
   }
 
   private CreateApplicationCommand createCommandWithSchema(
-      UUID applicationId, String serialisedRequest, int schemaVersion) {
+      UUID applicationId, String requestFingerprint, int schemaVersion) {
     return new CreateApplicationCommand(
         applicationId,
         "APPLICATION_SUBMITTED",
         "LAA-123",
         validApplicationContent(applicationId, proceedingIdFor(applicationId)),
-        serialisedRequest,
+        requestFingerprint,
         schemaVersion,
         "BaseCivilApplication.json",
         null);
@@ -1120,7 +1189,9 @@ class ApplicationAggregateTest {
             applicationCreatedEvent(applicationId),
             new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, occurredAt))
         .when()
-        .command(new RecordAutoGrantedOutcomeCommand(applicationId, Map.of(), "{}", occurredAt))
+        .command(
+            new RecordAutoGrantedOutcomeCommand(
+                applicationId, Map.of(), PayloadFingerprint.compute("{}"), occurredAt))
         .then()
         .exception(ApplicationAutoGrantOutcomeConflictException.class)
         .noEvents();
@@ -1135,7 +1206,9 @@ class ApplicationAggregateTest {
         .events(
             erasedApplicationCreated(applicationId), autoGrantedDecision(applicationId, occurredAt))
         .when()
-        .command(new RecordAutoGrantedOutcomeCommand(applicationId, Map.of(), "{}", occurredAt))
+        .command(
+            new RecordAutoGrantedOutcomeCommand(
+                applicationId, Map.of(), PayloadFingerprint.compute("{}"), occurredAt))
         .then()
         .success()
         .noEvents();
@@ -1153,9 +1226,70 @@ class ApplicationAggregateTest {
             erasedApplicationCreated(applicationId), autoGrantedDecision(applicationId, occurredAt))
         .when()
         .command(
-            new RecordAutoGrantedOutcomeCommand(applicationId, Map.of(), "{different}", occurredAt))
+            new RecordAutoGrantedOutcomeCommand(
+                applicationId, Map.of(), PayloadFingerprint.compute("{different}"), occurredAt))
         .then()
         .exception(ApplicationAutoGrantOutcomeConflictException.class)
+        .noEvents();
+  }
+
+  @Test
+  void givenSubmittedApplication_whenAutoGrantRecorded_thenDecisionCarriesRequestFingerprint() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-19T10:15:00Z");
+    ApplicationCreationDetails details = applicationCreationDetails(applicationId);
+    UUID proceedingId = details.proceedings().getFirst().getId();
+    Map<String, Object> certificate = Map.of("reference", "AUTO-1");
+
+    fixture
+        .given()
+        .events(applicationCreatedEvent(applicationId, details))
+        .when()
+        .command(
+            new RecordAutoGrantedOutcomeCommand(
+                applicationId, certificate, "auto-grant-fingerprint", occurredAt))
+        .then()
+        .success()
+        .events(
+            new ApplicationDecisionMadeEvent(
+                applicationId,
+                1L,
+                1L,
+                "GRANTED",
+                AutoGrantedState.AUTOGRANTED,
+                occurredAt,
+                "auto-grant-fingerprint",
+                Map.of(proceedingId, new ApplicationMeritsDecision("GRANTED", null, "Autogranted")),
+                certificate,
+                "Autogranted"));
+  }
+
+  @Test
+  void givenAutoGrantRecorded_whenRetriedWithSameFingerprint_thenSucceedsWithoutAnotherEvent() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-19T10:15:00Z");
+    ApplicationDecisionMadeEvent recorded =
+        new ApplicationDecisionMadeEvent(
+            applicationId,
+            1L,
+            1L,
+            "GRANTED",
+            AutoGrantedState.AUTOGRANTED,
+            occurredAt,
+            "auto-grant-fingerprint",
+            Map.of(),
+            Map.of("reference", "AUTO-1"),
+            "Autogranted");
+
+    fixture
+        .given()
+        .events(applicationCreatedEvent(applicationId), recorded)
+        .when()
+        .command(
+            new RecordAutoGrantedOutcomeCommand(
+                applicationId, Map.of("reference", "AUTO-1"), "auto-grant-fingerprint", occurredAt))
+        .then()
+        .success()
         .noEvents();
   }
 
@@ -1186,7 +1320,8 @@ class ApplicationAggregateTest {
                 List.of(
                     new MakeDecisionProceeding(proceedingId, "GRANTED", "reason", "justification")),
                 certificate,
-                "{\"overallDecision\":\"GRANTED\",\"certificate\":{\"reference\":\"CERT-REF-123\"}}",
+                PayloadFingerprint.compute(
+                    "{\"overallDecision\":\"GRANTED\",\"certificate\":{\"reference\":\"CERT-REF-123\"}}"),
                 "Decision recorded",
                 occurredAt))
         .then()

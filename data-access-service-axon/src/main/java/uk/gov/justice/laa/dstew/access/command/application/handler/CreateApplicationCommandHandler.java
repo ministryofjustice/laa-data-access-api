@@ -13,7 +13,6 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationDecider;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
-import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 
 /** Handles creation of applications. */
@@ -31,7 +30,6 @@ public class CreateApplicationCommandHandler {
       EventAppender eventAppender) {
     jsonSchemaValidator.validate(
         command.applicationContent(), command.schemaName(), command.schemaVersion());
-    var fingerprint = PayloadFingerprint.compute(command.serialisedRequest());
     if (application == null) {
       ApplicationCreationDetails details = factory.prepare(command);
       long applicationDataVersion = 0L;
@@ -40,7 +38,7 @@ public class CreateApplicationCommandHandler {
               new ApplicationState(),
               command.applicationId(),
               command.schemaVersion(),
-              fingerprint,
+              command.requestFingerprint(),
               details,
               applicationDataVersion)
           .forEach(eventAppender::append);
@@ -49,7 +47,7 @@ public class CreateApplicationCommandHandler {
           application.getState(),
           command.applicationId(),
           command.schemaVersion(),
-          fingerprint,
+          command.requestFingerprint(),
           null,
           0L);
     }

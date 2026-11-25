@@ -14,6 +14,7 @@ import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
+import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
 class MakeDecisionCommandMapperTest {
 
@@ -55,8 +56,9 @@ class MakeDecisionCommandMapperTest {
     assertThat(command.certificate()).containsEntry("reference", "CERT-1");
     assertThat(command.eventDescription()).isEqualTo("Decision recorded");
     assertThat(command.occurredAt()).isBetween(before, Instant.now());
-    assertThat(command.serialisedRequest())
-        .contains(proceedingId.toString(), "Evidence threshold not met", "Decision recorded");
+    assertThat(command.requestFingerprint())
+        .isEqualTo(
+            PayloadFingerprint.compute(JsonMapper.builder().build().writeValueAsString(request)));
     assertThat(command.proceedings())
         .singleElement()
         .satisfies(
