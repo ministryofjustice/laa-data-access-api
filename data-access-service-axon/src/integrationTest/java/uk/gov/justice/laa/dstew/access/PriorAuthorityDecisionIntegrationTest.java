@@ -273,7 +273,7 @@ class PriorAuthorityDecisionIntegrationTest extends BaseIntegrationTest {
         decisionRequest(DecisionStatus.GRANTED, "Granted", BigDecimal.valueOf(162.50))
             .expert(
                 new ExpertMakePriorAuthorityDecisionRequest()
-                    .newHourlyRateAmount(BigDecimal.valueOf(50))
+                    .grantedHourlyRateAmount(BigDecimal.valueOf(50))
                     .grantedTime(DecisionTimeRequested.builder().hours(3).minutes(15).build())
                     .grantedTotalAmount(BigDecimal.valueOf(162.50)));
 
@@ -295,7 +295,7 @@ class PriorAuthorityDecisionIntegrationTest extends BaseIntegrationTest {
         decisionRequest(DecisionStatus.GRANTED, "Granted", BigDecimal.valueOf(1200))
             .expert(
                 new ExpertMakePriorAuthorityDecisionRequest()
-                    .newFixedRateAmount(BigDecimal.valueOf(1200))
+                    .grantedFixedRateAmount(BigDecimal.valueOf(1200))
                     .grantedTotalAmount(BigDecimal.valueOf(1200)));
 
     assertThat(patchDecision(priorAuthorityId, request).getStatusCode())

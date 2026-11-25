@@ -158,7 +158,7 @@ class MakePriorAuthorityDecisionCommandMapperTest {
                 EventHistoryRequest.builder().eventDescription("Decision recorded").build())
             .expert(
                 ExpertMakePriorAuthorityDecisionRequest.builder()
-                    .newFixedRateAmount(BigDecimal.valueOf(250))
+                    .grantedFixedRateAmount(BigDecimal.valueOf(250))
                     .grantedTotalAmount(BigDecimal.valueOf(250))
                     .build())
             .build();
