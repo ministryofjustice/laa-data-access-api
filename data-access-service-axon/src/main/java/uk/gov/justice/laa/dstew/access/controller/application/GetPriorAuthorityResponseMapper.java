@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.PriorAuthorityDocumentFormat;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.model.Apportionment;
+import uk.gov.justice.laa.dstew.access.model.ApportionmentInformation;
 import uk.gov.justice.laa.dstew.access.model.BillingType;
 import uk.gov.justice.laa.dstew.access.model.CounselDetails;
 import uk.gov.justice.laa.dstew.access.model.CounselType;
@@ -116,6 +117,15 @@ public class GetPriorAuthorityResponseMapper {
         .apportionment(toApportionment(costs.apportionment()));
   }
 
+  private Apportionment toApportionment(
+      uk.gov.justice.laa.dstew.access.content.priorauthority.Apportionment apportionment) {
+    return apportionment == null
+        ? null
+        : new Apportionment()
+            .partiesSharingCosts(apportionment.partiesSharingCosts())
+            .clientShareAmount(apportionment.clientShareAmount());
+  }
+
   private CounselDetails toCounselDetails(
       uk.gov.justice.laa.dstew.access.content.priorauthority.CounselDetails details) {
     return details == null
@@ -141,15 +151,6 @@ public class GetPriorAuthorityResponseMapper {
     return timeRequested == null
         ? null
         : new TimeRequested().hours(timeRequested.hours()).minutes(timeRequested.minutes());
-  }
-
-  private Apportionment toApportionment(
-      uk.gov.justice.laa.dstew.access.content.priorauthority.Apportionment apportionment) {
-    return apportionment == null
-        ? null
-        : new Apportionment()
-            .partiesSharingCosts(apportionment.partiesSharingCosts())
-            .clientShareAmount(apportionment.clientShareAmount());
   }
 
   private PriorAuthorityResponse.DecisionEnum toDecision(String decision) {
@@ -197,8 +198,8 @@ public class GetPriorAuthorityResponseMapper {
     if (details.expert() != null) {
       uk.gov.justice.laa.dstew.access.model.ExpertFeeInformation expertInfo =
           new uk.gov.justice.laa.dstew.access.model.ExpertFeeInformation();
-      expertInfo.setNewFixedRateAmount(details.expert().getNewFixedRateAmount());
-      expertInfo.setNewHourlyRateAmount(details.expert().getNewHourlyRateAmount());
+      expertInfo.setGrantedFixedRateAmount(details.expert().getGrantedFixedRateAmount());
+      expertInfo.setGrantedHourlyRateAmount(details.expert().getGrantedHourlyRateAmount());
       expertInfo.setGrantedTime(toTimeRequested(details.expert().getGrantedTime()));
       expertInfo.setGrantedTotalAmount(details.expert().getGrantedTotalAmount());
       result.setExpert(expertInfo);
@@ -206,12 +207,13 @@ public class GetPriorAuthorityResponseMapper {
     if (details.disbursement() != null) {
       uk.gov.justice.laa.dstew.access.model.DisbursementInformation disbursementInfo =
           new uk.gov.justice.laa.dstew.access.model.DisbursementInformation();
-      disbursementInfo.setNewAmount(details.disbursement().getNewAmount());
+      disbursementInfo.setGrantedAmount(details.disbursement().getGrantedAmount());
       result.setDisbursement(disbursementInfo);
     }
     if (details.apportionment() != null) {
-      Apportionment apportionmentInfo = new Apportionment();
-      apportionmentInfo.setClientShareAmount(details.apportionment().getNewClientShareAmount());
+      ApportionmentInformation apportionmentInfo = new ApportionmentInformation();
+      apportionmentInfo.setGrantedClientShareAmount(
+          details.apportionment().getGrantedClientShareAmount());
       result.setApportionment(apportionmentInfo);
     }
     return result;
