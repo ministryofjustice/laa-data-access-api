@@ -49,7 +49,8 @@ Required work includes:
 - define the meaning of the absent value;
 - make construction/deserialization tolerate it;
 - keep event-sourcing and projection handlers compatible;
-- add a test using the exact old serialized JSON;
+- rely on the existing [stored event fixtures](#stored-event-fixtures), which already hold the
+  old JSON and accept an added field; a kept field added this way must be nullable in its schema;
 - verify replay against PostgreSQL serialization.
 
 Do not reuse an existing field with a new meaning. That is a semantic breaking change even if JSON
@@ -167,6 +168,81 @@ The module does not currently register custom upcasters or event revisions. Intr
 one requires explicit serializer configuration, old-payload fixtures, aggregate replay tests,
 projection replay tests, and PostgreSQL integration coverage.
 
+Axon writes the `@Event` version to `domain_event_entry.payload_revision`; no event declares one,
+so every row has the default `0.0.1`. Nothing reads it to choose a decoder today: the separator
+selects the kept-field schema by type name alone, and the current record decodes every stored
+row. A first upcaster must make the revision mean something on both halves of the event, the
+kept payload and its content row.
+
+## Stored event fixtures
+
+`src/test/resources/stored-events/<event type>/vN.json` holds one stored event for every type in
+`EventTypes`: `kept` is the payload row and `content` is the `event_content` row, or `null` for a
+type with no content fields. The `v1` fixtures were captured from real appends through the HTTP
+API on disposable PostgreSQL, using synthetic data, with UUIDs replaced by sequential ones so that
+each history's fixtures share IDs. `StoredEventCompatibilityTest` checks that:
+
+- every event type has a fixture, and every stored field is still a component of the current
+  record;
+- the type has a content row exactly when it has content fields;
+- each fixture decodes into the current record, and every stored value, at any depth, survives
+  re-serialising in the same row (kept or content) it was stored in; fields added since may
+  appear, and the re-split event passes the kept-field schema;
+- with an erased (`{}`) content row each content field loads as erased, matching
+  `EventContentSeparator.erase`; a content type with no row is rejected, a content-free one is not;
+- the Prior Authority and Application fixtures fold through the real evolve functions to a decided
+  aggregate with its content.
+
+The fixtures exist because decoding alone does not notice a changed stored shape. Without an
+upcaster, an unknown stored field is ignored, and a missing one, even a required kept field, loads
+as `null` or erased without error. A renamed `noteText` loads as erased and silently erases the
+application's folded content. Only a changed field type fails, and so does a missing primitive,
+because the mapper rejects `null` for primitives.
+
+The policy is:
+
+- never edit, regenerate or delete a fixture: it is the stored form of rows that exist;
+- adding a field, at any depth, needs no new fixture: older events lack it, so it loads as `null`,
+  erased or its default, and readers must accept that;
+- renaming, removing, retyping or reclassifying a stored field fails the test; add an upcaster
+  for the old version and a new `vN.json` captured from the new code; every older version must
+  still load to the same current record;
+- a new event type needs its own `v1.json`, which the coverage check enforces;
+- capture fixtures from real appends, not by hand, and use synthetic data only.
+
+### What common changes need
+
+| Change | Kept schema | Event record | Upcaster | New fixture |
+|---|---|---|---|---|
+| New value in an enum carried as content | — | — | — | — |
+| New value in a kept enum (`ApplicationDecisionMade`, work-item events) | Add to `enum`, with review | — | — | — |
+| New nested object in a request, returned to clients only | — | — | — | — |
+| New field in a content class the aggregate uses for a new rule | — | Add it | — | — |
+| New kept field, for a rule that must hold after erasure | Add it as nullable, with review | Add it | — | — |
+| Rename a content or kept field | If kept | Rename | Yes | Yes |
+| Change a field's type | If kept | Change | Yes | Yes |
+| Remove a stored field | If kept | Remove | Yes, to drop it | Yes |
+| Move a field between kept and content | Change, with review | Change | Yes, plus migration | Yes |
+| New event type | New file | New record with `@Event` name | — | `v1.json` |
+| API-only change (computed field, renamed response field) | — | — | — | — |
+
+Notes:
+
+- The full request is stored as content in `serialisedRequest`, so a new request field is
+  captured without any event change. Only a read model that must show it changes.
+- Evolve functions already handle erased content, so an older event without a new content field
+  reads like an erased one. A new kept field is `null` on older events: the evolve function
+  treats that as a defined default, or a migration event sets it.
+- A renamed content field without an upcaster reads as erased, silently; this is the main thing
+  the fixtures exist to catch. `ApplicationAddress` keeps unknown fields, so a renamed address
+  field is preserved rather than lost.
+- Java enum fields are read with Jackson's defaults, so code from before a new value was added cannot
+  read events carrying it. Consider this before relying on a rollback.
+
+The two-release exercise in the event-scoped payload spike depends on this guard: release A's
+rows are kept and read by release B, and these fixtures keep that check running for each later
+event-format or Axon upgrade.
+
 ## Renaming or moving an event
 
 The stored payload type is the explicit `@Event` name, so moving or renaming the Java class does not
@@ -213,7 +289,8 @@ Remember that stable IDs can still be personal data.
 
 For a persisted event change, include:
 
-- an old serialized payload fixture;
+- an old serialized payload fixture: the existing `stored-events` fixtures stay unchanged and
+  still pass, and a changed shape adds a new `vN.json` (see [Stored event fixtures](#stored-event-fixtures));
 - deserialization or upcasting into the intended current representation;
 - aggregate replay followed by a command that relies on restored state;
 - projection reset/replay assertions;

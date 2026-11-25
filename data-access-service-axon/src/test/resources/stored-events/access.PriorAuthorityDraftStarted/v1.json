@@ -1,0 +1,21 @@
+{
+  "kept": {
+    "priorAuthorityId": "00000000-0000-0000-0000-000000000012",
+    "applicationId": "00000000-0000-0000-0000-000000000001",
+    "priorAuthorityType": "DISBURSEMENT",
+    "schemaVersion": 1,
+    "occurredAt": "2026-11-24T09:48:24.664118Z",
+    "officeCode": "1A001B"
+  },
+  "content": {
+    "content": {
+      "justification": "Interpreter costs for proceedings",
+      "priorAuthorityType": "DISBURSEMENT",
+      "disbursementDetails": {
+        "disbursementAmount": 150.00,
+        "disbursementPurpose": "Court interpreter"
+      }
+    },
+    "serialisedRequest": "{\"applicationId\":\"00000000-0000-0000-0000-000000000001\",\"priorAuthorityType\":\"DISBURSEMENT\",\"counselDetails\":null,\"disbursementDetails\":{\"disbursementAmount\":150.00,\"disbursementPurpose\":\"Court interpreter\"},\"expertDetails\":null,\"justification\":\"Interpreter costs for proceedings\"}"
+  }
+}
