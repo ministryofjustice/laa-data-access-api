@@ -247,6 +247,7 @@ class GetPriorAuthorityResponseMapperTest {
                         .grantedFixedRateAmount(BigDecimal.valueOf(250))
                         .grantedHourlyRateAmount(BigDecimal.valueOf(175))
                         .grantedTime(new TimeRequested(3, 15))
+                        .grantedTotalAmount(BigDecimal.valueOf(568.75))
                         .build(),
                     DisbursementInformation.builder().grantedAmount(BigDecimal.valueOf(50)).build(),
                     ApportionmentInformation.builder()
@@ -296,6 +297,10 @@ class GetPriorAuthorityResponseMapperTest {
     assertThat(response.getDecisionDetails().getExpert().getGrantedTime().getHours()).isEqualTo(3);
     assertThat(response.getDecisionDetails().getExpert().getGrantedTime().getMinutes())
         .isEqualTo(15);
+    assertThat(response.getDecisionDetails().getExpert().getGrantedTotalAmount())
+        .isEqualByComparingTo("568.75");
+    assertThat(response.getExpertDetails().getExpertCosts().getTotalAmount())
+        .isEqualByComparingTo("300");
     assertThat(response.getExpertDetails().getExpertCosts().getTimeRequested().getHours())
         .isEqualTo(2);
     assertThat(response.getExpertDetails().getExpertCosts().getTimeRequested().getMinutes())
@@ -328,6 +333,7 @@ class GetPriorAuthorityResponseMapperTest {
     var response = mapper.toResponse(result);
 
     assertThat(response.getDecisionDetails().getExpert().getGrantedTime()).isNull();
+    assertThat(response.getDecisionDetails().getExpert().getGrantedTotalAmount()).isNull();
   }
 
   @Test
