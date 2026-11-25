@@ -26,7 +26,6 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.AssignedWorkItems;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectWorkItemAssignmentCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectWorkItemUnassignmentCommand;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 class DirectApplicationWorkItemAssignmentTest {
@@ -152,6 +151,6 @@ class DirectApplicationWorkItemAssignmentTest {
 
   private ApplicationCreatedEvent created(UUID id, Instant occurredAt) {
     return new ApplicationCreatedEvent(
-        id, 0L, "hash", "APPLICATION_SUBMITTED", 1, occurredAt, Erasable.erased(), null, "LAA-123");
+        id, 0L, "hash", "APPLICATION_SUBMITTED", 1, occurredAt, null, null, "LAA-123");
   }
 }

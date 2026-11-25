@@ -56,9 +56,9 @@ public final class ApplicationEvolve {
     state.officeCode = event.officeCode();
     state.laaReference = event.laaReference();
     state.draftStatus = event.status();
-    state.draftApplicationContent = event.applicationContent();
-    state.draftSerialisedRequest = event.serialisedRequest();
-    state.draftPotentialDuplicates = event.potentialDuplicates();
+    state.draftApplicationContent = Erasable.of(event.applicationContent());
+    state.draftSerialisedRequest = Erasable.of(event.serialisedRequest());
+    state.draftPotentialDuplicates = Erasable.of(event.potentialDuplicates());
   }
 
   /** Applies an {@link ApplicationUpdatedEvent} to the given state. */
@@ -73,27 +73,26 @@ public final class ApplicationEvolve {
       state.decisionRequestFingerprint = null;
       state.proceedingDecisions.clear();
     }
+    var update = event.content();
     state.content =
-        state.content.isErased()
-                || event.content().isErased()
-                || event.serialisedRequest().isErased()
+        state.content.isErased() || update == null || event.serialisedRequest() == null
             ? Erasable.erased()
             : Erasable.of(
                 state
                     .content
                     .value()
                     .withApplicationUpdate(
-                        event.content().value().client(),
-                        event.content().value().provider(),
-                        event.content().value().opponents(),
-                        event.content().value().submittedAt(),
-                        event.content().value().usedDelegatedFunctions(),
-                        event.content().value().categoryOfLaw(),
-                        event.content().value().matterType(),
-                        event.content().value().categoryOfLawCode(),
-                        event.content().value().matterTypeCode(),
-                        event.content().value().proceedings(),
-                        event.serialisedRequest().value(),
+                        update.client(),
+                        update.provider(),
+                        update.opponents(),
+                        update.submittedAt(),
+                        update.usedDelegatedFunctions(),
+                        update.categoryOfLaw(),
+                        update.matterType(),
+                        update.categoryOfLawCode(),
+                        update.matterTypeCode(),
+                        update.proceedings(),
+                        event.serialisedRequest(),
                         event.enteredSubmitted()));
   }
 
@@ -179,12 +178,12 @@ public final class ApplicationEvolve {
 
   private static Erasable<ApplicationDataPayload> createdContent(
       ApplicationState state, ApplicationCreatedEvent event) {
-    if (event.content().isErased() || event.serialisedRequest().isErased()) {
+    if (event.content() == null || event.serialisedRequest() == null) {
       return Erasable.erased();
     }
     ApplicationDataPayload payload =
         ApplicationDataPayload.from(
-            event.laaReference(), event.content().value(), event.serialisedRequest().value());
+            event.laaReference(), event.content(), event.serialisedRequest());
     for (Map.Entry<UUID, Erasable<String>> filename : state.draftDocumentFilenames.entrySet()) {
       if (!filename.getValue().isErased()) {
         payload = payload.withDocumentFilename(filename.getKey(), filename.getValue().value());

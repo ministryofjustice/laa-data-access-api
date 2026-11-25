@@ -234,7 +234,7 @@ public class ApplicationProjection {
             .modifiedAt(event.occurredAt())
             .leadApplicationId(null)
             .linkedGroupId(null)
-            .potentialDuplicates(event.potentialDuplicates().orElse(null))
+            .potentialDuplicates(event.potentialDuplicates())
             .officeCode(officeCode)
             .uploadedDocuments(existing == null ? List.of() : existing.getUploadedDocuments())
             .build());

@@ -26,7 +26,6 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApp
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDissolvedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberRemovedFromGroupEvent;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
@@ -333,7 +332,7 @@ class ApplicationGroupRouteProjectionTest {
         "APPLICATION_SUBMITTED",
         1,
         occurredAt,
-        Erasable.erased(),
+        null,
         null,
         "LAA-123");
   }

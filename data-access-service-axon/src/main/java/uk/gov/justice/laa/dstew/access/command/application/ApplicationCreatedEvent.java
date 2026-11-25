@@ -7,9 +7,10 @@ import java.util.Set;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
+import org.jspecify.annotations.Nullable;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetails;
 import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
+import uk.gov.justice.laa.dstew.access.eventcontent.RedactedEventString;
 import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 
@@ -25,49 +26,17 @@ public record ApplicationCreatedEvent(
     @RetainedField String status,
     @RetainedField int schemaVersion,
     @RetainedField Instant occurredAt,
-    Erasable<List<PotentialDuplicate>> potentialDuplicates,
+    @Nullable List<PotentialDuplicate> potentialDuplicates,
     @RetainedField String officeCode,
     @RetainedField String laaReference,
     @RetainedField List<UUID> proceedingIds,
-    Erasable<ParsedAppContentDetails> content,
-    Erasable<String> serialisedRequest)
+    @Nullable ParsedAppContentDetails content,
+    @Nullable String serialisedRequest)
     implements GenesisScoped {
 
-  /** Normalises missing content to erased. */
+  /** Normalises missing proceeding IDs to none. */
   public ApplicationCreatedEvent {
-    potentialDuplicates = Erasable.orErased(potentialDuplicates);
     proceedingIds = List.copyOf(Objects.requireNonNullElse(proceedingIds, List.of()));
-    content = Erasable.orErased(content);
-    serialisedRequest = Erasable.orErased(serialisedRequest);
-  }
-
-  /** Creates the event from plain content values. */
-  public ApplicationCreatedEvent(
-      UUID applicationId,
-      long applicationDataVersion,
-      String requestFingerprint,
-      String status,
-      int schemaVersion,
-      Instant occurredAt,
-      List<PotentialDuplicate> potentialDuplicates,
-      String officeCode,
-      String laaReference,
-      List<UUID> proceedingIds,
-      ParsedAppContentDetails content,
-      String serialisedRequest) {
-    this(
-        applicationId,
-        applicationDataVersion,
-        requestFingerprint,
-        status,
-        schemaVersion,
-        occurredAt,
-        Erasable.of(potentialDuplicates),
-        officeCode,
-        laaReference,
-        proceedingIds,
-        Erasable.of(content),
-        Erasable.of(serialisedRequest));
   }
 
   /** Creates the event without submitted content or proceedings. */
@@ -78,33 +47,7 @@ public record ApplicationCreatedEvent(
       String status,
       int schemaVersion,
       Instant occurredAt,
-      Erasable<List<PotentialDuplicate>> potentialDuplicates,
-      String officeCode,
-      String laaReference) {
-    this(
-        applicationId,
-        applicationDataVersion,
-        requestFingerprint,
-        status,
-        schemaVersion,
-        occurredAt,
-        potentialDuplicates,
-        officeCode,
-        laaReference,
-        List.of(),
-        Erasable.erased(),
-        Erasable.erased());
-  }
-
-  /** Creates the event without submitted content or proceedings. */
-  public ApplicationCreatedEvent(
-      UUID applicationId,
-      long applicationDataVersion,
-      String requestFingerprint,
-      String status,
-      int schemaVersion,
-      Instant occurredAt,
-      List<PotentialDuplicate> potentialDuplicates,
+      @Nullable List<PotentialDuplicate> potentialDuplicates,
       String officeCode,
       String laaReference) {
     this(
@@ -125,5 +68,10 @@ public record ApplicationCreatedEvent(
   @Override
   public Set<UUID> genesisIds() {
     return GenesisScoped.ids(applicationId);
+  }
+
+  @Override
+  public String toString() {
+    return RedactedEventString.of(this);
   }
 }

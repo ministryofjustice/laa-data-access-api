@@ -39,7 +39,6 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataS
 import uk.gov.justice.laa.dstew.access.command.application.handler.ApplicationDocumentUploadCommandHandler;
 import uk.gov.justice.laa.dstew.access.command.application.handler.CreateApplicationDraftCommandHandler;
 import uk.gov.justice.laa.dstew.access.command.application.handler.SubmitApplicationDraftCommandHandler;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
@@ -502,9 +501,9 @@ class ApplicationAggregateDraftTest {
         null,
         "APPLICATION_SUBMITTED",
         "LAA-123",
-        Erasable.erased(),
-        Erasable.erased(),
-        Erasable.erased());
+        null,
+        null,
+        null);
   }
 
   private static ApplicationDocumentUploadCommand uploadCommand(

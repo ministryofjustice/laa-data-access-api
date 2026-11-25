@@ -7,9 +7,10 @@ import java.util.Set;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
+import org.jspecify.annotations.Nullable;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetails;
 import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
+import uk.gov.justice.laa.dstew.access.eventcontent.RedactedEventString;
 import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 
 /**
@@ -25,38 +26,13 @@ public record ApplicationUpdatedEvent(
     @RetainedField String status,
     @RetainedField Instant occurredAt,
     @RetainedField List<UUID> proceedingIds,
-    Erasable<ParsedAppContentDetails> content,
-    Erasable<String> serialisedRequest)
+    @Nullable ParsedAppContentDetails content,
+    @Nullable String serialisedRequest)
     implements GenesisScoped {
 
-  /** Normalises missing content to erased. */
+  /** Normalises missing proceeding IDs to none. */
   public ApplicationUpdatedEvent {
     proceedingIds = List.copyOf(Objects.requireNonNullElse(proceedingIds, List.of()));
-    content = Erasable.orErased(content);
-    serialisedRequest = Erasable.orErased(serialisedRequest);
-  }
-
-  /** Creates the event from plain content values. */
-  public ApplicationUpdatedEvent(
-      UUID applicationId,
-      long applicationVersion,
-      long applicationDataVersion,
-      String previousStatus,
-      String status,
-      Instant occurredAt,
-      List<UUID> proceedingIds,
-      ParsedAppContentDetails content,
-      String serialisedRequest) {
-    this(
-        applicationId,
-        applicationVersion,
-        applicationDataVersion,
-        previousStatus,
-        status,
-        occurredAt,
-        proceedingIds,
-        Erasable.of(content),
-        Erasable.of(serialisedRequest));
   }
 
   /** Creates the event without replacement content or proceedings. */
@@ -75,7 +51,7 @@ public record ApplicationUpdatedEvent(
         status,
         occurredAt,
         List.of(),
-        (ParsedAppContentDetails) null,
+        null,
         null);
   }
 
@@ -87,5 +63,10 @@ public record ApplicationUpdatedEvent(
   @Override
   public Set<UUID> genesisIds() {
     return GenesisScoped.ids(applicationId);
+  }
+
+  @Override
+  public String toString() {
+    return RedactedEventString.of(this);
   }
 }

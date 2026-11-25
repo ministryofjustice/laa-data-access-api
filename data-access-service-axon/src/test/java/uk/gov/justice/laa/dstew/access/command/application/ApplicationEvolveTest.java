@@ -300,18 +300,11 @@ class ApplicationEvolveTest {
             at,
             created.proceedingIds(),
             created.content(),
-            Erasable.of("{}"));
+            "{}");
 
     assertThat(fold(withoutRequest(created)).content.isErased()).isTrue();
-    assertThat(
-            fold(created, withUpdate(updated, Erasable.erased(), Erasable.of("{}")))
-                .content
-                .isErased())
-        .isTrue();
-    assertThat(
-            fold(created, withUpdate(updated, created.content(), Erasable.erased()))
-                .content
-                .isErased())
+    assertThat(fold(created, withUpdate(updated, null, "{}")).content.isErased()).isTrue();
+    assertThat(fold(created, withUpdate(updated, created.content(), null)).content.isErased())
         .isTrue();
     assertThat(fold(withoutRequest(created), updated).content.isErased()).isTrue();
     assertThat(fold(created, new NoteCreatedEvent(applicationId, 1L, at)).content.isErased())
@@ -362,13 +355,11 @@ class ApplicationEvolveTest {
         event.laaReference(),
         event.proceedingIds(),
         event.content(),
-        Erasable.erased());
+        null);
   }
 
   private static ApplicationUpdatedEvent withUpdate(
-      ApplicationUpdatedEvent event,
-      Erasable<ParsedAppContentDetails> content,
-      Erasable<String> serialisedRequest) {
+      ApplicationUpdatedEvent event, ParsedAppContentDetails content, String serialisedRequest) {
     return new ApplicationUpdatedEvent(
         event.applicationId(),
         event.applicationVersion(),

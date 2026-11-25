@@ -61,7 +61,6 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicatio
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdateDetailsFactory;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationCommand;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
@@ -810,9 +809,9 @@ class ApplicationAggregateTest {
                 null,
                 "APPLICATION_SUBMITTED",
                 "LAA-123",
-                Erasable.erased(),
-                Erasable.erased(),
-                Erasable.erased()))
+                null,
+                null,
+                null))
         .when()
         .command(
             new ApplicationDocumentUploadCommand(
@@ -1328,12 +1327,12 @@ class ApplicationAggregateTest {
         created.status(),
         created.schemaVersion(),
         created.occurredAt(),
-        Erasable.erased(),
+        null,
         created.officeCode(),
         created.laaReference(),
         created.proceedingIds(),
-        Erasable.erased(),
-        Erasable.erased());
+        null,
+        null);
   }
 
   private static ApplicationDecisionMadeEvent autoGrantedDecision(

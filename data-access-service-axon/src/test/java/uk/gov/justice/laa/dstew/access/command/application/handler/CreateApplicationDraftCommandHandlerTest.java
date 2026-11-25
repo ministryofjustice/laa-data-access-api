@@ -66,7 +66,7 @@ class CreateApplicationDraftCommandHandlerTest {
               assertThat(event.applicationId()).isEqualTo(applicationId);
               assertThat(event.laaReference()).isEqualTo("LAA-123");
               assertThat(event.officeCode()).isEqualTo("1A001B");
-              assertThat(event.serialisedRequest().orElse(null)).isEqualTo("{\"request\":true}");
+              assertThat(event.serialisedRequest()).isEqualTo("{\"request\":true}");
             });
   }
 }

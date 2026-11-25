@@ -7,8 +7,9 @@ import java.util.Set;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
+import org.jspecify.annotations.Nullable;
 import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
+import uk.gov.justice.laa.dstew.access.eventcontent.RedactedEventString;
 import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 
@@ -25,45 +26,18 @@ public record ApplicationDraftStartedEvent(
     @RetainedField String officeCode,
     @RetainedField String status,
     @RetainedField String laaReference,
-    Erasable<Map<String, Object>> applicationContent,
-    Erasable<String> serialisedRequest,
-    Erasable<List<PotentialDuplicate>> potentialDuplicates)
+    @Nullable Map<String, Object> applicationContent,
+    @Nullable String serialisedRequest,
+    @Nullable List<PotentialDuplicate> potentialDuplicates)
     implements GenesisScoped {
-
-  /** Treats absent content as erased, as in an erased content row or a kept-fields-only read. */
-  public ApplicationDraftStartedEvent {
-    applicationContent = Erasable.orErased(applicationContent);
-    serialisedRequest = Erasable.orErased(serialisedRequest);
-    potentialDuplicates = Erasable.orErased(potentialDuplicates);
-  }
-
-  /** Creates the event from plain content values. */
-  public ApplicationDraftStartedEvent(
-      UUID applicationId,
-      int schemaVersion,
-      String requestFingerprint,
-      Instant occurredAt,
-      String officeCode,
-      String status,
-      String laaReference,
-      Map<String, Object> applicationContent,
-      String serialisedRequest,
-      List<PotentialDuplicate> potentialDuplicates) {
-    this(
-        applicationId,
-        schemaVersion,
-        requestFingerprint,
-        occurredAt,
-        officeCode,
-        status,
-        laaReference,
-        Erasable.of(applicationContent),
-        Erasable.of(serialisedRequest),
-        Erasable.of(potentialDuplicates));
-  }
 
   @Override
   public Set<UUID> genesisIds() {
     return GenesisScoped.ids(applicationId);
+  }
+
+  @Override
+  public String toString() {
+    return RedactedEventString.of(this);
   }
 }

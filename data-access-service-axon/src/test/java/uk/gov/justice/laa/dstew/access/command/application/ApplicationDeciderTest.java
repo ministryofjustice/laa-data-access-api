@@ -27,7 +27,6 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentChange
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -293,9 +292,9 @@ class ApplicationDeciderTest {
     assertThat(event.officeCode()).isEqualTo("1A001B");
     assertThat(event.proceedingIds())
         .isEqualTo(details.proceedings().stream().map(Proceeding::getId).toList());
-    assertThat(event.content().value().proceedings()).isEqualTo(details.proceedings());
-    assertThat(event.content().value().provider()).isEqualTo(details.provider());
-    assertThat(event.serialisedRequest()).isEqualTo(Erasable.of(details.serialisedRequest()));
+    assertThat(event.content().proceedings()).isEqualTo(details.proceedings());
+    assertThat(event.content().provider()).isEqualTo(details.provider());
+    assertThat(event.serialisedRequest()).isEqualTo(details.serialisedRequest());
   }
 
   @Test

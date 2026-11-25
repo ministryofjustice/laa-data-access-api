@@ -23,7 +23,6 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationEvolve;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftContent;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -77,7 +76,7 @@ class ApplicationCommandHandlerSupportTest {
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
     ApplicationState state = new ApplicationState();
-    ApplicationEvolve.apply(state, draftStarted(applicationId, Erasable.of(Map.of("a", "b"))));
+    ApplicationEvolve.apply(state, draftStarted(applicationId, Map.of("a", "b")));
     ApplicationEvolve.apply(state, uploaded(applicationId, documentId, "evidence.pdf"));
 
     ApplicationDraftContent draft =
@@ -99,7 +98,7 @@ class ApplicationCommandHandlerSupportTest {
   void givenErasedDraftContent_whenRequireDraft_thenThrowsResourceNotFoundException() {
     UUID applicationId = UUID.randomUUID();
     ApplicationState state = new ApplicationState();
-    ApplicationEvolve.apply(state, draftStarted(applicationId, Erasable.erased()));
+    ApplicationEvolve.apply(state, draftStarted(applicationId, null));
 
     assertThatThrownBy(
             () ->
@@ -138,7 +137,7 @@ class ApplicationCommandHandlerSupportTest {
   void givenDraft_whenRequireContentNotErased_thenLeavesItToTheCommand() {
     UUID applicationId = UUID.randomUUID();
     ApplicationState state = new ApplicationState();
-    ApplicationEvolve.apply(state, draftStarted(applicationId, Erasable.of(Map.of())));
+    ApplicationEvolve.apply(state, draftStarted(applicationId, Map.of()));
 
     ApplicationCommandHandlerSupport.requireContentNotErased(mockApplication(applicationId, state));
   }
@@ -147,7 +146,7 @@ class ApplicationCommandHandlerSupportTest {
   void givenSubmittedApplication_whenFindDraft_thenEmpty() {
     UUID applicationId = UUID.randomUUID();
     ApplicationState state = new ApplicationState();
-    ApplicationEvolve.apply(state, draftStarted(applicationId, Erasable.of(Map.of())));
+    ApplicationEvolve.apply(state, draftStarted(applicationId, Map.of()));
     ApplicationEvolve.apply(state, uploaded(applicationId, UUID.randomUUID(), "evidence.pdf"));
     ApplicationEvolve.apply(state, applicationCreatedEvent(applicationId));
 
@@ -251,16 +250,16 @@ class ApplicationCommandHandlerSupportTest {
         status,
         created.schemaVersion(),
         created.occurredAt(),
-        Erasable.erased(),
+        null,
         created.officeCode(),
         created.laaReference(),
         created.proceedingIds(),
-        Erasable.erased(),
-        Erasable.erased());
+        null,
+        null);
   }
 
   private static ApplicationDraftStartedEvent draftStarted(
-      UUID applicationId, Erasable<Map<String, Object>> content) {
+      UUID applicationId, Map<String, Object> content) {
     return new ApplicationDraftStartedEvent(
         applicationId,
         1,
@@ -270,8 +269,8 @@ class ApplicationCommandHandlerSupportTest {
         "APPLICATION_SUBMITTED",
         "LAA-123",
         content,
-        Erasable.of("{}"),
-        Erasable.of(List.of()));
+        "{}",
+        List.of());
   }
 
   private static ApplicationDocumentUploadedEvent uploaded(
