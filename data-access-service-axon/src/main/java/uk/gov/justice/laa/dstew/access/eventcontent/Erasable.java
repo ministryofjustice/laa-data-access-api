@@ -7,9 +7,10 @@ import java.util.function.Function;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Event content that may be erased. Erased is a real state, not a null: reading an erased value
- * throws, so every use of content is visible. JSON carries only the value; an absent or null value
- * reads as erased.
+ * Event content held in aggregate state, which may have been erased. Evolve functions wrap each
+ * content value once with {@link #of}, so a null (erased) event field becomes erased here. Erased
+ * is a real state, not a null: reading an erased value throws, so every use of content is visible.
+ * JSON carries only the value.
  */
 public final class Erasable<T> {
 
@@ -30,11 +31,6 @@ public final class Erasable<T> {
   @SuppressWarnings("unchecked")
   public static <T> Erasable<T> erased() {
     return (Erasable<T>) ERASED;
-  }
-
-  /** Normalises a missing wrapper, as left by deserialisation of erased content, to erased. */
-  public static <T> Erasable<T> orErased(@Nullable Erasable<T> erasable) {
-    return erasable == null ? erased() : erasable;
   }
 
   public boolean isErased() {

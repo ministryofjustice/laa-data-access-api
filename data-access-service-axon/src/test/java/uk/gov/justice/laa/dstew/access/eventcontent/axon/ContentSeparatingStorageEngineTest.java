@@ -39,7 +39,6 @@ import org.mockito.ArgumentCaptor;
 import tools.jackson.databind.node.ObjectNode;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.eventcontent.ContentTestEvent;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventContentSeparator;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventContentStore;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventContentStore.ContentRow;
@@ -67,7 +66,7 @@ class ContentSeparatingStorageEngineTest {
   @SuppressWarnings("unchecked")
   void givenEventWithContent_whenAppended_thenContentIsStoredAndOnlyKeptFieldsAreAppended() {
     String id = UUID.randomUUID().toString();
-    EventMessage event = message(new ContentTestEvent(id, Erasable.of("secret")));
+    EventMessage event = message(new ContentTestEvent(id, "secret"));
     when(delegate.appendEvents(any(), any(), anyList()))
         .thenReturn(CompletableFuture.completedFuture(null));
 
@@ -88,7 +87,7 @@ class ContentSeparatingStorageEngineTest {
     ContentTestEvent stored =
         converter.convert(appended.getValue().getFirst().event().payload(), ContentTestEvent.class);
     assertThat(stored.id()).isEqualTo(id);
-    assertThat(stored.note().isErased()).isTrue();
+    assertThat(stored.note()).isNull();
   }
 
   @Test
@@ -117,7 +116,7 @@ class ContentSeparatingStorageEngineTest {
   @Test
   void givenStoredEvents_whenSourced_thenContentIsRejoinedWhereItExists() {
     String id = UUID.randomUUID().toString();
-    EventMessage withContent = keptOnly(new ContentTestEvent(id, Erasable.of("secret")));
+    EventMessage withContent = keptOnly(new ContentTestEvent(id, "secret"));
     EventMessage erased = keptOnly(new ContentTestEvent(id, null));
     EventMessage keptFieldsOnly = new GenericEventMessage(new MessageType(ASSIGNED), new byte[0]);
     EventMessage empty = new GenericEventMessage(new MessageType(ContentTestEvent.TYPE), null);
@@ -137,8 +136,8 @@ class ContentSeparatingStorageEngineTest {
 
     MessageStream<EventMessage> sourced = engine.source(condition, null);
 
-    assertThat(note(sourced.next().orElseThrow().message())).isEqualTo(Erasable.of("secret"));
-    assertThat(note(sourced.next().orElseThrow().message()).isErased()).isTrue();
+    assertThat(note(sourced.next().orElseThrow().message())).isEqualTo("secret");
+    assertThat(note(sourced.next().orElseThrow().message())).isNull();
     assertThat(sourced.next().orElseThrow().message()).isSameAs(keptFieldsOnly);
     assertThat(sourced.next().orElseThrow().message().payload()).isNull();
     verify(store, never()).findByEventId(any());
@@ -146,8 +145,7 @@ class ContentSeparatingStorageEngineTest {
 
   @Test
   void givenEventCommittedAfterTheTagRead_whenSourced_thenItsContentIsFoundByEventId() {
-    EventMessage later =
-        keptOnly(new ContentTestEvent(UUID.randomUUID().toString(), Erasable.of("later")));
+    EventMessage later = keptOnly(new ContentTestEvent(UUID.randomUUID().toString(), "later"));
     when(store.findByTags(Set.of("applicationId=a-1"))).thenReturn(Map.of());
     when(store.findByEventId(later.identifier()))
         .thenReturn(Optional.of(json.mapper().createObjectNode().put("note", "later")));
@@ -156,13 +154,12 @@ class ContentSeparatingStorageEngineTest {
 
     MessageStream<EventMessage> sourced = engine.source(condition, null);
 
-    assertThat(note(sourced.next().orElseThrow().message())).isEqualTo(Erasable.of("later"));
+    assertThat(note(sourced.next().orElseThrow().message())).isEqualTo("later");
   }
 
   @Test
   void givenEventWithContentFieldsAndNoContentRow_whenSourced_thenFails() {
-    EventMessage lost =
-        keptOnly(new ContentTestEvent(UUID.randomUUID().toString(), Erasable.of("lost")));
+    EventMessage lost = keptOnly(new ContentTestEvent(UUID.randomUUID().toString(), "lost"));
     when(store.findByTags(Set.of("applicationId=a-1"))).thenReturn(Map.of());
     when(store.findByEventId(lost.identifier())).thenReturn(Optional.empty());
     SourcingCondition condition = SourcingCondition.conditionFor(EventCriteria.havingTags(TAG));
@@ -211,7 +208,7 @@ class ContentSeparatingStorageEngineTest {
     return message(kept);
   }
 
-  private Erasable<String> note(EventMessage message) {
+  private String note(EventMessage message) {
     return converter.convert(message.payload(), ContentTestEvent.class).note();
   }
 

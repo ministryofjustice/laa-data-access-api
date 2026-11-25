@@ -72,12 +72,12 @@ class EventContentSeparatorTest {
 
   @Test
   void givenEvent_whenErased_thenContentReadsAsErased() {
-    var event = new ContentTestEvent(UUID.randomUUID().toString(), Erasable.of("secret"));
+    var event = new ContentTestEvent(UUID.randomUUID().toString(), "secret");
 
     var erased = separator.erase(ContentTestEvent.TYPE, event);
 
     assertThat(erased.id()).isEqualTo(event.id());
-    assertThat(erased.note().isErased()).isTrue();
+    assertThat(erased.note()).isNull();
   }
 
   @Test

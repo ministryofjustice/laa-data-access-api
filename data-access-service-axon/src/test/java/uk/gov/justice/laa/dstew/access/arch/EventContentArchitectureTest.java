@@ -37,34 +37,32 @@ class EventContentArchitectureTest {
           .importPackages(ROOT);
 
   /**
-   * Content may be read only by evolve functions, whose erasure is covered by ErasureReplayTest,
-   * and by the processors in RegisteredContentReaders. Subscribing processors receive events with
-   * content attached, so this rule, not delivery, is what keeps them from reading it. Command-side
-   * draft readers expose only retained content and treat erased drafts as missing.
+   * Events carry content as plain nullable values; aggregate state holds it as {@link Erasable}.
+   * Only the command side may unwrap it: evolve functions, whose erasure is covered by
+   * ErasureReplayTest, aggregate state, deciders and command handlers, which treat erased content
+   * explicitly. Projections read plain event fields and never see an {@link Erasable}.
    */
   @Test
-  void onlyEvolveAndRegisteredProjectionsReadContent() {
+  void onlyEvolveStateDeciderAndCommandHandlersReadErasable() {
     noClasses()
         .that()
         .resideOutsideOfPackage(ROOT + ".eventcontent..")
         .and()
         .haveSimpleNameNotEndingWith("Evolve")
         .and()
-        .doNotHaveFullyQualifiedName(ROOT + ".query.application.ApplicationProjection")
+        .haveSimpleNameNotEndingWith("State")
         .and()
-        .doNotHaveFullyQualifiedName(
-            ROOT + ".query.application.priorauthority.PriorAuthorityProjection")
+        .haveSimpleNameNotEndingWith("Decider")
         .and()
-        .doNotHaveFullyQualifiedName(
-            ROOT + ".command.application.handler.ApplicationCommandHandlerSupport")
+        .haveSimpleNameNotEndingWith("CommandHandler")
         .and()
-        .doNotHaveFullyQualifiedName(
-            ROOT + ".command.application.priorauthority.PriorAuthorityState")
+        .haveSimpleNameNotEndingWith("CommandHandlerSupport")
         .should()
         .callMethodWhere(
             target(owner(describe("Erasable", owner -> owner.isEquivalentTo(Erasable.class))))
                 .and(target(nameMatching("value|orElse|map|isErased"))))
-        .because("only registered readers may see content, and content may be erased")
+        .because(
+            "only aggregate state and the command side may unwrap content, which may be erased")
         .check(classes);
   }
 
@@ -123,14 +121,14 @@ class EventContentArchitectureTest {
   }
 
   @Test
-  void givenRetainedFields_whenInspected_thenNoneIsErasable() {
+  void givenEventComponents_whenInspected_thenNoneIsErasable() {
     var erasable =
-        retainedComponents()
+        eventComponents()
             .filter(component -> component.getType() == Erasable.class)
             .map(EventContentArchitectureTest::nameOf)
             .toList();
 
-    assertThat(erasable).as("retained fields declared Erasable").isEmpty();
+    assertThat(erasable).as("event components declared Erasable").isEmpty();
   }
 
   private static Stream<RecordComponent> eventComponents() {

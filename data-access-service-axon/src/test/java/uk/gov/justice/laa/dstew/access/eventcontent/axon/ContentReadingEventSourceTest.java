@@ -69,8 +69,8 @@ class ContentReadingEventSourceTest {
 
     MessageStream<EventMessage> stream = source.open(condition, null);
 
-    assertThat(read(stream.next().orElseThrow().message()).note().value()).isEqualTo("secret");
-    assertThat(read(stream.next().orElseThrow().message()).note().isErased()).isTrue();
+    assertThat(read(stream.next().orElseThrow().message()).note()).isEqualTo("secret");
+    assertThat(read(stream.next().orElseThrow().message()).note()).isNull();
     assertThat(stream.next().orElseThrow().message().payload()).isNull();
   }
 

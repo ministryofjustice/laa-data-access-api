@@ -218,10 +218,7 @@ class StoredEventCompatibilityTest {
         .as("%s with an erased content row", fixture)
         .isEqualTo(separator.erase(fixture.typeName(), mapper.treeToValue(whole(fixture), type)));
     for (String field : fixture.content().propertyNames()) {
-      Object value = type.getMethod(field).invoke(erased);
-      assertThat(value == null || value instanceof Erasable<?> erasable && erasable.isErased())
-          .as("%s.%s erased", fixture, field)
-          .isTrue();
+      assertThat(type.getMethod(field).invoke(erased)).as("%s.%s erased", fixture, field).isNull();
     }
     assertThatThrownBy(() -> separator.requireNoContentFields(fixture.typeName(), "event-id"))
         .as("%s without a content row", fixture)

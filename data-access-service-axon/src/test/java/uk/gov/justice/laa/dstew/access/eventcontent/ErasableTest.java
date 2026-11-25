@@ -12,8 +12,6 @@ class ErasableTest {
   @Test
   void givenNullValue_whenWrapped_thenErased() {
     assertThat(Erasable.of(null)).isSameAs(Erasable.erased());
-    assertThat(Erasable.orErased(null)).isSameAs(Erasable.erased());
-    assertThat(Erasable.orErased(Erasable.of("x"))).isEqualTo(Erasable.of("x"));
   }
 
   @Test
@@ -42,14 +40,14 @@ class ErasableTest {
   }
 
   @Test
-  void givenEvent_whenRoundTrippedAsJson_thenOnlyValueIsWrittenAndAbsenceReadsAsErased() {
-    var event = new ContentTestEvent("id", Erasable.of("secret"));
+  void givenPresent_whenRoundTrippedAsJson_thenOnlyValueIsWritten() {
+    var holder = new Holder("id", Erasable.of("secret"));
 
-    String written = json.mapper().writeValueAsString(event);
+    String written = json.mapper().writeValueAsString(holder);
 
     assertThat(written).isEqualTo("{\"id\":\"id\",\"note\":\"secret\"}");
-    assertThat(json.mapper().readValue(written, ContentTestEvent.class)).isEqualTo(event);
-    assertThat(json.mapper().readValue("{\"id\":\"id\"}", ContentTestEvent.class).note().isErased())
-        .isTrue();
+    assertThat(json.mapper().readValue(written, Holder.class)).isEqualTo(holder);
   }
+
+  record Holder(String id, Erasable<String> note) {}
 }
