@@ -63,12 +63,12 @@ public final class PriorAuthorityEvolve {
             event.documentId(),
             null,
             event.uploadedAt(),
-            event.size(),
-            event.contentType(),
+            event.size().orElse(null),
+            event.contentType().orElse(null),
             event.checksum(),
-            event.sourceService(),
+            event.sourceService().orElse(null),
             false,
-            event.fileSuffix()));
+            event.fileSuffix().orElse(null)));
   }
 
   /** Applies a {@link PriorAuthorityDocumentDeletedEvent} to the given state. */
@@ -86,7 +86,7 @@ public final class PriorAuthorityEvolve {
     state.uploadedDocuments.replaceAll(
         document ->
             document.documentId().equals(event.documentId())
-                ? document.withDocumentType(event.documentType())
+                ? document.withDocumentType(event.documentType().orElse(null))
                 : document);
   }
 }

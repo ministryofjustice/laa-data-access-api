@@ -57,6 +57,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUp
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.draft.CreateApplicationDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.draft.SubmitApplicationDraftCommand;
+import uk.gov.justice.laa.dstew.access.eventcontent.EventContentStore;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
@@ -121,6 +122,8 @@ class PostgresAxonIntegrationTest {
 
   @Autowired private JdbcTemplate jdbcTemplate;
 
+  @Autowired private EventContentStore eventContentStore;
+
   @Autowired private CommandGateway commandGateway;
 
   @Autowired private QueryGateway queryGateway;
@@ -158,7 +161,11 @@ class PostgresAxonIntegrationTest {
     assertThat(
             environment.getProperty("spring.main.allow-circular-references", Boolean.class, false))
         .isFalse();
-    assertThat(eventStorageEngine).isInstanceOf(AggregateBasedJpaEventStorageEngine.class);
+    assertThat(eventStorageEngine.getClass().getSimpleName())
+        .isEqualTo("ContentSeparatingStorageEngine");
+    assertThat(eventStorageEngine)
+        .extracting("delegate")
+        .isInstanceOf(AggregateBasedJpaEventStorageEngine.class);
     assertThat(axonTables).containsExactly("domain_event_entry", "token_entry");
   }
 
@@ -184,9 +191,11 @@ class PostgresAxonIntegrationTest {
 
     List<Map<String, Object>> events =
         jdbcTemplate.queryForList(
-            "SELECT aggregate_identifier, payload_type, sequence_number, convert_from(payload, 'UTF8') AS payload "
-                + "FROM axon.domain_event_entry "
-                + "WHERE aggregate_identifier = ? ORDER BY sequence_number",
+            "SELECT e.aggregate_identifier, e.payload_type, e.sequence_number, "
+                + "convert_from(e.payload, 'UTF8') AS payload, c.content::text AS content "
+                + "FROM axon.domain_event_entry e "
+                + "LEFT JOIN axon.event_content c ON c.event_id = e.event_identifier "
+                + "WHERE e.aggregate_identifier = ? ORDER BY e.sequence_number",
             applicationId.toString());
 
     assertThat(events)
@@ -195,16 +204,15 @@ class PostgresAxonIntegrationTest {
         .satisfies(
             event -> {
               assertThat(event.get("aggregate_identifier")).isEqualTo(applicationId.toString());
-              assertThat(event.get("payload_type"))
-                  .isEqualTo(
-                      "uk.gov.justice.laa.dstew.access.command.application"
-                          + ".ApplicationDocumentUploadedEvent");
+              assertThat(event.get("payload_type")).isEqualTo("access.ApplicationDocumentUploaded");
               assertThat(event.get("sequence_number")).isEqualTo(1L);
               assertThat(event.get("payload").toString())
-                  .doesNotContain("originalFilename.pdf", "originalFilename", "fileName");
+                  .doesNotContain("originalFilename.pdf", "originalFilename", "fileName")
+                  .doesNotContain("fileSuffix");
+              assertThat(event.get("content").toString()).doesNotContain("originalFilename");
               assertThat(
                       objectMapper
-                          .readTree(event.get("payload").toString())
+                          .readTree(event.get("content").toString())
                           .get("fileSuffix")
                           .asString())
                   .isEqualTo(".pdf");
@@ -360,6 +368,139 @@ class PostgresAxonIntegrationTest {
         .isEqualTo("client-report.pdf");
   }
 
+  @Test
+  void givenUploadedDocument_whenContentErased_thenRowIsKeptAndAggregateStillLoads() {
+    UUID applicationId = UUID.randomUUID();
+    createDocumentDraft(applicationId);
+    commandGateway.sendAndWait(uploadCommand(applicationId, "client-report.pdf"));
+    String eventId = uploadedEventIds(applicationId).getFirst();
+
+    eventContentStore.erase(List.of(eventId), objectMapper.createObjectNode());
+
+    Map<String, Object> erased = contentRow(eventId);
+    assertThat(erased.get("content")).isEqualTo("{}");
+    assertThat(erased.get("erased_at")).isNotNull();
+    eventContentStore.erase(
+        List.of(eventId), objectMapper.createObjectNode().put("documentType", "OTHER"));
+    assertThat(contentRow(eventId)).isEqualTo(erased);
+
+    commandGateway.sendAndWait(uploadCommand(applicationId, "another.pdf"));
+    assertThat(uploadedEventIds(applicationId)).hasSize(2);
+  }
+
+  @Test
+  void givenDefaultContent_whenErased_thenRowHoldsOnlyTheDefaults() {
+    UUID applicationId = UUID.randomUUID();
+    createDocumentDraft(applicationId);
+    commandGateway.sendAndWait(uploadCommand(applicationId, "client-report.pdf"));
+    String eventId = uploadedEventIds(applicationId).getFirst();
+
+    eventContentStore.erase(
+        List.of(eventId), objectMapper.createObjectNode().put("documentType", "OTHER"));
+
+    assertThat(contentRow(eventId).get("content")).isEqualTo("{\"documentType\": \"OTHER\"}");
+    commandGateway.sendAndWait(uploadCommand(applicationId, "another.pdf"));
+    assertThat(uploadedEventIds(applicationId)).hasSize(2);
+  }
+
+  @Test
+  void givenEventContentRow_whenChangedOtherThanByErasure_thenRejected() {
+    UUID applicationId = UUID.randomUUID();
+    createDocumentDraft(applicationId);
+    commandGateway.sendAndWait(uploadCommand(applicationId, "client-report.pdf"));
+    commandGateway.sendAndWait(uploadCommand(applicationId, "another.pdf"));
+    List<String> eventIds = uploadedEventIds(applicationId);
+    String eventId = eventIds.getFirst();
+
+    assertThat(
+            List.of(
+                "DELETE FROM axon.event_content WHERE event_id = ?",
+                "UPDATE axon.event_content SET content = '{}'::jsonb WHERE event_id = ?",
+                "UPDATE axon.event_content SET content = '{}'::jsonb, erased_at = now(),"
+                    + " tags = '{other=1}' WHERE event_id = ?",
+                "UPDATE axon.event_content SET content = '{}'::jsonb, erased_at = now(),"
+                    + " created_at = now() - interval '1 day' WHERE event_id = ?"))
+        .allSatisfy(
+            statement ->
+                assertThatThrownBy(() -> jdbcTemplate.update(statement, eventId))
+                    .hasStackTraceContaining("Event content is immutable except for erasure"));
+
+    eventContentStore.erase(List.of(eventId), objectMapper.createObjectNode());
+    assertThat(
+            List.of(
+                "DELETE FROM axon.event_content WHERE event_id = ?",
+                "UPDATE axon.event_content SET content = '{}'::jsonb, erased_at = now()"
+                    + " WHERE event_id = ?",
+                "UPDATE axon.event_content SET erased_at = NULL WHERE event_id = ?"))
+        .allSatisfy(
+            statement ->
+                assertThatThrownBy(() -> jdbcTemplate.update(statement, eventId))
+                    .hasStackTraceContaining("Event content is immutable except for erasure"));
+    assertThat(contentRow(eventIds.get(1)).get("erased_at")).isNull();
+  }
+
+  @Test
+  void givenContentRowLost_whenAggregateSourced_thenFailsInsteadOfLoadingAsErased() {
+    UUID applicationId = UUID.randomUUID();
+    createDocumentDraft(applicationId);
+    commandGateway.sendAndWait(uploadCommand(applicationId, "client-report.pdf"));
+    String eventId = uploadedEventIds(applicationId).getFirst();
+    Map<String, Object> row =
+        jdbcTemplate.queryForMap(
+            "SELECT tags::text AS tags, content::text AS content FROM axon.event_content"
+                + " WHERE event_id = ?",
+            eventId);
+    // Rows cannot be deleted, so bypass the guard to simulate a lost row.
+    jdbcTemplate.execute(
+        "ALTER TABLE axon.event_content DISABLE TRIGGER event_content_immutable;"
+            + " DELETE FROM axon.event_content WHERE event_id = '%s';".formatted(eventId)
+            + " ALTER TABLE axon.event_content ENABLE TRIGGER event_content_immutable");
+    try {
+      assertThatThrownBy(
+              () -> commandGateway.sendAndWait(uploadCommand(applicationId, "another.pdf")))
+          .hasStackTraceContaining(
+              "Event "
+                  + eventId
+                  + " of type access.ApplicationDocumentUploaded has no content row");
+    } finally {
+      // Restore the row so event processors that read content are not left stuck.
+      jdbcTemplate.update(
+          "INSERT INTO axon.event_content (event_id, tags, content)"
+              + " VALUES (?, ?::text[], ?::jsonb)",
+          eventId,
+          row.get("tags"),
+          row.get("content"));
+    }
+    assertThat(uploadedEventIds(applicationId)).hasSize(1);
+  }
+
+  private ApplicationDocumentUploadCommand uploadCommand(UUID applicationId, String filename) {
+    return new ApplicationDocumentUploadCommand(
+        applicationId,
+        UUID.randomUUID(),
+        "GATEWAY_EVIDENCE",
+        Instant.now(),
+        12L,
+        "application/pdf",
+        "checksum",
+        "CIVIL_APPLY",
+        filename);
+  }
+
+  private List<String> uploadedEventIds(UUID applicationId) {
+    return jdbcTemplate.queryForList(
+        "SELECT event_identifier FROM axon.domain_event_entry WHERE aggregate_identifier = ?"
+            + " AND payload_type = 'access.ApplicationDocumentUploaded' ORDER BY sequence_number",
+        String.class,
+        applicationId.toString());
+  }
+
+  private Map<String, Object> contentRow(String eventId) {
+    return jdbcTemplate.queryForMap(
+        "SELECT content::text AS content, erased_at FROM axon.event_content WHERE event_id = ?",
+        eventId);
+  }
+
   private void createDocumentDraft(UUID applicationId) {
     ApplicationCreateRequest request =
         validCreateApplicationRequest(applicationId, UUID.randomUUID());
@@ -416,6 +557,7 @@ class PostgresAxonIntegrationTest {
             "application_group_route",
             "application_list_index",
             "domain_event_entry",
+            "event_content",
             "flyway_schema_history",
             "lifecycle_stream",
             "linked_application_group_current_state",
@@ -571,9 +713,7 @@ class PostgresAxonIntegrationTest {
         .singleElement()
         .satisfies(
             event -> {
-              assertThat(event.get("payload_type"))
-                  .isEqualTo(
-                      "uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent");
+              assertThat(event.get("payload_type")).isEqualTo("access.ApplicationCreated");
               assertThat(event.get("sequence_number")).isEqualTo(0L);
             });
   }
@@ -606,7 +746,7 @@ class PostgresAxonIntegrationTest {
                 applicationId.toString()))
         .satisfies(
             event -> {
-              assertThat(event.get("payload_type").toString()).endsWith("ApplicationUpdatedEvent");
+              assertThat(event.get("payload_type").toString()).endsWith("ApplicationUpdated");
               assertThat(event.get("payload").toString())
                   .contains("applicationDataVersion", "APPLICATION_SUBMITTED")
                   .doesNotContain(
@@ -847,7 +987,7 @@ class PostgresAxonIntegrationTest {
         .satisfies(
             event -> {
               assertThat(event.get("payload_type").toString())
-                  .endsWith("ApplicationReadyForManualAssessmentEvent");
+                  .endsWith("ApplicationReadyForManualAssessment");
               assertThat(event.get("payload").toString())
                   .contains("applicationDataVersion")
                   .doesNotContain("applicationContent", "LAA-123");
@@ -1273,7 +1413,7 @@ class PostgresAxonIntegrationTest {
         .singleElement()
         .satisfies(
             event -> {
-              assertThat(event.get("payload_type")).asString().contains("ApplicationCreatedEvent");
+              assertThat(event.get("payload_type")).asString().contains("ApplicationCreated");
               assertThat(event.get("sequence_number")).isEqualTo(0L);
             });
   }

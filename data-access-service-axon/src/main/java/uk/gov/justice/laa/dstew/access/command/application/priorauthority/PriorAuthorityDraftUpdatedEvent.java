@@ -14,10 +14,8 @@ import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
  * write through the aggregate's per-stream optimistic-concurrency gate, so concurrent writers
  * (draft edit vs document upload, or edit vs edit) serialise and retry-converge instead of silently
  * last-write-wins dropping a change.
- *
- * <p>Plain {@code @Event} keeps the stored type name as the fully qualified class name, as before.
  */
-@Event
+@Event(namespace = "access", name = "PriorAuthorityDraftUpdated")
 public record PriorAuthorityDraftUpdatedEvent(
     @EventTag(key = "PriorAuthorityAggregate") UUID priorAuthorityId,
     UUID parentApplicationId,

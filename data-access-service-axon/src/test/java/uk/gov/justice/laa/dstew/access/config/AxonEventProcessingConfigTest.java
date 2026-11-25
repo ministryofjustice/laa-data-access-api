@@ -26,7 +26,8 @@ class AxonEventProcessingConfigTest {
 
   @Test
   void priorAuthorityProjectionProcessorBeanUsesPooledStreamingWithCorrectNamespace() {
-    EventProcessorDefinition definition = config.priorAuthorityProjectionProcessor();
+    EventProcessorDefinition definition =
+        config.priorAuthorityProjectionProcessor(null, null, null);
 
     assertThat(definition).isNotNull();
     assertThat(definition.name()).isEqualTo("prior-authority-projection");
@@ -44,7 +45,7 @@ class AxonEventProcessingConfigTest {
 
   @Test
   void pooledStreamingProcessorBeanUsesReportingErrorHandler() {
-    EventProcessorDefinition definition = config.priorAuthorityProjectionProcessor();
+    EventProcessorDefinition definition = config.workListProjectionProcessor();
     PooledStreamingEventProcessorConfiguration configuration =
         mock(PooledStreamingEventProcessorConfiguration.class);
     when(configuration.errorHandler(any())).thenReturn(configuration);

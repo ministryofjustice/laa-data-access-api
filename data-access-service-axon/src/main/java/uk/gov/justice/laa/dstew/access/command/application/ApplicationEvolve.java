@@ -89,14 +89,14 @@ public final class ApplicationEvolve {
     state.uploadedDocuments.add(
         new DocumentMetadata(
             event.documentId(),
-            event.documentType(),
+            event.documentType().orElse(null),
             event.uploadedAt(),
-            event.size(),
-            event.contentType(),
+            event.size().orElse(null),
+            event.contentType().orElse(null),
             event.checksum(),
-            event.sourceService(),
+            event.sourceService().orElse(null),
             false,
-            event.fileSuffix()));
+            event.fileSuffix().orElse(null)));
     if (event.applicationDataVersion() != null) {
       state.applicationDataVersion = event.applicationDataVersion();
     }

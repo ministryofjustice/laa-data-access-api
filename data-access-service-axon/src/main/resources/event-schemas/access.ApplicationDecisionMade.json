@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "access.ApplicationDecisionMade kept fields",
+  "description": "Fields kept on the stored event. Every other field is content, stored apart so that it can be erased.",
+  "type": "object",
+  "properties": {
+    "applicationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "applicationVersion": {
+      "type": "integer"
+    },
+    "applicationDataVersion": {
+      "type": "integer"
+    },
+    "overallDecision": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "autoGranted": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "PENDING",
+        "AUTOGRANTED",
+        "MANUAL"
+      ]
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "applicationId",
+    "applicationVersion",
+    "applicationDataVersion",
+    "overallDecision",
+    "autoGranted",
+    "occurredAt"
+  ],
+  "additionalProperties": false
+}
