@@ -4,8 +4,6 @@ import java.time.Instant;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.api.WorkListCommandApi;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.AssignWorkItemCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.AssignWorkItemUseCase;
@@ -25,18 +23,15 @@ import uk.gov.justice.laa.dstew.access.security.AuthenticatedUserId;
 public class WorkListCommandController implements WorkListCommandApi {
   private final AssignWorkItemUseCase assignWorkItemUseCase;
   private final UnassignWorkItemUseCase unassignWorkItemUseCase;
-  private final ObjectMapper objectMapper;
   private final AuthenticatedUserId authenticatedUserId;
 
   /** Creates the HTTP adapter with dedicated work-item assignment use cases. */
   public WorkListCommandController(
       AssignWorkItemUseCase assignWorkItemUseCase,
       UnassignWorkItemUseCase unassignWorkItemUseCase,
-      ObjectMapper objectMapper,
       AuthenticatedUserId authenticatedUserId) {
     this.assignWorkItemUseCase = assignWorkItemUseCase;
     this.unassignWorkItemUseCase = unassignWorkItemUseCase;
-    this.objectMapper = objectMapper;
     this.authenticatedUserId = authenticatedUserId;
   }
 
@@ -49,7 +44,6 @@ public class WorkListCommandController implements WorkListCommandApi {
                 itemId,
                 authenticatedUserId.get(),
                 request.getExpectedAssignmentVersion(),
-                serialise(request),
                 eventDescription(request.getEventHistory()),
                 Instant.now()));
     return ResponseEntity.ok(
@@ -71,7 +65,6 @@ public class WorkListCommandController implements WorkListCommandApi {
         new UnassignWorkItemCommand(
             itemId,
             request.getExpectedAssignmentVersion(),
-            serialise(request),
             eventDescription(request.getEventHistory()),
             Instant.now()));
     return ResponseEntity.ok().build();
@@ -79,14 +72,5 @@ public class WorkListCommandController implements WorkListCommandApi {
 
   private String eventDescription(EventHistoryRequest eventHistory) {
     return eventHistory == null ? null : eventHistory.getEventDescription();
-  }
-
-  private String serialise(Object request) {
-    try {
-      return objectMapper.writeValueAsString(request);
-    } catch (JacksonException exception) {
-      throw new IllegalStateException(
-          "Unable to serialise work-list assignment request", exception);
-    }
   }
 }

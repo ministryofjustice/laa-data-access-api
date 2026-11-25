@@ -40,13 +40,13 @@ class UnassignWorkItemCoordinatorTest {
     when(routes.resolveDirectRoute(id)).thenReturn(route(WorkItemType.APPLICATION, id, occurredAt));
     when(groupRoutes.lockForAssignment(id)).thenReturn(Optional.empty());
 
-    handler.handle(new UnassignWorkItemCommand(id, 1L, "{}", "Unassigned", occurredAt));
+    handler.handle(new UnassignWorkItemCommand(id, 1L, "Unassigned", occurredAt));
 
     InOrder order = inOrder(groupRoutes, gateway);
     order.verify(groupRoutes).lockForAssignment(id);
     order
         .verify(gateway)
-        .sendAndWait(new DirectWorkItemUnassignmentCommand(id, 1L, "{}", "Unassigned", occurredAt));
+        .sendAndWait(new DirectWorkItemUnassignmentCommand(id, 1L, "Unassigned", occurredAt));
   }
 
   @Test
@@ -61,12 +61,11 @@ class UnassignWorkItemCoordinatorTest {
     when(routes.resolveDirectRoute(id))
         .thenReturn(route(WorkItemType.PRIOR_AUTHORITY, id, occurredAt));
 
-    handler.handle(new UnassignWorkItemCommand(id, 1L, "{}", "Unassigned", occurredAt));
+    handler.handle(new UnassignWorkItemCommand(id, 1L, "Unassigned", occurredAt));
 
     verify(gateway)
         .sendAndWait(
-            new DirectPriorAuthorityWorkItemUnassignmentCommand(
-                id, 1L, "{}", "Unassigned", occurredAt));
+            new DirectPriorAuthorityWorkItemUnassignmentCommand(id, 1L, "Unassigned", occurredAt));
   }
 
   @Test
@@ -82,12 +81,11 @@ class UnassignWorkItemCoordinatorTest {
     when(routes.resolveDirectRoute(id)).thenReturn(route(WorkItemType.APPLICATION, id, occurredAt));
     when(groupRoutes.lockForAssignment(id)).thenReturn(Optional.of(groupId));
 
-    handler.handle(new UnassignWorkItemCommand(id, 1L, "{}", "Unassigned", occurredAt));
+    handler.handle(new UnassignWorkItemCommand(id, 1L, "Unassigned", occurredAt));
 
     verify(gateway)
         .sendAndWait(
-            new UnassignLinkedGroupWorkItemCommand(
-                groupId, id, 1L, "{}", "Unassigned", occurredAt));
+            new UnassignLinkedGroupWorkItemCommand(groupId, id, 1L, "Unassigned", occurredAt));
   }
 
   @Test
@@ -104,12 +102,12 @@ class UnassignWorkItemCoordinatorTest {
     when(routes.resolveDirectRoute(id)).thenReturn(route(WorkItemType.APPLICATION, id, occurredAt));
     when(groupRoutes.lockForAssignment(id)).thenReturn(Optional.of(groupId));
     UnassignLinkedGroupWorkItemCommand groupCommand =
-        new UnassignLinkedGroupWorkItemCommand(groupId, id, 1L, "{}", "Unassigned", occurredAt);
+        new UnassignLinkedGroupWorkItemCommand(groupId, id, 1L, "Unassigned", occurredAt);
     when(gateway.sendAndWait(groupCommand))
         .thenThrow(new RuntimeException("append conflict", new ConcurrencyException("conflict")))
         .thenReturn(null);
 
-    handler.handle(new UnassignWorkItemCommand(id, 1L, "{}", "Unassigned", occurredAt));
+    handler.handle(new UnassignWorkItemCommand(id, 1L, "Unassigned", occurredAt));
 
     verify(transactionManager, times(2)).getTransaction(any(TransactionDefinition.class));
     verify(transactionManager).rollback(any(TransactionStatus.class));
@@ -133,14 +131,12 @@ class UnassignWorkItemCoordinatorTest {
     RuntimeException retryFailure =
         new RuntimeException("append conflict", new ConcurrencyException("second"));
     when(gateway.sendAndWait(
-            new UnassignLinkedGroupWorkItemCommand(
-                groupId, id, 1L, "{}", "Unassigned", occurredAt)))
+            new UnassignLinkedGroupWorkItemCommand(groupId, id, 1L, "Unassigned", occurredAt)))
         .thenThrow(new RuntimeException("append conflict", new ConcurrencyException("first")))
         .thenThrow(retryFailure);
 
     assertThatThrownBy(
-            () ->
-                handler.handle(new UnassignWorkItemCommand(id, 1L, "{}", "Unassigned", occurredAt)))
+            () -> handler.handle(new UnassignWorkItemCommand(id, 1L, "Unassigned", occurredAt)))
         .isInstanceOf(WorkItemAssignmentConflictException.class)
         .hasMessage(
             "Work item "

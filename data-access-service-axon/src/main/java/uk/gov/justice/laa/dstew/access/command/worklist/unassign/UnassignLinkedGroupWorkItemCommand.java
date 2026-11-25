@@ -11,6 +11,5 @@ public record UnassignLinkedGroupWorkItemCommand(
     @TargetEntityId UUID groupId,
     UUID workItemId,
     long expectedAssignmentVersion,
-    String serialisedRequest,
     String eventDescription,
     Instant occurredAt) {}

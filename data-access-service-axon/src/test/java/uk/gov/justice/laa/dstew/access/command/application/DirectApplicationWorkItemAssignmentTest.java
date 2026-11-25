@@ -68,7 +68,7 @@ class DirectApplicationWorkItemAssignmentTest {
         .given()
         .events(created(id, when), new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when))
         .when()
-        .command(new DirectWorkItemAssignmentCommand(id, caseworkerId, 0L, "{}", "Assigned", when))
+        .command(new DirectWorkItemAssignmentCommand(id, caseworkerId, 0L, "Assigned", when))
         .then()
         .resultMessagePayload(
             new AssignedWorkItems(List.of(new AssignedWorkItems.AssignedItem(id, "LAA-123"))))
@@ -84,7 +84,7 @@ class DirectApplicationWorkItemAssignmentTest {
         .given()
         .events(created(id, when), new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when))
         .when()
-        .command(new DirectWorkItemAssignmentCommand(id, caseworkerId, 1L, "{}", "", when))
+        .command(new DirectWorkItemAssignmentCommand(id, caseworkerId, 1L, "", when))
         .then()
         .exception(WorkItemAssignmentConflictException.class)
         .noEvents();
@@ -93,7 +93,7 @@ class DirectApplicationWorkItemAssignmentTest {
         .given()
         .events(created(id, when), new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when))
         .when()
-        .command(new DirectWorkItemUnassignmentCommand(id, 0L, "{}", "", when))
+        .command(new DirectWorkItemUnassignmentCommand(id, 0L, "", when))
         .then()
         .exception(WorkItemAssignmentConflictException.class)
         .noEvents();
@@ -113,7 +113,7 @@ class DirectApplicationWorkItemAssignmentTest {
             () ->
                 new DirectApplicationWorkItemAssignmentCommandHandler()
                     .handle(
-                        new DirectWorkItemAssignmentCommand(id, caseworkerId, 1L, "{}", "", when),
+                        new DirectWorkItemAssignmentCommand(id, caseworkerId, 1L, "", when),
                         active,
                         dataStore,
                         mock(EventAppender.class)))
@@ -123,7 +123,7 @@ class DirectApplicationWorkItemAssignmentTest {
                 new DirectApplicationWorkItemAssignmentCommandHandler()
                     .handle(
                         new DirectWorkItemAssignmentCommand(
-                            UUID.randomUUID(), caseworkerId, 1L, "{}", "", when),
+                            UUID.randomUUID(), caseworkerId, 1L, "", when),
                         active,
                         dataStore,
                         mock(EventAppender.class)))
@@ -136,8 +136,7 @@ class DirectApplicationWorkItemAssignmentTest {
             () ->
                 new DirectApplicationWorkItemAssignmentCommandHandler()
                     .handle(
-                        new DirectWorkItemAssignmentCommand(
-                            inactiveId, caseworkerId, 0L, "{}", "", when),
+                        new DirectWorkItemAssignmentCommand(inactiveId, caseworkerId, 0L, "", when),
                         inactive,
                         dataStore,
                         mock(EventAppender.class)))

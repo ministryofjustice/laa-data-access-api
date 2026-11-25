@@ -12,6 +12,5 @@ public record AssignLinkedGroupWorkItemCommand(
     UUID workItemId,
     UUID caseworkerId,
     long expectedAssignmentVersion,
-    String serialisedRequest,
     String eventDescription,
     Instant occurredAt) {}

@@ -200,7 +200,6 @@ class ApplicationStateSeeder {
             request.getId(),
             PactIds.DEV_CASEWORKER,
             item.getAssignmentVersion(),
-            null,
             "Assigned during Pact provider state setup",
             Instant.now()));
     return awaitApplication(

@@ -9,7 +9,6 @@ public record AssignWorkItemCommand(
     UUID workItemId,
     UUID caseworkerId,
     long expectedAssignmentVersion,
-    String serialisedRequest,
     String eventDescription,
     Instant occurredAt) {
   /** Validates the stable identifiers required to issue an assignment. */

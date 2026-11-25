@@ -88,7 +88,7 @@ class LinkedGroupWorkItemAssignmentCommandHandlerTest {
         .thenReturn(Map.of(secondDataId, secondPayload, firstDataId, firstPayload));
     var command =
         new AssignLinkedGroupWorkItemCommand(
-            GROUP_ID, SECOND_ID, CASEWORKER_ID, 0L, "{}", "Assigned", OCCURRED_AT);
+            GROUP_ID, SECOND_ID, CASEWORKER_ID, 0L, "Assigned", OCCURRED_AT);
 
     var result =
         handler.handle(command, group, stateManager, context, applicationDataStore, eventAppender);
@@ -132,7 +132,7 @@ class LinkedGroupWorkItemAssignmentCommandHandlerTest {
         .thenReturn(Map.of(secondDataId, secondPayload));
     var command =
         new AssignLinkedGroupWorkItemCommand(
-            GROUP_ID, SECOND_ID, CASEWORKER_ID, 0L, "{}", "Assigned", OCCURRED_AT);
+            GROUP_ID, SECOND_ID, CASEWORKER_ID, 0L, "Assigned", OCCURRED_AT);
 
     var result =
         handler.handle(command, group, stateManager, context, applicationDataStore, eventAppender);
@@ -158,7 +158,7 @@ class LinkedGroupWorkItemAssignmentCommandHandlerTest {
         .thenReturn(Map.of(addressedDataId, addressedPayload));
     var command =
         new AssignLinkedGroupWorkItemCommand(
-            GROUP_ID, SECOND_ID, CASEWORKER_ID, 0L, "{}", "Assigned", OCCURRED_AT);
+            GROUP_ID, SECOND_ID, CASEWORKER_ID, 0L, "Assigned", OCCURRED_AT);
 
     var result =
         handler.handle(command, group, stateManager, context, applicationDataStore, eventAppender);
@@ -185,7 +185,7 @@ class LinkedGroupWorkItemAssignmentCommandHandlerTest {
     givenApplication(SECOND_ID, stateOf(activeUnassigned(SECOND_ID)));
     var command =
         new AssignLinkedGroupWorkItemCommand(
-            GROUP_ID, FIRST_ID, CASEWORKER_ID, 1L, "{}", "Assigned", OCCURRED_AT);
+            GROUP_ID, FIRST_ID, CASEWORKER_ID, 1L, "Assigned", OCCURRED_AT);
 
     assertThatThrownBy(
             () ->
@@ -201,7 +201,7 @@ class LinkedGroupWorkItemAssignmentCommandHandlerTest {
   void givenMissingGroup_whenAssign_thenMembershipConflictAndNoEvents() {
     var command =
         new AssignLinkedGroupWorkItemCommand(
-            GROUP_ID, FIRST_ID, CASEWORKER_ID, 0L, "{}", "Assigned", OCCURRED_AT);
+            GROUP_ID, FIRST_ID, CASEWORKER_ID, 0L, "Assigned", OCCURRED_AT);
 
     assertThatThrownBy(
             () ->
@@ -221,8 +221,7 @@ class LinkedGroupWorkItemAssignmentCommandHandlerTest {
     givenApplication(FIRST_ID, firstState);
     givenApplication(SECOND_ID, secondState);
     var command =
-        new UnassignLinkedGroupWorkItemCommand(
-            GROUP_ID, SECOND_ID, 1L, "{}", "Unassigned", OCCURRED_AT);
+        new UnassignLinkedGroupWorkItemCommand(GROUP_ID, SECOND_ID, 1L, "Unassigned", OCCURRED_AT);
 
     handler.handle(command, group, stateManager, context, eventAppender);
 
@@ -238,8 +237,7 @@ class LinkedGroupWorkItemAssignmentCommandHandlerTest {
   @Test
   void givenMissingGroup_whenUnassign_thenMembershipConflictAndNoEvents() {
     var command =
-        new UnassignLinkedGroupWorkItemCommand(
-            GROUP_ID, FIRST_ID, 0L, "{}", "Unassigned", OCCURRED_AT);
+        new UnassignLinkedGroupWorkItemCommand(GROUP_ID, FIRST_ID, 0L, "Unassigned", OCCURRED_AT);
 
     assertThatThrownBy(() -> handler.handle(command, null, stateManager, context, eventAppender))
         .isInstanceOf(ApplicationLinkConflictException.class)
@@ -254,7 +252,7 @@ class LinkedGroupWorkItemAssignmentCommandHandlerTest {
     var outsiderId = UUID.fromString("00000000-0000-0000-0000-000000000009");
     var command =
         new AssignLinkedGroupWorkItemCommand(
-            GROUP_ID, outsiderId, CASEWORKER_ID, 0L, "{}", "Assigned", OCCURRED_AT);
+            GROUP_ID, outsiderId, CASEWORKER_ID, 0L, "Assigned", OCCURRED_AT);
 
     assertThatThrownBy(
             () ->
@@ -271,8 +269,7 @@ class LinkedGroupWorkItemAssignmentCommandHandlerTest {
     givenExistingGroup();
     var outsiderId = UUID.fromString("00000000-0000-0000-0000-000000000009");
     var command =
-        new UnassignLinkedGroupWorkItemCommand(
-            GROUP_ID, outsiderId, 1L, "{}", "Unassigned", OCCURRED_AT);
+        new UnassignLinkedGroupWorkItemCommand(GROUP_ID, outsiderId, 1L, "Unassigned", OCCURRED_AT);
 
     assertThatThrownBy(() -> handler.handle(command, group, stateManager, context, eventAppender))
         .isInstanceOf(ApplicationLinkConflictException.class)

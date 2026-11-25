@@ -11,6 +11,5 @@ public record DirectPriorAuthorityWorkItemAssignmentCommand(
     @TargetEntityId UUID workItemId,
     UUID caseworkerId,
     long expectedAssignmentVersion,
-    String serialisedRequest,
     String eventDescription,
     Instant occurredAt) {}

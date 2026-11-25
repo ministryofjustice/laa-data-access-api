@@ -40,7 +40,7 @@ class DirectPriorAuthorityWorkItemAssignmentCommandHandlerTest {
     UUID caseworkerId = UUID.randomUUID();
     DirectPriorAuthorityWorkItemAssignmentCommand command =
         new DirectPriorAuthorityWorkItemAssignmentCommand(
-            workItemId, caseworkerId, 0L, "{}", "Assigned", OCCURRED_AT);
+            workItemId, caseworkerId, 0L, "Assigned", OCCURRED_AT);
 
     when(priorAuthority.getPriorAuthorityId()).thenReturn(workItemId);
     when(priorAuthority.getAssignmentVersion()).thenReturn(0L);
@@ -75,7 +75,7 @@ class DirectPriorAuthorityWorkItemAssignmentCommandHandlerTest {
     UUID caseworkerId = UUID.randomUUID();
     DirectPriorAuthorityWorkItemAssignmentCommand command =
         new DirectPriorAuthorityWorkItemAssignmentCommand(
-            workItemId, caseworkerId, 1L, "{}", "Assigned", OCCURRED_AT);
+            workItemId, caseworkerId, 1L, "Assigned", OCCURRED_AT);
 
     when(priorAuthority.getPriorAuthorityId()).thenReturn(workItemId);
     when(priorAuthority.getAssignmentVersion()).thenReturn(0L);
@@ -105,7 +105,7 @@ class DirectPriorAuthorityWorkItemAssignmentCommandHandlerTest {
     UUID caseworkerId = UUID.randomUUID();
     DirectPriorAuthorityWorkItemAssignmentCommand command =
         new DirectPriorAuthorityWorkItemAssignmentCommand(
-            workItemId, caseworkerId, 0L, "{}", "Assigned", OCCURRED_AT);
+            workItemId, caseworkerId, 0L, "Assigned", OCCURRED_AT);
 
     when(priorAuthority.getPriorAuthorityId()).thenReturn(workItemId);
     when(priorAuthority.getAssignmentVersion()).thenReturn(0L);
@@ -127,7 +127,7 @@ class DirectPriorAuthorityWorkItemAssignmentCommandHandlerTest {
     UUID caseworkerId = UUID.randomUUID();
     DirectPriorAuthorityWorkItemAssignmentCommand command =
         new DirectPriorAuthorityWorkItemAssignmentCommand(
-            workItemId, caseworkerId, 0L, "{}", "Assigned", OCCURRED_AT);
+            workItemId, caseworkerId, 0L, "Assigned", OCCURRED_AT);
 
     when(priorAuthority.getPriorAuthorityId()).thenReturn(UUID.randomUUID());
 

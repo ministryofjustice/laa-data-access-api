@@ -57,7 +57,6 @@ public class AssignWorkItemCoordinator {
               command.workItemId(),
               command.caseworkerId(),
               command.expectedAssignmentVersion(),
-              command.serialisedRequest(),
               command.eventDescription(),
               command.occurredAt()),
           AssignedWorkItems.class);
@@ -71,7 +70,6 @@ public class AssignWorkItemCoordinator {
               command.workItemId(),
               command.caseworkerId(),
               command.expectedAssignmentVersion(),
-              command.serialisedRequest(),
               command.eventDescription(),
               command.occurredAt()),
           AssignedWorkItems.class);
@@ -82,7 +80,6 @@ public class AssignWorkItemCoordinator {
             command.workItemId(),
             command.caseworkerId(),
             command.expectedAssignmentVersion(),
-            command.serialisedRequest(),
             command.eventDescription(),
             command.occurredAt()),
         AssignedWorkItems.class);

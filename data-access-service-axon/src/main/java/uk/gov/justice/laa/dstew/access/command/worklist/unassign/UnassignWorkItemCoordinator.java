@@ -54,7 +54,6 @@ public class UnassignWorkItemCoordinator {
           new DirectPriorAuthorityWorkItemUnassignmentCommand(
               command.workItemId(),
               command.expectedAssignmentVersion(),
-              command.serialisedRequest(),
               command.eventDescription(),
               command.occurredAt()));
       return;
@@ -67,7 +66,6 @@ public class UnassignWorkItemCoordinator {
               groupId.get(),
               command.workItemId(),
               command.expectedAssignmentVersion(),
-              command.serialisedRequest(),
               command.eventDescription(),
               command.occurredAt()));
       return;
@@ -77,7 +75,6 @@ public class UnassignWorkItemCoordinator {
         new DirectWorkItemUnassignmentCommand(
             command.workItemId(),
             command.expectedAssignmentVersion(),
-            command.serialisedRequest(),
             command.eventDescription(),
             command.occurredAt()));
   }

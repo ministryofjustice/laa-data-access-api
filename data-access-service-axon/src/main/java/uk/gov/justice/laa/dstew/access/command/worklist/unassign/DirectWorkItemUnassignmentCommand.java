@@ -10,6 +10,5 @@ import org.axonframework.modelling.annotation.TargetEntityId;
 public record DirectWorkItemUnassignmentCommand(
     @TargetEntityId UUID workItemId,
     long expectedAssignmentVersion,
-    String serialisedRequest,
     String eventDescription,
     Instant occurredAt) {}

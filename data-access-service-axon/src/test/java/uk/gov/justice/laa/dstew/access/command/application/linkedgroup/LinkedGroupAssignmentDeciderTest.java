@@ -444,12 +444,12 @@ class LinkedGroupAssignmentDeciderTest {
 
   private static AssignLinkedGroupWorkItemCommand assignCommand(long expectedVersion) {
     return new AssignLinkedGroupWorkItemCommand(
-        GROUP_ID, ADDRESSED_ID, CASEWORKER, expectedVersion, "{}", "Assigned", OCCURRED_AT);
+        GROUP_ID, ADDRESSED_ID, CASEWORKER, expectedVersion, "Assigned", OCCURRED_AT);
   }
 
   private static UnassignLinkedGroupWorkItemCommand unassignCommand(long expectedVersion) {
     return new UnassignLinkedGroupWorkItemCommand(
-        GROUP_ID, ADDRESSED_ID, expectedVersion, "{}", "Unassigned", OCCURRED_AT);
+        GROUP_ID, ADDRESSED_ID, expectedVersion, "Unassigned", OCCURRED_AT);
   }
 
   private static WorkItemAssigned assigned(

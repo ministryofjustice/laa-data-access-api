@@ -163,7 +163,6 @@ class PriorAuthorityStateSeeder {
             priorAuthorityId,
             PactIds.DEV_CASEWORKER,
             item.getAssignmentVersion(),
-            null,
             "Assigned during Pact provider state setup",
             Instant.now()));
     applications.awaitWorkListItem(

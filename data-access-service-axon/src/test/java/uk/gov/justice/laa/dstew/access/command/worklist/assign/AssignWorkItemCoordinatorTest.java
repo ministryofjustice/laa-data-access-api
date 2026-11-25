@@ -43,12 +43,12 @@ class AssignWorkItemCoordinatorTest {
     UUID caseworkerId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-09-01T10:00:00Z");
     AssignWorkItemCommand command =
-        new AssignWorkItemCommand(id, caseworkerId, 0L, "{}", "Assigned", occurredAt);
+        new AssignWorkItemCommand(id, caseworkerId, 0L, "Assigned", occurredAt);
     when(routes.resolveDirectRoute(id)).thenReturn(route(WorkItemType.APPLICATION, id, occurredAt));
     when(groupRoutes.lockForAssignment(id)).thenReturn(Optional.empty());
 
     DirectWorkItemAssignmentCommand direct =
-        new DirectWorkItemAssignmentCommand(id, caseworkerId, 0L, "{}", "Assigned", occurredAt);
+        new DirectWorkItemAssignmentCommand(id, caseworkerId, 0L, "Assigned", occurredAt);
     AssignedWorkItems assigned = assigned(id);
     when(gateway.sendAndWait(direct, AssignedWorkItems.class)).thenReturn(assigned);
 
@@ -70,13 +70,12 @@ class AssignWorkItemCoordinatorTest {
 
     DirectPriorAuthorityWorkItemAssignmentCommand direct =
         new DirectPriorAuthorityWorkItemAssignmentCommand(
-            id, caseworkerId, 0L, "{}", "Assigned", occurredAt);
+            id, caseworkerId, 0L, "Assigned", occurredAt);
     AssignedWorkItems assigned = assigned(id);
     when(gateway.sendAndWait(direct, AssignedWorkItems.class)).thenReturn(assigned);
 
     assertThat(
-            handler.handle(
-                new AssignWorkItemCommand(id, caseworkerId, 0L, "{}", "Assigned", occurredAt)))
+            handler.handle(new AssignWorkItemCommand(id, caseworkerId, 0L, "Assigned", occurredAt)))
         .isEqualTo(assigned);
 
     verify(groupRoutes, never()).lockForAssignment(any());
@@ -97,8 +96,7 @@ class AssignWorkItemCoordinatorTest {
     assertThatThrownBy(
             () ->
                 handler.handle(
-                    new AssignWorkItemCommand(
-                        id, caseworkerId, 0L, "{}", "Assigned", Instant.now())))
+                    new AssignWorkItemCommand(id, caseworkerId, 0L, "Assigned", Instant.now())))
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage("No work item found with id: " + id);
 
@@ -117,13 +115,12 @@ class AssignWorkItemCoordinatorTest {
     UUID caseworkerId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-09-01T10:00:00Z");
     AssignWorkItemCommand command =
-        new AssignWorkItemCommand(id, caseworkerId, 0L, "{}", "Assigned", occurredAt);
+        new AssignWorkItemCommand(id, caseworkerId, 0L, "Assigned", occurredAt);
     when(routes.resolveDirectRoute(id)).thenReturn(route(WorkItemType.APPLICATION, id, occurredAt));
     when(groupRoutes.lockForAssignment(id)).thenReturn(Optional.of(groupId));
 
     AssignLinkedGroupWorkItemCommand groupCommand =
-        new AssignLinkedGroupWorkItemCommand(
-            groupId, id, caseworkerId, 0L, "{}", "Assigned", occurredAt);
+        new AssignLinkedGroupWorkItemCommand(groupId, id, caseworkerId, 0L, "Assigned", occurredAt);
     AssignedWorkItems assigned = assigned(id);
     when(gateway.sendAndWait(groupCommand, AssignedWorkItems.class)).thenReturn(assigned);
 
@@ -148,16 +145,14 @@ class AssignWorkItemCoordinatorTest {
     when(routes.resolveDirectRoute(id)).thenReturn(route(WorkItemType.APPLICATION, id, occurredAt));
     when(groupRoutes.lockForAssignment(id)).thenReturn(Optional.of(groupId));
     AssignLinkedGroupWorkItemCommand groupCommand =
-        new AssignLinkedGroupWorkItemCommand(
-            groupId, id, caseworkerId, 0L, "{}", "Assigned", occurredAt);
+        new AssignLinkedGroupWorkItemCommand(groupId, id, caseworkerId, 0L, "Assigned", occurredAt);
     AssignedWorkItems assigned = assigned(id);
     when(gateway.sendAndWait(groupCommand, AssignedWorkItems.class))
         .thenThrow(new RuntimeException("append conflict", new ConcurrencyException("conflict")))
         .thenReturn(assigned);
 
     assertThat(
-            handler.handle(
-                new AssignWorkItemCommand(id, caseworkerId, 0L, "{}", "Assigned", occurredAt)))
+            handler.handle(new AssignWorkItemCommand(id, caseworkerId, 0L, "Assigned", occurredAt)))
         .isEqualTo(assigned);
 
     verify(transactionManager, times(2)).getTransaction(any(TransactionDefinition.class));
@@ -184,7 +179,7 @@ class AssignWorkItemCoordinatorTest {
         new RuntimeException("append conflict", new ConcurrencyException("second"));
     when(gateway.sendAndWait(
             new AssignLinkedGroupWorkItemCommand(
-                groupId, id, caseworkerId, 0L, "{}", "Assigned", occurredAt),
+                groupId, id, caseworkerId, 0L, "Assigned", occurredAt),
             AssignedWorkItems.class))
         .thenThrow(new RuntimeException("append conflict", new ConcurrencyException("first")))
         .thenThrow(retryFailure);
@@ -192,7 +187,7 @@ class AssignWorkItemCoordinatorTest {
     assertThatThrownBy(
             () ->
                 handler.handle(
-                    new AssignWorkItemCommand(id, caseworkerId, 0L, "{}", "Assigned", occurredAt)))
+                    new AssignWorkItemCommand(id, caseworkerId, 0L, "Assigned", occurredAt)))
         .isInstanceOf(WorkItemAssignmentConflictException.class)
         .hasMessage(
             "Work item "

@@ -86,7 +86,6 @@ class LinkedGroupSplitAssignmentIntegrationTest extends AbstractLinkedGroupInteg
               assignment.applicationId(),
               assignment.caseworkerId(),
               0L,
-              "{}",
               "Assigned",
               Instant.now()));
     }

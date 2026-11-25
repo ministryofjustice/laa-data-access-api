@@ -33,7 +33,7 @@ class DirectPriorAuthorityWorkItemUnassignmentCommandHandlerTest {
     UUID workItemId = UUID.randomUUID();
     DirectPriorAuthorityWorkItemUnassignmentCommand command =
         new DirectPriorAuthorityWorkItemUnassignmentCommand(
-            workItemId, 0L, "{}", "Unassigned", OCCURRED_AT);
+            workItemId, 0L, "Unassigned", OCCURRED_AT);
 
     when(priorAuthority.getPriorAuthorityId()).thenReturn(workItemId);
     when(priorAuthority.getAssignmentVersion()).thenReturn(0L);
@@ -55,7 +55,7 @@ class DirectPriorAuthorityWorkItemUnassignmentCommandHandlerTest {
     UUID workItemId = UUID.randomUUID();
     DirectPriorAuthorityWorkItemUnassignmentCommand command =
         new DirectPriorAuthorityWorkItemUnassignmentCommand(
-            workItemId, 0L, "{}", "Unassigned", OCCURRED_AT);
+            workItemId, 0L, "Unassigned", OCCURRED_AT);
 
     when(priorAuthority.getPriorAuthorityId()).thenReturn(workItemId);
     when(priorAuthority.getAssignmentVersion()).thenReturn(0L);
@@ -84,7 +84,7 @@ class DirectPriorAuthorityWorkItemUnassignmentCommandHandlerTest {
     UUID workItemId = UUID.randomUUID();
     DirectPriorAuthorityWorkItemUnassignmentCommand command =
         new DirectPriorAuthorityWorkItemUnassignmentCommand(
-            workItemId, 1L, "{}", "Unassigned", OCCURRED_AT);
+            workItemId, 1L, "Unassigned", OCCURRED_AT);
 
     when(priorAuthority.getPriorAuthorityId()).thenReturn(workItemId);
     when(priorAuthority.getAssignmentVersion()).thenReturn(0L);
@@ -105,7 +105,7 @@ class DirectPriorAuthorityWorkItemUnassignmentCommandHandlerTest {
     UUID workItemId = UUID.randomUUID();
     DirectPriorAuthorityWorkItemUnassignmentCommand command =
         new DirectPriorAuthorityWorkItemUnassignmentCommand(
-            workItemId, 0L, "{}", "Unassigned", OCCURRED_AT);
+            workItemId, 0L, "Unassigned", OCCURRED_AT);
 
     when(priorAuthority.getPriorAuthorityId()).thenReturn(UUID.randomUUID());
 
