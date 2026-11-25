@@ -135,6 +135,7 @@ dependencies {
     bddTestImplementation "org.junit.platform:junit-platform-suite"
     bddTestImplementation "com.microsoft.playwright:playwright:$versions.playwright"
     bddTestImplementation 'com.fasterxml.jackson.core:jackson-databind'
+    bddTestImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8'
     bddTestImplementation "net.serenity-bdd:serenity-cucumber:$versions.serenity"
     bddTestRuntimeOnly 'junit:junit:4.13.2'
     bddTestImplementation "net.serenity-bdd:serenity-junit5:$versions.serenity"
@@ -166,7 +167,7 @@ tasks.register('bddTest', Test) {
     systemProperty 'cucumber.plugin', System.getProperty(
             'cucumber.plugin',
             "pretty,html:${layout.buildDirectory.get().asFile}/reports/cucumber/index.html," + "json:${layout.buildDirectory.get().asFile}/reports/cucumber/cucumber.json," +
-                    "io.cucumber.core.plugin.SerenityReporter"
+                    "net.serenitybdd.cucumber.core.plugin.SerenityReporter"
     )
     if (System.getProperty('cucumber.filter.tags')) {
         systemProperty 'cucumber.filter.tags', System.getProperty('cucumber.filter.tags')
