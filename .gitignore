@@ -4,14 +4,15 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 .DS_Store
+runApp.sh
 
 data-access-api/generated
 access-datastore-api/generated
 
 data-access-api/bin/
 data-access-service-axon/bin/
-data-access-shared/bin/
 data-access-tools/bin/
+data-access-service-axon/target/
 
 ### IntelliJ IDEA ###
 .idea

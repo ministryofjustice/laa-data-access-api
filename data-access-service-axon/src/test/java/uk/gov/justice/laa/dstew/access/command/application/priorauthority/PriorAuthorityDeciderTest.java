@@ -240,6 +240,43 @@ class PriorAuthorityDeciderTest {
         .isInstanceOf(ValidationException.class);
   }
 
+  @ParameterizedTest
+  @CsvSource(
+      value = {
+        "GRANTED,NULL,true,amountGranted is required when decision is GRANTED",
+        "GRANTED,100,false,dateGranted is required when decision is GRANTED",
+        "REFUSED,0,false,amountGranted must not be provided when decision is REFUSED",
+        "REFUSED,NULL,true,dateGranted must not be provided when decision is REFUSED"
+      },
+      nullValues = "NULL")
+  void givenInvalidGrantedFields_whenDecideDecision_thenThrowsValidation(
+      String decision, BigDecimal amountGranted, boolean withDateGranted, String expectedError) {
+    PriorAuthorityState state = submittedState(UUID.randomUUID(), UUID.randomUUID(), 0L);
+    MakePriorAuthorityDecisionCommand command =
+        decisionCommand(state, decision, amountGranted, withDateGranted ? OCCURRED_AT : null);
+
+    assertThatThrownBy(() -> PriorAuthorityDecider.decideDecision(state, command))
+        .isInstanceOf(ValidationException.class)
+        .extracting(ValidationException.class::cast)
+        .extracting(ValidationException::errors)
+        .asInstanceOf(InstanceOfAssertFactories.LIST)
+        .containsExactly(expectedError);
+  }
+
+  @Test
+  void givenRefusedWithoutGrantedFields_whenDecideDecision_thenReturnsEventWithoutThem() {
+    PriorAuthorityState state = submittedState(UUID.randomUUID(), UUID.randomUUID(), 0L);
+    MakePriorAuthorityDecisionCommand command = decisionCommand(state, "REFUSED", null, null);
+
+    Optional<PriorAuthorityDecisionMadeEvent> result =
+        PriorAuthorityDecider.decideDecision(state, command);
+
+    assertThat(result).isPresent();
+    assertThat(result.get().overallDecision()).isEqualTo("REFUSED");
+    assertThat(result.get().amountGranted()).isNull();
+    assertThat(result.get().dateGranted()).isNull();
+  }
+
   @Test
   void givenSubmittedStateWithDifferentVersion_whenDecideDecision_thenThrowsVersionConflict() {
     UUID priorAuthorityId = UUID.randomUUID();
@@ -277,11 +314,11 @@ class PriorAuthorityDeciderTest {
             1L,
             "REFUSED",
             "Recorded",
-            BigDecimal.ZERO,
             null,
             null,
             null,
-            OCCURRED_AT,
+            null,
+            null,
             "{\"decision\":\"REFUSED\"}",
             OCCURRED_AT);
 
@@ -456,6 +493,23 @@ class PriorAuthorityDeciderTest {
         null,
         OCCURRED_AT,
         "{\"decision\":\"GRANTED\"}",
+        OCCURRED_AT);
+  }
+
+  private static MakePriorAuthorityDecisionCommand decisionCommand(
+      PriorAuthorityState state, String decision, BigDecimal amountGranted, Instant dateGranted) {
+    return new MakePriorAuthorityDecisionCommand(
+        state.priorAuthorityId,
+        TestJwtDecoderConfig.CASEWORKER_ID,
+        state.dataVersion,
+        decision,
+        "Recorded",
+        amountGranted,
+        null,
+        null,
+        null,
+        dateGranted,
+        "{}",
         OCCURRED_AT);
   }
 

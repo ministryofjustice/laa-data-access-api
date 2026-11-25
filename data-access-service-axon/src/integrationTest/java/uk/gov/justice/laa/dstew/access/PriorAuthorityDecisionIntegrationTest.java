@@ -80,8 +80,7 @@ class PriorAuthorityDecisionIntegrationTest extends BaseIntegrationTest {
   void givenSubmittedExpert_whenRefused_thenPersistsRefusal() {
     var priorAuthorityId = submittedAndAssigned(expertDraft(fixedRateCosts()));
     var request =
-        decisionRequest(
-            DecisionStatus.REFUSED, "Insufficient justification provided", BigDecimal.ZERO);
+        decisionRequest(DecisionStatus.REFUSED, "Insufficient justification provided", null);
 
     assertThat(patchDecision(priorAuthorityId, request).getStatusCode())
         .isEqualTo(HttpStatus.NO_CONTENT);
@@ -91,10 +90,12 @@ class PriorAuthorityDecisionIntegrationTest extends BaseIntegrationTest {
   }
 
   @ParameterizedTest
-  @CsvSource({
-    "GRANTED, 150, PRIOR_AUTHORITY_MAKE_DECISION_GRANTED",
-    "REFUSED, 0, PRIOR_AUTHORITY_MAKE_DECISION_REFUSED"
-  })
+  @CsvSource(
+      value = {
+        "GRANTED, 150, PRIOR_AUTHORITY_MAKE_DECISION_GRANTED",
+        "REFUSED, NULL, PRIOR_AUTHORITY_MAKE_DECISION_REFUSED"
+      },
+      nullValues = "NULL")
   void givenDecidedPriorAuthority_whenGetHistory_thenIncludesDecisionEventType(
       DecisionStatus decision, BigDecimal amountGranted, PriorAuthorityEventType expected) {
     var draft = disbursementDraft();
@@ -130,7 +131,7 @@ class PriorAuthorityDecisionIntegrationTest extends BaseIntegrationTest {
     var grant =
         decisionRequest(
             DecisionStatus.GRANTED, "Granted as per policy guidelines", BigDecimal.valueOf(150));
-    var refuse = decisionRequest(DecisionStatus.REFUSED, "Actually refused", BigDecimal.ZERO);
+    var refuse = decisionRequest(DecisionStatus.REFUSED, "Actually refused", null);
 
     assertThat(patchDecision(priorAuthorityId, grant).getStatusCode())
         .isEqualTo(HttpStatus.NO_CONTENT);
@@ -181,9 +182,7 @@ class PriorAuthorityDecisionIntegrationTest extends BaseIntegrationTest {
 
     var staleDecision =
         decisionRequest(
-                DecisionStatus.REFUSED,
-                "Second decision attempt using a stale version",
-                BigDecimal.ZERO)
+                DecisionStatus.REFUSED, "Second decision attempt using a stale version", null)
             .priorAuthorityVersion(staleVersion);
 
     assertThat(patchDecision(priorAuthorityId, staleDecision).getStatusCode())
@@ -327,6 +326,36 @@ class PriorAuthorityDecisionIntegrationTest extends BaseIntegrationTest {
     assertThat(decisionDataVersionCount(priorAuthorityId)).isZero();
   }
 
+  @Test
+  void givenGrantedWithoutAmountOrDate_whenDecision_thenReturnsBadRequest() {
+    var priorAuthorityId = submittedAndAssigned(disbursementDraft());
+    var request = decisionRequest(DecisionStatus.GRANTED, "Granted", null);
+
+    var response = patchDecision(priorAuthorityId, request);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getBody())
+        .contains(
+            "amountGranted is required when decision is GRANTED",
+            "dateGranted is required when decision is GRANTED");
+    assertThat(decisionDataVersionCount(priorAuthorityId)).isZero();
+  }
+
+  @Test
+  void givenRefusedWithAmountAndDate_whenDecision_thenReturnsBadRequest() {
+    var priorAuthorityId = submittedAndAssigned(disbursementDraft());
+    var request = decisionRequest(DecisionStatus.REFUSED, "Refused", BigDecimal.ZERO);
+
+    var response = patchDecision(priorAuthorityId, request);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getBody())
+        .contains(
+            "amountGranted must not be provided when decision is REFUSED",
+            "dateGranted must not be provided when decision is REFUSED");
+    assertThat(decisionDataVersionCount(priorAuthorityId)).isZero();
+  }
+
   private void assertDecisionPersisted(
       UUID priorAuthorityId, DecisionEnum decision, String justification) {
     assertThat(decisionDataVersionCount(priorAuthorityId)).isOne();
@@ -357,7 +386,7 @@ class PriorAuthorityDecisionIntegrationTest extends BaseIntegrationTest {
         .decision(decision)
         .decisionJustification(justification)
         .amountGranted(amountGranted)
-        .dateGranted(DATE_GRANTED)
+        .dateGranted(amountGranted == null ? null : DATE_GRANTED)
         .eventHistory(new EventHistoryRequest())
         .priorAuthorityVersion(0L);
   }

@@ -9,8 +9,8 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicatio
 import uk.gov.justice.laa.dstew.access.command.application.ready.RecordAutoGrantOutcomeUseCase;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
-import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
-import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
+import uk.gov.justice.laa.dstew.access.observability.logging.aspects.LogMethodArguments;
+import uk.gov.justice.laa.dstew.access.observability.logging.aspects.LogMethodResponse;
 
 /** HTTP command adapter for Application Auto Grant writes. */
 @RestController

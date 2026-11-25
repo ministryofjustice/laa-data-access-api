@@ -87,7 +87,7 @@ order.
 
 This policy orders handlers only within `application-projection`. `ApplicationListIndexProjection`
 also has its own sequencing policy, but its pooled processor remains independent of the
-application, group, and history processors. Their query models may lag one another; neither policy
+application, group, and lifecycle-stream processors. Their query models may lag one another; neither policy
 establishes a global event order.
 
 A query-owned membership model can store a nullable group ID, removal tombstone, and event ordering,
@@ -98,7 +98,7 @@ separate from `application_group_route`, the write-side routing table for link c
 processor. This serializes its application-row handlers across aggregate IDs; real-Axon/PostgreSQL
 race tests verify that creation/group-event and G1-to-G2 membership races are ordered within the
 index projection. This policy does not synchronize the index with the application, group, or
-history processors, whose query models may lag independently. `stream_version` is not a
+lifecycle-stream processors, whose query models may lag independently. `stream_version` is not a
 conditional write guard; `projectionPosition` is a hash of the event identifier, not an ordered
 event position. The list query uses the index for filtering and paging, while linked-application
 summaries derive from the separate application and group projections. Do not infer consistency
@@ -147,16 +147,17 @@ every application it names: the lead and members get `APPLICATION_GROUP_CREATED`
 rest. Group events stored before they recorded the group's members appear only for the
 applications they name.
 
-Decision and note events contain version pointers rather than their free-text details. The
-assemblers hydrate descriptions from the exact referenced `application_data` version, and group
-descriptions from `linked_group_justification`. Assignment and unassignment entries have no
-description. If a referenced version is absent (for example, after retention), its description is
-`null` while the entry remains. Other data-store failures are not treated as missing versions and
+Application decision and note descriptions come from the referenced `application_data` version.
+If it is absent, the entry remains with a `null` description. Prior Authority decisions use
+`prior_authority_data`: without that version the entry still reports outcome and time, but no
+justification. Events and linked-group justifications are batch-loaded; these versioned payloads
+are looked up per qualifying entry, so query count can grow with history length.
+Assignment and unassignment entries have no description. Data-store errors are not treated as missing versions and
 continue to fail the query. Caseworker attribution comes from event metadata when present, so
 historical events without authenticated-user metadata have no caseworker attribution.
 
 Prior Authority assignment and unassignment entries take their Prior Authority type from the
-`PriorAuthoritySubmittedEvent` in the same stream; history reads no Prior Authority data. A Prior
+`PriorAuthoritySubmittedEvent` in the same stream; determining that type needs no payload lookup. A Prior
 Authority can only be assigned once submitted, so an assignment with no submission in the stream
 fails the query with `ApplicationHistoryIntegrityException`.
 
@@ -165,6 +166,10 @@ If the lifecycle stream names an event the store does not hold, the query fails 
 current as the asynchronous `lifecycle-stream` processor. Events stored before the lifecycle
 stream recorded them are included once the processor replays them; legacy events that name no
 genesis (see the ADR) never appear.
+
+**Rollback boundary:** V35 removes `application_history`, `prior_authority_history` and their
+processor tokens. No data reset is needed. After V35, do not roll back to a release that uses
+those tables without first restoring the schema and rebuilding the old projections.
 
 ## Reset and replay
 
