@@ -97,6 +97,7 @@ import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHist
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
 import uk.gov.justice.laa.dstew.access.query.application.history.FindApplicationHistoryQuery;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
+import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 import util.ProjectionAwaiter;
 
@@ -489,7 +490,7 @@ class PostgresAxonIntegrationTest {
             "APPLICATION_SUBMITTED",
             request.getLaaReference(),
             request.getApplicationContent(),
-            objectMapper.writeValueAsString(request),
+            PayloadFingerprint.compute(objectMapper.writeValueAsString(request)),
             1,
             "BaseCivilApplication.json",
             Instant.now(),
