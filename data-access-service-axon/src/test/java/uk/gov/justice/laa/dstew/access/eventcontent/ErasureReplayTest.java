@@ -79,15 +79,15 @@ class ErasureReplayTest {
             new ApplicationDocumentUploadedEvent(
                 applicationId,
                 documentId,
-                Erasable.of("GATEWAY_EVIDENCE"),
+                "GATEWAY_EVIDENCE",
                 AT,
-                Erasable.of(12L),
-                Erasable.of("application/pdf"),
+                12L,
+                "application/pdf",
                 "checksum",
-                Erasable.of("CIVIL_APPLY"),
+                "CIVIL_APPLY",
                 0L,
-                Erasable.of(".pdf"),
-                Erasable.of("evidence.pdf")),
+                ".pdf",
+                "evidence.pdf"),
             new WorkItemAssigned(
                 applicationId, WorkItemType.APPLICATION, applicationId, 0L, 1L, caseworkerId, AT),
             new NoteCreatedEvent(applicationId, 1L, AT, "private note"));
@@ -131,15 +131,15 @@ class ErasureReplayTest {
             new ApplicationDocumentUploadedEvent(
                 applicationId,
                 documentId,
-                Erasable.of("GATEWAY_EVIDENCE"),
+                "GATEWAY_EVIDENCE",
                 AT,
-                Erasable.of(12L),
-                Erasable.of("application/pdf"),
+                12L,
+                "application/pdf",
                 "checksum",
-                Erasable.of("CIVIL_APPLY"),
+                "CIVIL_APPLY",
                 null,
-                Erasable.of(".pdf"),
-                Erasable.of("evidence.pdf")));
+                ".pdf",
+                "evidence.pdf"));
 
     ApplicationState full = fold(new ApplicationState(), ApplicationEvolve.class, history);
     ApplicationState erased = fold(new ApplicationState(), ApplicationEvolve.class, erase(history));

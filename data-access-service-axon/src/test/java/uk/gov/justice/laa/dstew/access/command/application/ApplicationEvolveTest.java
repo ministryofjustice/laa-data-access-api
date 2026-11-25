@@ -314,10 +314,7 @@ class ApplicationEvolveTest {
                 .isErased())
         .isTrue();
     assertThat(fold(withoutRequest(created), updated).content.isErased()).isTrue();
-    assertThat(
-            fold(created, new NoteCreatedEvent(applicationId, 1L, at, Erasable.<String>erased()))
-                .content
-                .isErased())
+    assertThat(fold(created, new NoteCreatedEvent(applicationId, 1L, at)).content.isErased())
         .isTrue();
   }
 

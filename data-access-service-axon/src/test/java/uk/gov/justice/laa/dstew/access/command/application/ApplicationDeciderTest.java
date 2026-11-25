@@ -494,11 +494,10 @@ class ApplicationDeciderTest {
     assertThat(event.decisionRequestFingerprint()).isEqualTo(PayloadFingerprint.compute("{}"));
     assertThat(event.meritsDecisions())
         .isEqualTo(
-            Erasable.of(
-                Map.of(proceedingId, new ApplicationMeritsDecision("REFUSED", "reason", "just"))));
-    assertThat(event.certificate().isErased()).isTrue();
-    assertThat(event.serialisedRequest()).isEqualTo(Erasable.of("{}"));
-    assertThat(event.eventDescription()).isEqualTo(Erasable.of("desc"));
+            Map.of(proceedingId, new ApplicationMeritsDecision("REFUSED", "reason", "just")));
+    assertThat(event.certificate()).isNull();
+    assertThat(event.serialisedRequest()).isEqualTo("{}");
+    assertThat(event.eventDescription()).isEqualTo("desc");
   }
 
   @Test
@@ -660,7 +659,7 @@ class ApplicationDeciderTest {
     assertThat(event.applicationId()).isEqualTo(applicationId);
     assertThat(event.applicationDataVersion()).isEqualTo(1L);
     assertThat(event.occurredAt()).isEqualTo(TIMESTAMP);
-    assertThat(event.noteText()).isEqualTo(Erasable.of("My note"));
+    assertThat(event.noteText()).isEqualTo("My note");
   }
 
   // ── validateGranted ────────────────────────────────────────────────────────────

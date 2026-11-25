@@ -8,10 +8,11 @@ import java.util.Set;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
+import org.jspecify.annotations.Nullable;
 import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
+import uk.gov.justice.laa.dstew.access.eventcontent.RedactedEventString;
 import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 
 /**
@@ -31,25 +32,21 @@ public record ApplicationDecisionMadeEvent(
     @RetainedField Instant occurredAt,
     @RetainedField String decisionRequestFingerprint,
     @RetainedField Map<UUID, String> proceedingDecisions,
-    Erasable<Map<UUID, ApplicationMeritsDecision>> meritsDecisions,
-    Erasable<Map<String, Object>> certificate,
-    Erasable<String> serialisedRequest,
-    Erasable<String> eventDescription)
+    @Nullable Map<UUID, ApplicationMeritsDecision> meritsDecisions,
+    @Nullable Map<String, Object> certificate,
+    @Nullable String serialisedRequest,
+    @Nullable String eventDescription)
     implements GenesisScoped {
 
-  /** Normalises missing content to erased. */
+  /** Copies the proceeding decisions, normalising missing ones to none. */
   public ApplicationDecisionMadeEvent {
     proceedingDecisions =
         proceedingDecisions == null
             ? Map.of()
             : Collections.unmodifiableMap(new LinkedHashMap<>(proceedingDecisions));
-    meritsDecisions = Erasable.orErased(meritsDecisions);
-    certificate = Erasable.orErased(certificate);
-    serialisedRequest = Erasable.orErased(serialisedRequest);
-    eventDescription = Erasable.orErased(eventDescription);
   }
 
-  /** Creates the event from plain content values, keeping each proceeding's decision value. */
+  /** Creates the event from its content, keeping each proceeding's decision value. */
   public ApplicationDecisionMadeEvent(
       UUID applicationId,
       long applicationVersion,
@@ -58,10 +55,10 @@ public record ApplicationDecisionMadeEvent(
       AutoGrantedState autoGranted,
       Instant occurredAt,
       String decisionRequestFingerprint,
-      Map<UUID, ApplicationMeritsDecision> meritsDecisions,
-      Map<String, Object> certificate,
-      String serialisedRequest,
-      String eventDescription) {
+      @Nullable Map<UUID, ApplicationMeritsDecision> meritsDecisions,
+      @Nullable Map<String, Object> certificate,
+      @Nullable String serialisedRequest,
+      @Nullable String eventDescription) {
     this(
         applicationId,
         applicationVersion,
@@ -71,10 +68,10 @@ public record ApplicationDecisionMadeEvent(
         occurredAt,
         decisionRequestFingerprint,
         proceedingDecisions(meritsDecisions),
-        Erasable.of(meritsDecisions),
-        Erasable.of(certificate),
-        Erasable.of(serialisedRequest),
-        Erasable.of(eventDescription));
+        meritsDecisions,
+        certificate,
+        serialisedRequest,
+        eventDescription);
   }
 
   /** Creates the event without decision content. */
@@ -93,14 +90,14 @@ public record ApplicationDecisionMadeEvent(
         autoGranted,
         occurredAt,
         null,
-        (Map<UUID, ApplicationMeritsDecision>) null,
+        null,
         null,
         null,
         null);
   }
 
   private static Map<UUID, String> proceedingDecisions(
-      Map<UUID, ApplicationMeritsDecision> meritsDecisions) {
+      @Nullable Map<UUID, ApplicationMeritsDecision> meritsDecisions) {
     Map<UUID, String> decisions = new LinkedHashMap<>();
     if (meritsDecisions != null) {
       meritsDecisions.forEach((id, merits) -> decisions.put(id, merits.decision()));
@@ -111,5 +108,10 @@ public record ApplicationDecisionMadeEvent(
   @Override
   public Set<UUID> genesisIds() {
     return GenesisScoped.ids(applicationId);
+  }
+
+  @Override
+  public String toString() {
+    return RedactedEventString.of(this);
   }
 }

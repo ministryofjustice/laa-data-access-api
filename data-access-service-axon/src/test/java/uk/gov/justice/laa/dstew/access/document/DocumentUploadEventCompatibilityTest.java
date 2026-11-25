@@ -26,9 +26,9 @@ class DocumentUploadEventCompatibilityTest {
          "sourceService":"CIVIL_APPLY","applicationDataVersion":3}
         """;
     var event = objectMapper.readValue(json, ApplicationDocumentUploadedEvent.class);
-    assertThat(event.fileSuffix().isErased()).isTrue();
+    assertThat(event.fileSuffix()).isNull();
     assertThat(event.applicationDataVersion()).isEqualTo(3L);
-    assertThat(event.documentType().value()).isEqualTo("GATEWAY_EVIDENCE");
+    assertThat(event.documentType()).isEqualTo("GATEWAY_EVIDENCE");
   }
 
   @Test

@@ -113,7 +113,7 @@ public final class ApplicationEvolve {
     state.proceedingDecisions.putAll(event.proceedingDecisions());
     // The request is always present with decision content; the other parts may be null.
     state.content =
-        state.content.isErased() || event.serialisedRequest().isErased()
+        state.content.isErased() || event.serialisedRequest() == null
             ? Erasable.erased()
             : Erasable.of(
                 state
@@ -123,9 +123,9 @@ public final class ApplicationEvolve {
                         event.overallDecision(),
                         event.autoGranted(),
                         mergedMeritsDecisions(state.content.value(), event),
-                        event.certificate().orElse(null),
-                        event.serialisedRequest().value(),
-                        event.eventDescription().orElse(null)));
+                        event.certificate(),
+                        event.serialisedRequest(),
+                        event.eventDescription()));
   }
 
   /** Applies an {@link ApplicationReadyForManualAssessmentEvent} to the given state. */
@@ -153,10 +153,9 @@ public final class ApplicationEvolve {
     state.applicationDataVersion = event.applicationDataVersion();
     // applicationVersion intentionally not updated — notes are decoupled from optimistic locking
     state.content =
-        state.content.isErased() || event.noteText().isErased()
+        state.content.isErased() || event.noteText() == null
             ? Erasable.erased()
-            : Erasable.of(
-                state.content.value().withNote(event.noteText().value(), event.occurredAt()));
+            : Erasable.of(state.content.value().withNote(event.noteText(), event.occurredAt()));
   }
 
   /** Applies an {@link ApplicationDocumentUploadedEvent} to the given state. */
@@ -164,15 +163,15 @@ public final class ApplicationEvolve {
     state.uploadedDocuments.add(
         new DocumentMetadata(
             event.documentId(),
-            event.documentType().orElse(null),
+            event.documentType(),
             event.uploadedAt(),
-            event.size().orElse(null),
-            event.contentType().orElse(null),
+            event.size(),
+            event.contentType(),
             event.checksum(),
-            event.sourceService().orElse(null),
+            event.sourceService(),
             false,
-            event.fileSuffix().orElse(null)));
-    state.draftDocumentFilenames.put(event.documentId(), event.originalFilename());
+            event.fileSuffix()));
+    state.draftDocumentFilenames.put(event.documentId(), Erasable.of(event.originalFilename()));
     if (event.applicationDataVersion() != null) {
       state.applicationDataVersion = event.applicationDataVersion();
     }
@@ -198,7 +197,7 @@ public final class ApplicationEvolve {
       ApplicationDataPayload current, ApplicationDecisionMadeEvent event) {
     Map<UUID, ApplicationMeritsDecision> merged =
         new HashMap<>(Objects.requireNonNullElse(current.meritsDecisions(), Map.of()));
-    merged.putAll(event.meritsDecisions().orElse(Map.of()));
+    merged.putAll(Objects.requireNonNullElse(event.meritsDecisions(), Map.of()));
     return merged;
   }
 }

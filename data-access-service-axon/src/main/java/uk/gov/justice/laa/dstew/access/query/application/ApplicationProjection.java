@@ -398,17 +398,17 @@ public class ApplicationProjection {
     documents.add(
         new DocumentMetadata(
             event.documentId(),
-            event.documentType().orElse(null),
+            event.documentType(),
             event.uploadedAt(),
-            event.size().orElse(null),
-            event.contentType().orElse(null),
+            event.size(),
+            event.contentType(),
             event.checksum(),
-            event.sourceService().orElse(null),
+            event.sourceService(),
             false,
-            event.fileSuffix().orElse(null)));
+            event.fileSuffix()));
     application.setUploadedDocuments(List.copyOf(documents));
     if (application.getSubmittedAt() == null) {
-      String originalFilename = event.originalFilename().orElse(null);
+      String originalFilename = event.originalFilename();
       if (originalFilename != null) {
         Map<UUID, String> filenames =
             new HashMap<>(

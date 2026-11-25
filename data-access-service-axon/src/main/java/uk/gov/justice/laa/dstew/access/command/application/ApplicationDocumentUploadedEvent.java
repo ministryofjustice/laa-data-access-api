@@ -5,8 +5,9 @@ import java.util.Set;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
+import org.jspecify.annotations.Nullable;
 import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
+import uk.gov.justice.laa.dstew.access.eventcontent.RedactedEventString;
 import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 
 /** Persisted event emitted after an application document upload completes. */
@@ -14,55 +15,18 @@ import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 public record ApplicationDocumentUploadedEvent(
     @RetainedField @EventTag(key = "ApplicationAggregate") UUID applicationId,
     @RetainedField UUID documentId,
-    Erasable<String> documentType,
+    @Nullable String documentType,
     @RetainedField Instant uploadedAt,
-    Erasable<Long> size,
-    Erasable<String> contentType,
+    @Nullable Long size,
+    @Nullable String contentType,
     @RetainedField String checksum,
-    Erasable<String> sourceService,
+    @Nullable String sourceService,
     @RetainedField Long applicationDataVersion,
-    Erasable<String> fileSuffix,
-    Erasable<String> originalFilename)
+    @Nullable String fileSuffix,
+    @Nullable String originalFilename)
     implements GenesisScoped {
 
-  /** Treats absent content as erased, as in an erased content row or a kept-fields-only read. */
-  public ApplicationDocumentUploadedEvent {
-    documentType = Erasable.orErased(documentType);
-    size = Erasable.orErased(size);
-    contentType = Erasable.orErased(contentType);
-    sourceService = Erasable.orErased(sourceService);
-    fileSuffix = Erasable.orErased(fileSuffix);
-    originalFilename = Erasable.orErased(originalFilename);
-  }
-
-  /** Creates the event from plain content values, including the original filename. */
-  public ApplicationDocumentUploadedEvent(
-      UUID applicationId,
-      UUID documentId,
-      String documentType,
-      Instant uploadedAt,
-      Long size,
-      String contentType,
-      String checksum,
-      String sourceService,
-      Long applicationDataVersion,
-      String fileSuffix,
-      String originalFilename) {
-    this(
-        applicationId,
-        documentId,
-        Erasable.of(documentType),
-        uploadedAt,
-        Erasable.of(size),
-        Erasable.of(contentType),
-        checksum,
-        Erasable.of(sourceService),
-        applicationDataVersion,
-        Erasable.of(fileSuffix),
-        Erasable.of(originalFilename));
-  }
-
-  /** Creates the event from plain content values without an original filename. */
+  /** Creates the event without an original filename. */
   public ApplicationDocumentUploadedEvent(
       UUID applicationId,
       UUID documentId,
@@ -85,7 +49,7 @@ public record ApplicationDocumentUploadedEvent(
         sourceService,
         applicationDataVersion,
         fileSuffix,
-        (String) null);
+        null);
   }
 
   /** Creates the historical event shape with a data-version pointer but no recorded suffix. */
@@ -142,5 +106,10 @@ public record ApplicationDocumentUploadedEvent(
   @Override
   public Instant occurredAt() {
     return uploadedAt;
+  }
+
+  @Override
+  public String toString() {
+    return RedactedEventString.of(this);
   }
 }
