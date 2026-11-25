@@ -64,12 +64,7 @@ class PriorAuthorityDocumentTypeUpdateCommandHandlerTest {
     verify(eventAppender)
         .append(
             new PriorAuthorityDocumentTypeUpdatedEvent(
-                priorAuthorityId,
-                documentId,
-                "GATEWAY_EVIDENCE",
-                OCCURRED_AT,
-                applicationId,
-                "new"));
+                priorAuthorityId, documentId, "GATEWAY_EVIDENCE", OCCURRED_AT, applicationId));
   }
 
   @Test
@@ -189,8 +184,7 @@ class PriorAuthorityDocumentTypeUpdateCommandHandlerTest {
             1,
             OCCURRED_AT,
             "1A001B",
-            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Existing", null, null, null),
-            "{}"));
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Existing", null, null, null)));
     return state;
   }
 }

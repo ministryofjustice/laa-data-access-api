@@ -79,8 +79,7 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
                 1,
                 OCCURRED_AT,
                 "1A001B",
-                content,
-                "{}"));
+                content));
   }
 
   @Test
@@ -153,8 +152,7 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
                 1,
                 OCCURRED_AT,
                 null,
-                content,
-                "{}"));
+                content));
   }
 
   @Test

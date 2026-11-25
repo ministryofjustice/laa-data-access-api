@@ -210,7 +210,7 @@ class ErasureReplayTest {
             uploaded(documentId),
             uploaded(deletedDocumentId),
             new PriorAuthorityDocumentTypeUpdatedEvent(
-                priorAuthorityId, documentId, "GATEWAY_EVIDENCE", AT, applicationId, "{}"),
+                priorAuthorityId, documentId, "GATEWAY_EVIDENCE", AT, applicationId),
             new PriorAuthorityDocumentDeletedEvent(
                 priorAuthorityId, deletedDocumentId, AT, applicationId),
             submittedPriorAuthority(),
@@ -343,8 +343,7 @@ class ErasureReplayTest {
         3L,
         AT,
         "HOURLY",
-        new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Jane Doe needs", null, null, null),
-        "{\"justification\":\"Jane Doe needs\"}");
+        new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Jane Doe needs", null, null, null));
   }
 
   private PriorAuthorityDocumentUploadedEvent uploaded(UUID id) {

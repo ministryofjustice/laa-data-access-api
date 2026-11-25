@@ -12,9 +12,9 @@ import uk.gov.justice.laa.dstew.access.eventcontent.RedactedEventString;
 import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 
 /**
- * Event emitted when a Prior Authority draft is submitted. It carries the submitted content and raw
- * request as erasable content; the same content is still written as version 0 of {@code
- * prior_authority_data} for the existing read paths.
+ * Event emitted when a Prior Authority draft is submitted. It carries the submitted content as
+ * erasable content; the same content is still written as version 0 of {@code prior_authority_data}
+ * for the existing read paths.
  *
  * <p>{@code applicationDataVersion} pins the parent application's immutable data version as it
  * stood when the PA was submitted, so the work-list projection can hydrate parent-application
@@ -33,8 +33,7 @@ public record PriorAuthoritySubmittedEvent(
     @RetainedField Long applicationDataVersion,
     @RetainedField Instant occurredAt,
     @RetainedField String billingType,
-    @Nullable PriorAuthorityContent content,
-    @Nullable String serialisedRequest)
+    @Nullable PriorAuthorityContent content)
     implements GenesisScoped {
 
   /** Normalises a missing (pre-field) {@code applicationDataVersion} to {@code 0L}. */
@@ -63,7 +62,6 @@ public record PriorAuthoritySubmittedEvent(
         applicationDataVersion,
         occurredAt,
         billingType,
-        null,
         null);
   }
 

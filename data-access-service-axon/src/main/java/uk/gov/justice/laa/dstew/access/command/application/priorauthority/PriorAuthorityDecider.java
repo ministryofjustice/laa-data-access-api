@@ -36,15 +36,13 @@ public final class PriorAuthorityDecider {
         command.schemaVersion(),
         command.occurredAt(),
         officeCode,
-        command.content(),
-        command.serialisedRequest());
+        command.content());
   }
 
   /**
    * Returns a {@link PriorAuthoritySubmittedEvent} for the given submit command, carrying the
-   * submitted draft content and raw request as erasable content. The submitted content is also
-   * appended as version 0 of {@code prior_authority_data}, since a submission's draft content is
-   * not itself versioned.
+   * submitted draft content as erasable content. The submitted content is also appended as version
+   * 0 of {@code prior_authority_data}, since a submission's draft content is not itself versioned.
    *
    * @param applicationDataVersion the parent application's current data version, pinned into the
    *     event so the work-list projection hydrates parent fields deterministically on replay
@@ -66,8 +64,7 @@ public final class PriorAuthorityDecider {
         applicationDataVersion,
         command.occurredAt(),
         billingType,
-        submitted.content(),
-        submitted.serialisedRequest());
+        submitted.content());
   }
 
   /**
@@ -79,11 +76,7 @@ public final class PriorAuthorityDecider {
       PriorAuthorityState state,
       PriorAuthorityContent content) {
     return new PriorAuthorityDraftUpdatedEvent(
-        command.priorAuthorityId(),
-        state.applicationId,
-        command.occurredAt(),
-        content,
-        command.serialisedRequest());
+        command.priorAuthorityId(), state.applicationId, command.occurredAt(), content);
   }
 
   /** Preserves the draft type established when the draft was opened. */
@@ -216,7 +209,6 @@ public final class PriorAuthorityDecider {
         command.documentId(),
         command.documentType(),
         command.occurredAt(),
-        applicationId,
-        command.serialisedRequest());
+        applicationId);
   }
 }

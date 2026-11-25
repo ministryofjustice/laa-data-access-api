@@ -23,14 +23,12 @@ public final class PriorAuthorityEvolve {
     state.submitted = false;
     state.decided = false;
     state.draftContent = Erasable.of(event.content());
-    state.draftSerialisedRequest = Erasable.of(event.serialisedRequest());
     state.draftModifiedAt = event.occurredAt();
   }
 
   /** Applies a {@link PriorAuthorityDraftUpdatedEvent}, replacing the draft content. */
   public static void apply(PriorAuthorityState state, PriorAuthorityDraftUpdatedEvent event) {
     state.draftContent = Erasable.of(event.content());
-    state.draftSerialisedRequest = Erasable.of(event.serialisedRequest());
     state.draftModifiedAt = event.occurredAt();
   }
 
@@ -46,7 +44,6 @@ public final class PriorAuthorityEvolve {
     state.billingType = event.billingType();
     state.submission = submittedContent(state, event);
     state.draftContent = Erasable.erased();
-    state.draftSerialisedRequest = Erasable.erased();
     state.draftModifiedAt = null;
     state.documentFilenames.clear();
     state.schemaVersion = event.schemaVersion();
@@ -118,7 +115,6 @@ public final class PriorAuthorityEvolve {
   /** Applies a {@link PriorAuthorityDocumentTypeUpdatedEvent} to the given state. */
   public static void apply(
       PriorAuthorityState state, PriorAuthorityDocumentTypeUpdatedEvent event) {
-    state.draftSerialisedRequest = Erasable.of(event.serialisedRequest());
     state.draftModifiedAt = event.occurredAt();
     state.uploadedDocuments.replaceAll(
         document ->
@@ -129,7 +125,7 @@ public final class PriorAuthorityEvolve {
 
   private static Erasable<PriorAuthorityDataPayload> submittedContent(
       PriorAuthorityState state, PriorAuthoritySubmittedEvent event) {
-    if (event.content() == null || event.serialisedRequest() == null) {
+    if (event.content() == null) {
       return Erasable.erased();
     }
     return Erasable.of(
@@ -137,7 +133,7 @@ public final class PriorAuthorityEvolve {
             event.priorAuthorityId(),
             event.applicationId(),
             event.content(),
-            event.serialisedRequest(),
+            null,
             event.occurredAt(),
             null,
             state.officeCode,

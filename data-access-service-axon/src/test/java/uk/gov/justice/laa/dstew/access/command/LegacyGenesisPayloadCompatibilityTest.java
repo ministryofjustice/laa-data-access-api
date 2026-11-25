@@ -133,8 +133,7 @@ class LegacyGenesisPayloadCompatibilityTest {
     PriorAuthorityDocumentTypeUpdatedEvent current =
         new PriorAuthorityDocumentTypeUpdatedEvent(
             ITEM_ID, DOCUMENT_ID, "INVOICE", OCCURRED_AT, PARENT_ID);
-    assertIsLegacyShapeOf(
-        LEGACY_DOCUMENT_TYPE_UPDATED, current, "parentApplicationId", "serialisedRequest");
+    assertIsLegacyShapeOf(LEGACY_DOCUMENT_TYPE_UPDATED, current, "parentApplicationId");
 
     PriorAuthorityDocumentTypeUpdatedEvent legacy =
         read(LEGACY_DOCUMENT_TYPE_UPDATED, PriorAuthorityDocumentTypeUpdatedEvent.class);

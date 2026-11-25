@@ -17,19 +17,8 @@ public record PriorAuthorityDocumentTypeUpdatedEvent(
     @RetainedField UUID documentId,
     @Nullable String documentType,
     @RetainedField Instant occurredAt,
-    @RetainedField UUID parentApplicationId,
-    @Nullable String serialisedRequest)
+    @RetainedField UUID parentApplicationId)
     implements GenesisScoped {
-
-  /** Creates the event without the raw request. */
-  public PriorAuthorityDocumentTypeUpdatedEvent(
-      UUID priorAuthorityId,
-      UUID documentId,
-      String documentType,
-      Instant occurredAt,
-      UUID parentApplicationId) {
-    this(priorAuthorityId, documentId, documentType, occurredAt, parentApplicationId, null);
-  }
 
   /** Events stored before {@code parentApplicationId} was recorded name no genesis. */
   @Override

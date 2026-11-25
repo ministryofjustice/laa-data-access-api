@@ -20,8 +20,7 @@ public record PriorAuthorityDraftStartedEvent(
     @RetainedField int schemaVersion,
     @RetainedField Instant occurredAt,
     @RetainedField String officeCode,
-    @Nullable PriorAuthorityContent content,
-    @Nullable String serialisedRequest)
+    @Nullable PriorAuthorityContent content)
     implements GenesisScoped {
 
   public PriorAuthorityDraftStartedEvent(
@@ -48,7 +47,6 @@ public record PriorAuthorityDraftStartedEvent(
         schemaVersion,
         occurredAt,
         officeCode,
-        null,
         null);
   }
 

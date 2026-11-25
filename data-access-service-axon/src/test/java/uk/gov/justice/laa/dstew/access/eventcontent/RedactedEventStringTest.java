@@ -27,6 +27,8 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 
 class RedactedEventStringTest {
 
@@ -131,13 +133,32 @@ class RedactedEventStringTest {
             null,
             null,
             null),
-        new PriorAuthorityDocumentTypeUpdatedEvent(ID, ID, null, Instant.EPOCH, ID, CONTENT_SECRET),
+        new PriorAuthorityDocumentTypeUpdatedEvent(ID, ID, CONTENT_SECRET, Instant.EPOCH, ID),
         new PriorAuthorityDocumentUploadedEvent(
             ID, ID, Instant.EPOCH, null, null, "checksum", ID, null, null, CONTENT_SECRET),
         new PriorAuthorityDraftStartedEvent(
-            ID, ID, "type", 1, Instant.EPOCH, null, null, CONTENT_SECRET),
-        new PriorAuthorityDraftUpdatedEvent(ID, ID, Instant.EPOCH, null, CONTENT_SECRET),
+            ID,
+            ID,
+            "type",
+            1,
+            Instant.EPOCH,
+            null,
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, CONTENT_SECRET, null, null, null)),
+        new PriorAuthorityDraftUpdatedEvent(
+            ID,
+            ID,
+            Instant.EPOCH,
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, CONTENT_SECRET, null, null, null)),
         new PriorAuthoritySubmittedEvent(
-            ID, ID, "type", 1, 1, 1L, Instant.EPOCH, "billing", null, CONTENT_SECRET));
+            ID,
+            ID,
+            "type",
+            1,
+            1,
+            1L,
+            Instant.EPOCH,
+            "billing",
+            new PriorAuthorityContent(
+                PriorAuthorityType.EXPERT, CONTENT_SECRET, null, null, null)));
   }
 }

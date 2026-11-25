@@ -223,8 +223,7 @@ class PriorAuthorityDocumentUploadCommandHandlerTest {
             1,
             OCCURRED_AT,
             "1A001B",
-            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Existing", null, null, null),
-            "{}"));
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Existing", null, null, null)));
     return state;
   }
 }

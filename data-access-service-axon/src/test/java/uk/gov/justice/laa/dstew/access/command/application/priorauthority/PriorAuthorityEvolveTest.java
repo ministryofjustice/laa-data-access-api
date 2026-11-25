@@ -180,12 +180,10 @@ class PriorAuthorityEvolveTest {
             1,
             startedAt,
             "1A001B",
-            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "First", null, null, null),
-            "{\"first\":true}"));
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "First", null, null, null)));
     PriorAuthorityEvolve.apply(
         state,
-        new PriorAuthorityDraftUpdatedEvent(
-            priorAuthorityId, applicationId, updatedAt, updated, "{\"updated\":true}"));
+        new PriorAuthorityDraftUpdatedEvent(priorAuthorityId, applicationId, updatedAt, updated));
     PriorAuthorityEvolve.apply(state, uploaded(priorAuthorityId, keptId, startedAt, "kept.pdf"));
     PriorAuthorityEvolve.apply(
         state, uploaded(priorAuthorityId, deletedId, startedAt, "deleted.pdf"));
@@ -200,7 +198,7 @@ class PriorAuthorityEvolveTest {
                 priorAuthorityId,
                 applicationId,
                 updated,
-                "{\"updated\":true}",
+                null,
                 updatedAt,
                 null,
                 "1A001B",
@@ -238,8 +236,7 @@ class PriorAuthorityEvolveTest {
             1,
             occurredAt,
             "1A001B",
-            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Text", null, null, null),
-            "{}"));
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Text", null, null, null)));
     PriorAuthorityEvolve.apply(
         state,
         new PriorAuthoritySubmittedEvent(
@@ -269,8 +266,7 @@ class PriorAuthorityEvolveTest {
             1,
             startedAt,
             "1A001B",
-            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Draft", null, null, null),
-            "{\"draft\":true}"));
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Draft", null, null, null)));
     PriorAuthorityEvolve.apply(state, uploaded(priorAuthorityId, documentId, startedAt, "a.pdf"));
 
     PriorAuthorityEvolve.apply(
@@ -284,15 +280,14 @@ class PriorAuthorityEvolveTest {
             0L,
             submittedAt,
             "HOURLY",
-            submitted,
-            "{\"submitted\":true}"));
+            submitted));
 
     PriorAuthorityDataPayload versionZero =
         new PriorAuthorityDataPayload(
             priorAuthorityId,
             applicationId,
             submitted,
-            "{\"submitted\":true}",
+            null,
             submittedAt,
             null,
             "1A001B",
@@ -350,29 +345,6 @@ class PriorAuthorityEvolveTest {
   }
 
   @Test
-  void givenSubmittedContentWithErasedRequest_whenApplied_thenSubmittedPayloadEmpty() {
-    UUID priorAuthorityId = UUID.randomUUID();
-    UUID applicationId = UUID.randomUUID();
-    Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
-    PriorAuthorityState state = new PriorAuthorityState();
-    PriorAuthorityEvolve.apply(
-        state,
-        new PriorAuthoritySubmittedEvent(
-            priorAuthorityId,
-            applicationId,
-            "EXPERT",
-            1,
-            0L,
-            0L,
-            occurredAt,
-            null,
-            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "x", null, null, null),
-            null));
-
-    assertThat(state.submittedPayload()).isEmpty();
-  }
-
-  @Test
   void givenDecisionWithoutContent_whenApplied_thenRecordsOutcomeOnSubmittedContent() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
@@ -389,8 +361,7 @@ class PriorAuthorityEvolveTest {
             0L,
             occurredAt,
             null,
-            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "x", null, null, null),
-            "{}"));
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "x", null, null, null)));
     PriorAuthorityEvolve.apply(
         state,
         new PriorAuthorityDecisionMadeEvent(

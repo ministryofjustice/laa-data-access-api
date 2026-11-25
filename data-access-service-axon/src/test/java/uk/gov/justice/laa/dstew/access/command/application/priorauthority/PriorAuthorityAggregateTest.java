@@ -58,7 +58,6 @@ class PriorAuthorityAggregateTest {
     assertThat(event.parentApplicationId()).isEqualTo(APP_ID);
     assertThat(event.occurredAt()).isEqualTo(Instant.parse("2026-10-01T10:00:00Z"));
     assertThat(event.content()).isNull();
-    assertThat(event.serialisedRequest()).isNull();
 
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
     aggregate.on(

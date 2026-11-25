@@ -21,8 +21,7 @@ public record PriorAuthorityDraftUpdatedEvent(
     @RetainedField @EventTag(key = "PriorAuthorityAggregate") UUID priorAuthorityId,
     @RetainedField UUID parentApplicationId,
     @RetainedField Instant occurredAt,
-    @Nullable PriorAuthorityContent content,
-    @Nullable String serialisedRequest)
+    @Nullable PriorAuthorityContent content)
     implements GenesisScoped {
 
   @Override

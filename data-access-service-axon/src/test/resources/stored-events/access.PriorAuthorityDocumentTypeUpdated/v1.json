@@ -6,7 +6,6 @@
     "parentApplicationId": "00000000-0000-0000-0000-000000000001"
   },
   "content": {
-    "documentType": "GATEWAY_EVIDENCE",
-    "serialisedRequest": "{\"documentType\":\"GATEWAY_EVIDENCE\"}"
+    "documentType": "GATEWAY_EVIDENCE"
   }
 }

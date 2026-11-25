@@ -59,7 +59,6 @@ class PriorAuthorityDeciderTest {
     assertThat(event.occurredAt()).isEqualTo(OCCURRED_AT);
     assertThat(event.officeCode()).isEqualTo("1A001B");
     assertThat(event.content()).isEqualTo(command.content());
-    assertThat(event.serialisedRequest()).isEqualTo("{}");
   }
 
   @Test
@@ -111,7 +110,6 @@ class PriorAuthorityDeciderTest {
     assertThat(event.occurredAt()).isEqualTo(OCCURRED_AT);
     assertThat(event.billingType()).isEqualTo("FIXED_RATE");
     assertThat(event.content()).isEqualTo(SUBMITTED_CONTENT);
-    assertThat(event.serialisedRequest()).isEqualTo("{\"submit\":1}");
   }
 
   @Test
@@ -535,6 +533,5 @@ class PriorAuthorityDeciderTest {
     assertThat(event.content())
         .isEqualTo(
             new PriorAuthorityContent(PriorAuthorityType.EXPERT, "need expert", null, null, null));
-    assertThat(event.serialisedRequest()).isEqualTo("{}");
   }
 }

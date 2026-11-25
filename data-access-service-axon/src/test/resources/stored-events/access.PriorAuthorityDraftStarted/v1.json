@@ -15,7 +15,6 @@
         "disbursementAmount": 150.00,
         "disbursementPurpose": "Court interpreter"
       }
-    },
-    "serialisedRequest": "{\"applicationId\":\"00000000-0000-0000-0000-000000000001\",\"priorAuthorityType\":\"DISBURSEMENT\",\"counselDetails\":null,\"disbursementDetails\":{\"disbursementAmount\":150.00,\"disbursementPurpose\":\"Court interpreter\"},\"expertDetails\":null,\"justification\":\"Interpreter costs for proceedings\"}"
+    }
   }
 }

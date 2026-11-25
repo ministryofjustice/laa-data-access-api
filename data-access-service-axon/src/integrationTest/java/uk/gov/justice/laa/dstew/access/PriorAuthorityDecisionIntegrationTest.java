@@ -156,7 +156,7 @@ class PriorAuthorityDecisionIntegrationTest extends BaseIntegrationTest {
     var submitted = storedEvent(priorAuthorityId, "access.PriorAuthoritySubmitted");
     assertThat(submitted.get("payload").toString())
         .contains("\"dataVersion\":0", "\"billingType\":\"HOURLY\"")
-        .doesNotContain("Jane Smith", "Expert witness for case", "serialisedRequest");
+        .doesNotContain("Jane Smith", "Expert witness for case");
     assertThat(submitted.get("content").toString())
         .contains("Jane Smith", "Expert witness for case");
 

@@ -17,7 +17,6 @@
         "disbursementAmount": 175.50,
         "disbursementPurpose": "Court interpreter"
       }
-    },
-    "serialisedRequest": "{\"documentType\":\"GATEWAY_EVIDENCE\"}"
+    }
   }
 }

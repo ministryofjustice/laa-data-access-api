@@ -34,7 +34,6 @@ public class PriorAuthorityState {
   String billingType;
   List<DocumentMetadata> uploadedDocuments = new ArrayList<>();
   Erasable<PriorAuthorityContent> draftContent = Erasable.erased();
-  Erasable<String> draftSerialisedRequest = Erasable.erased();
   Instant draftModifiedAt;
   Map<UUID, Erasable<String>> documentFilenames = new LinkedHashMap<>();
   Erasable<PriorAuthorityDataPayload> submission = Erasable.erased();
@@ -52,7 +51,7 @@ public class PriorAuthorityState {
             priorAuthorityId,
             applicationId,
             draftContent.value(),
-            draftSerialisedRequest.value(),
+            null,
             draftModifiedAt,
             null,
             officeCode,
@@ -83,10 +82,7 @@ public class PriorAuthorityState {
   }
 
   private boolean hasOpenDraft() {
-    return priorAuthorityId != null
-        && !submitted
-        && !draftContent.isErased()
-        && !draftSerialisedRequest.isErased();
+    return priorAuthorityId != null && !submitted && !draftContent.isErased();
   }
 
   Map<UUID, String> retainedFilenames() {

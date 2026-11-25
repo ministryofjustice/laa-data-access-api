@@ -61,8 +61,7 @@ class UpdatePriorAuthorityDraftCommandHandlerTest {
                 priorAuthorityId,
                 applicationId,
                 OCCURRED_AT,
-                updatedContent.withPriorAuthorityType(PriorAuthorityType.EXPERT),
-                "new"));
+                updatedContent.withPriorAuthorityType(PriorAuthorityType.EXPERT)));
   }
 
   @Test
@@ -119,7 +118,7 @@ class UpdatePriorAuthorityDraftCommandHandlerTest {
     PriorAuthorityEvolve.apply(
         state,
         new PriorAuthorityDraftStartedEvent(
-            priorAuthorityId, applicationId, "EXPERT", 1, OCCURRED_AT, "1A001B", content, "{}"));
+            priorAuthorityId, applicationId, "EXPERT", 1, OCCURRED_AT, "1A001B", content));
     return state;
   }
 }

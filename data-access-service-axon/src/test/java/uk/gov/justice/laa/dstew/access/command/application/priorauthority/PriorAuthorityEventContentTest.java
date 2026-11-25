@@ -43,13 +43,11 @@ class PriorAuthorityEventContentTest {
             3L,
             AT,
             "HOURLY",
-            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Jane Doe", null, null, null),
-            "{\"justification\":\"Jane Doe\"}");
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Jane Doe", null, null, null));
 
     var split = separator.separate("access.PriorAuthoritySubmitted", tree(event));
 
-    assertThat(split.content().propertyNames())
-        .containsExactlyInAnyOrder("content", "serialisedRequest");
+    assertThat(split.content().propertyNames()).containsExactly("content");
     assertThat(split.kept().toString()).doesNotContain("Jane Doe");
     assertThat(rejoin(split, PriorAuthoritySubmittedEvent.class)).isEqualTo(event);
     assertThat(separator.hasContentFields("access.PriorAuthoritySubmitted")).isTrue();

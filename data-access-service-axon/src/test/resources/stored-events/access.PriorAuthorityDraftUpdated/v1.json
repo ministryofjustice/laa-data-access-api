@@ -12,7 +12,6 @@
         "disbursementAmount": 175.50,
         "disbursementPurpose": "Court interpreter"
       }
-    },
-    "serialisedRequest": "{\"counselDetails\":null,\"disbursementDetails\":{\"disbursementAmount\":175.50,\"disbursementPurpose\":\"Court interpreter\"},\"expertDetails\":null,\"justification\":\"Updated interpreter costs\"}"
+    }
   }
 }

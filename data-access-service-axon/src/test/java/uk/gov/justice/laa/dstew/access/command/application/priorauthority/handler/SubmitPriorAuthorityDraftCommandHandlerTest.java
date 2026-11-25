@@ -69,7 +69,7 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
             PriorAuthorityType.EXPERT, "Need urgent review", null, null, null);
     PriorAuthorityDataPayload payload =
         new PriorAuthorityDataPayload(
-            priorAuthorityId, applicationId, content, "{}", Instant.parse("2026-08-31T09:00:00Z"));
+            priorAuthorityId, applicationId, content, null, Instant.parse("2026-08-31T09:00:00Z"));
     SubmitPriorAuthorityDraftCommand command =
         new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT, CALLER);
     PriorAuthorityState state =
@@ -109,8 +109,7 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
                 3L,
                 OCCURRED_AT,
                 null,
-                content,
-                "{}"));
+                content));
   }
 
   @Test
@@ -176,8 +175,7 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
                 4L,
                 OCCURRED_AT,
                 null,
-                content,
-                "{}"));
+                content));
     verify(jsonSchemaValidator).validate(content, "PriorAuthority.json", 4);
   }
 
@@ -234,8 +232,7 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
                 3L,
                 OCCURRED_AT,
                 BillingType.HOURLY.name(),
-                content,
-                "{}"));
+                content));
   }
 
   @ParameterizedTest
@@ -313,8 +310,7 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
             schemaVersion,
             OCCURRED_AT,
             payload.officeCode(),
-            payload.content(),
-            payload.serialisedRequest()));
+            payload.content()));
     return state;
   }
 }
