@@ -315,8 +315,8 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
             schemaVersion,
             OCCURRED_AT,
             payload.officeCode(),
-            Erasable.of(payload.content()),
-            Erasable.of(payload.serialisedRequest())));
+            payload.content(),
+            payload.serialisedRequest()));
     return state;
   }
 }

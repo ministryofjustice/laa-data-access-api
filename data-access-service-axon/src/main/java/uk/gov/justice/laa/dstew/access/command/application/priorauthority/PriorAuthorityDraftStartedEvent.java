@@ -5,9 +5,10 @@ import java.util.Set;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
+import org.jspecify.annotations.Nullable;
 import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
+import uk.gov.justice.laa.dstew.access.eventcontent.RedactedEventString;
 import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 
 /** Event produced when a Prior Authority draft is first created; carries the draft content. */
@@ -19,15 +20,9 @@ public record PriorAuthorityDraftStartedEvent(
     @RetainedField int schemaVersion,
     @RetainedField Instant occurredAt,
     @RetainedField String officeCode,
-    Erasable<PriorAuthorityContent> content,
-    Erasable<String> serialisedRequest)
+    @Nullable PriorAuthorityContent content,
+    @Nullable String serialisedRequest)
     implements GenesisScoped {
-
-  /** Treats absent content as erased, as in an erased content row or a kept-fields-only read. */
-  public PriorAuthorityDraftStartedEvent {
-    content = Erasable.orErased(content);
-    serialisedRequest = Erasable.orErased(serialisedRequest);
-  }
 
   public PriorAuthorityDraftStartedEvent(
       UUID priorAuthorityId,
@@ -53,12 +48,17 @@ public record PriorAuthorityDraftStartedEvent(
         schemaVersion,
         occurredAt,
         officeCode,
-        Erasable.erased(),
-        Erasable.erased());
+        null,
+        null);
   }
 
   @Override
   public Set<UUID> genesisIds() {
     return GenesisScoped.ids(applicationId);
+  }
+
+  @Override
+  public String toString() {
+    return RedactedEventString.of(this);
   }
 }

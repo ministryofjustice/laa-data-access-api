@@ -27,7 +27,6 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -207,9 +206,8 @@ class PriorAuthorityDocumentDeleteCommandHandlerTest {
             1,
             OCCURRED_AT,
             "1A001B",
-            Erasable.of(
-                new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Existing", null, null, null)),
-            Erasable.of("{}")));
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Existing", null, null, null),
+            "{}"));
     return state;
   }
 }

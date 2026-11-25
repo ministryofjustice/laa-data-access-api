@@ -59,8 +59,8 @@ class PriorAuthorityDeciderTest {
     assertThat(event.schemaVersion()).isEqualTo(1);
     assertThat(event.occurredAt()).isEqualTo(OCCURRED_AT);
     assertThat(event.officeCode()).isEqualTo("1A001B");
-    assertThat(event.content().value()).isEqualTo(command.content());
-    assertThat(event.serialisedRequest().value()).isEqualTo("{}");
+    assertThat(event.content()).isEqualTo(command.content());
+    assertThat(event.serialisedRequest()).isEqualTo("{}");
   }
 
   @Test
@@ -535,9 +535,9 @@ class PriorAuthorityDeciderTest {
     assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(event.parentApplicationId()).isEqualTo(applicationId);
     assertThat(event.occurredAt()).isEqualTo(OCCURRED_AT);
-    assertThat(event.content().value())
+    assertThat(event.content())
         .isEqualTo(
             new PriorAuthorityContent(PriorAuthorityType.EXPERT, "need expert", null, null, null));
-    assertThat(event.serialisedRequest().value()).isEqualTo("{}");
+    assertThat(event.serialisedRequest()).isEqualTo("{}");
   }
 }

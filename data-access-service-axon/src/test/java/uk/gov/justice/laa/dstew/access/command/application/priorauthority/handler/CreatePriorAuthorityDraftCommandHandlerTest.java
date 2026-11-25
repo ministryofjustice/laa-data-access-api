@@ -26,7 +26,6 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 import uk.gov.justice.laa.dstew.access.security.OfficeCodeWriteAccessPolicy;
@@ -80,8 +79,8 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
                 1,
                 OCCURRED_AT,
                 "1A001B",
-                Erasable.of(content),
-                Erasable.of("{}")));
+                content,
+                "{}"));
   }
 
   @Test
@@ -154,8 +153,8 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
                 1,
                 OCCURRED_AT,
                 null,
-                Erasable.of(content),
-                Erasable.of("{}")));
+                content,
+                "{}"));
   }
 
   @Test

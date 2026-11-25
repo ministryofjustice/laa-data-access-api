@@ -190,9 +190,8 @@ class PriorAuthorityDocumentTypeUpdateCommandHandlerTest {
             1,
             OCCURRED_AT,
             "1A001B",
-            Erasable.of(
-                new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Existing", null, null, null)),
-            Erasable.of("{}")));
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Existing", null, null, null),
+            "{}"));
     return state;
   }
 }

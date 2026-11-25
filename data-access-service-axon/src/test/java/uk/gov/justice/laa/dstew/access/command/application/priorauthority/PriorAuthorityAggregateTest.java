@@ -13,7 +13,6 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 
 @DisplayName("PriorAuthorityAggregate")
 class PriorAuthorityAggregateTest {
@@ -58,8 +57,8 @@ class PriorAuthorityAggregateTest {
     assertThat(event.priorAuthorityId()).isEqualTo(PA_ID);
     assertThat(event.parentApplicationId()).isEqualTo(APP_ID);
     assertThat(event.occurredAt()).isEqualTo(Instant.parse("2026-10-01T10:00:00Z"));
-    assertThat(event.content()).isEqualTo(Erasable.erased());
-    assertThat(event.serialisedRequest()).isEqualTo(Erasable.erased());
+    assertThat(event.content()).isNull();
+    assertThat(event.serialisedRequest()).isNull();
 
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
     aggregate.on(

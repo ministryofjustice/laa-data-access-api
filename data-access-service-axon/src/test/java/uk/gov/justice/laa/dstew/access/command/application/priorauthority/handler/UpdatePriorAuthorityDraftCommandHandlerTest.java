@@ -23,7 +23,6 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.Update
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
-import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 
@@ -51,7 +50,7 @@ class UpdatePriorAuthorityDraftCommandHandlerTest {
         new UpdatePriorAuthorityDraftCommand(
             priorAuthorityId, updatedContent, "new", 2, "PriorAuthority.json", OCCURRED_AT, CALLER);
     when(priorAuthority.getState())
-        .thenReturn(draftState(priorAuthorityId, applicationId, Erasable.of(existingContent)));
+        .thenReturn(draftState(priorAuthorityId, applicationId, existingContent));
 
     new UpdatePriorAuthorityDraftCommandHandler()
         .handle(command, priorAuthority, draftStore, eventAppender);
@@ -62,8 +61,8 @@ class UpdatePriorAuthorityDraftCommandHandlerTest {
                 priorAuthorityId,
                 applicationId,
                 OCCURRED_AT,
-                Erasable.of(updatedContent.withPriorAuthorityType(PriorAuthorityType.EXPERT)),
-                Erasable.of("new")));
+                updatedContent.withPriorAuthorityType(PriorAuthorityType.EXPERT),
+                "new"));
   }
 
   @Test
@@ -103,7 +102,7 @@ class UpdatePriorAuthorityDraftCommandHandlerTest {
             OCCURRED_AT,
             CALLER);
     when(priorAuthority.getState())
-        .thenReturn(draftState(priorAuthorityId, UUID.randomUUID(), Erasable.erased()));
+        .thenReturn(draftState(priorAuthorityId, UUID.randomUUID(), null));
 
     assertThatThrownBy(
             () ->
@@ -115,19 +114,12 @@ class UpdatePriorAuthorityDraftCommandHandlerTest {
   }
 
   private static PriorAuthorityState draftState(
-      UUID priorAuthorityId, UUID applicationId, Erasable<PriorAuthorityContent> content) {
+      UUID priorAuthorityId, UUID applicationId, PriorAuthorityContent content) {
     PriorAuthorityState state = new PriorAuthorityState();
     PriorAuthorityEvolve.apply(
         state,
         new PriorAuthorityDraftStartedEvent(
-            priorAuthorityId,
-            applicationId,
-            "EXPERT",
-            1,
-            OCCURRED_AT,
-            "1A001B",
-            content,
-            Erasable.of("{}")));
+            priorAuthorityId, applicationId, "EXPERT", 1, OCCURRED_AT, "1A001B", content, "{}"));
     return state;
   }
 }

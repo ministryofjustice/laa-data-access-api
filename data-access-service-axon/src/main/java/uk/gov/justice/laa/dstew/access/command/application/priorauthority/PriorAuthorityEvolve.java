@@ -22,15 +22,15 @@ public final class PriorAuthorityEvolve {
     state.schemaVersion = event.schemaVersion();
     state.submitted = false;
     state.decided = false;
-    state.draftContent = event.content();
-    state.draftSerialisedRequest = event.serialisedRequest();
+    state.draftContent = Erasable.of(event.content());
+    state.draftSerialisedRequest = Erasable.of(event.serialisedRequest());
     state.draftModifiedAt = event.occurredAt();
   }
 
   /** Applies a {@link PriorAuthorityDraftUpdatedEvent}, replacing the draft content. */
   public static void apply(PriorAuthorityState state, PriorAuthorityDraftUpdatedEvent event) {
-    state.draftContent = event.content();
-    state.draftSerialisedRequest = event.serialisedRequest();
+    state.draftContent = Erasable.of(event.content());
+    state.draftSerialisedRequest = Erasable.of(event.serialisedRequest());
     state.draftModifiedAt = event.occurredAt();
   }
 

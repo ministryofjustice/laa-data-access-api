@@ -181,17 +181,12 @@ class PriorAuthorityEvolveTest {
             1,
             startedAt,
             "1A001B",
-            Erasable.of(
-                new PriorAuthorityContent(PriorAuthorityType.EXPERT, "First", null, null, null)),
-            Erasable.of("{\"first\":true}")));
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "First", null, null, null),
+            "{\"first\":true}"));
     PriorAuthorityEvolve.apply(
         state,
         new PriorAuthorityDraftUpdatedEvent(
-            priorAuthorityId,
-            applicationId,
-            updatedAt,
-            Erasable.of(updated),
-            Erasable.of("{\"updated\":true}")));
+            priorAuthorityId, applicationId, updatedAt, updated, "{\"updated\":true}"));
     PriorAuthorityEvolve.apply(state, uploaded(priorAuthorityId, keptId, startedAt, "kept.pdf"));
     PriorAuthorityEvolve.apply(
         state, uploaded(priorAuthorityId, deletedId, startedAt, "deleted.pdf"));
@@ -244,9 +239,8 @@ class PriorAuthorityEvolveTest {
             1,
             occurredAt,
             "1A001B",
-            Erasable.of(
-                new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Text", null, null, null)),
-            Erasable.of("{}")));
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Text", null, null, null),
+            "{}"));
     PriorAuthorityEvolve.apply(
         state,
         new PriorAuthoritySubmittedEvent(
@@ -276,9 +270,8 @@ class PriorAuthorityEvolveTest {
             1,
             startedAt,
             "1A001B",
-            Erasable.of(
-                new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Draft", null, null, null)),
-            Erasable.of("{\"draft\":true}")));
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Draft", null, null, null),
+            "{\"draft\":true}"));
     PriorAuthorityEvolve.apply(state, uploaded(priorAuthorityId, documentId, startedAt, "a.pdf"));
 
     PriorAuthorityEvolve.apply(

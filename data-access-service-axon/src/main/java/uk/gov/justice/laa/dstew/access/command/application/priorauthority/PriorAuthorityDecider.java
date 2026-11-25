@@ -37,8 +37,8 @@ public final class PriorAuthorityDecider {
         command.schemaVersion(),
         command.occurredAt(),
         officeCode,
-        Erasable.of(command.content()),
-        Erasable.of(command.serialisedRequest()));
+        command.content(),
+        command.serialisedRequest());
   }
 
   /**
@@ -83,8 +83,8 @@ public final class PriorAuthorityDecider {
         command.priorAuthorityId(),
         state.applicationId,
         command.occurredAt(),
-        Erasable.of(content),
-        Erasable.of(command.serialisedRequest()));
+        content,
+        command.serialisedRequest());
   }
 
   /** Preserves the draft type established when the draft was opened. */
