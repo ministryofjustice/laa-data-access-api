@@ -12,12 +12,12 @@ import org.axonframework.messaging.eventstreaming.StreamableEventSource;
 import org.axonframework.messaging.eventstreaming.StreamingCondition;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventContentSeparator;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventContentStore;
-import uk.gov.justice.laa.dstew.access.eventcontent.RegisteredContentReaders;
+import uk.gov.justice.laa.dstew.access.eventcontent.ReadsEventContent;
 
 /**
  * An event source that rejoins content for each streamed event, failing if an event whose type has
- * content fields has no content row. Only registered content readers may have one; see {@link
- * #forProcessor}.
+ * content fields has no content row. Only the processor of a handler annotated {@link
+ * ReadsEventContent} may have one; see {@link #forHandler}.
  */
 public final class ContentReadingEventSource implements StreamableEventSource {
 
@@ -38,17 +38,20 @@ public final class ContentReadingEventSource implements StreamableEventSource {
   }
 
   /**
-   * Wraps a processor's event source so it receives content.
+   * Wraps the event source of a handler's processor so it receives content.
    *
-   * @throws IllegalStateException if the processor is not a registered content reader
+   * @throws IllegalStateException if the handler is not annotated {@link ReadsEventContent}
    */
-  public static StreamableEventSource forProcessor(
-      String processorName,
+  public static StreamableEventSource forHandler(
+      Class<?> handlerType,
       StreamableEventSource delegate,
       Supplier<EventContentSeparator> separator,
       Supplier<EventContentStore> store,
       Supplier<EventConverter> converter) {
-    RegisteredContentReaders.require(processorName);
+    if (!handlerType.isAnnotationPresent(ReadsEventContent.class)) {
+      throw new IllegalStateException(
+          handlerType.getName() + " is not annotated @ReadsEventContent");
+    }
     return new ContentReadingEventSource(delegate, separator, store, converter);
   }
 

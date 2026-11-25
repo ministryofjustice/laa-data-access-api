@@ -29,10 +29,19 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
+import uk.gov.justice.laa.dstew.access.eventcontent.ReadsEventContent;
 
-/** Independently replayable projection of the current state of each prior-authority submission. */
+/**
+ * Independently replayable projection of the current state of each prior-authority submission.
+ *
+ * <p>Reads event content. It stores the size, content type, source service and file suffix of each
+ * document from {@link PriorAuthorityDocumentUploadedEvent}, and each document's latest type from
+ * {@link PriorAuthorityDocumentTypeUpdatedEvent}. Erasure reaches this content through replay:
+ * resetting and replaying the projection after erasure rebuilds these values as absent.
+ */
 @Component
 @Namespace("prior-authority-projection")
+@ReadsEventContent
 public class PriorAuthorityProjection {
 
   private static final List<String> SUBMITTED_OR_LATER =

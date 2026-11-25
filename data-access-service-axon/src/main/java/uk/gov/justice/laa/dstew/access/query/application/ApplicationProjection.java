@@ -47,16 +47,26 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
+import uk.gov.justice.laa.dstew.access.eventcontent.ReadsEventContent;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexAccessPolicy;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexSpecification;
 
-/** Independently replayable projection of the current state of each Application. */
+/**
+ * Independently replayable projection of the current state of each Application.
+ *
+ * <p>Reads event content. It stores the potential duplicates from {@link ApplicationCreatedEvent};
+ * the document type, size, content type, source service and file suffix of each document from
+ * {@link ApplicationDocumentUploadedEvent}; and, until the draft is submitted, each document's
+ * original filename from the same event. Erasure reaches this content through replay: resetting and
+ * replaying the projection after erasure rebuilds these values as absent.
+ */
 @Component
 @SequencingPolicy
 @RequiredArgsConstructor
 @Namespace("application-projection")
+@ReadsEventContent
 public class ApplicationProjection {
 
   private final ApplicationReadRepository applicationReadRepository;

@@ -4,6 +4,7 @@ import static com.tngtech.archunit.base.DescribedPredicate.describe;
 import static com.tngtech.archunit.core.domain.JavaCall.Predicates.target;
 import static com.tngtech.archunit.core.domain.properties.HasName.Predicates.nameMatching;
 import static com.tngtech.archunit.core.domain.properties.HasOwner.Predicates.With.owner;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -18,10 +19,12 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
+import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.annotation.Event;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.command.EventTypes;
 import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
+import uk.gov.justice.laa.dstew.access.eventcontent.ReadsEventContent;
 import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 
 /** Rules that keep event content readable only where erasure has been accounted for. */
@@ -87,6 +90,17 @@ class EventContentArchitectureTest {
         .dependOnClassesThat()
         .haveSimpleNameContaining("Snapshot")
         .because("a snapshot would keep content after the event's content row is erased")
+        .check(classes);
+  }
+
+  @Test
+  void givenContentReadingProjection_whenImported_thenItNamesItsProcessor() {
+    classes()
+        .that()
+        .areAnnotatedWith(ReadsEventContent.class)
+        .should()
+        .beAnnotatedWith(Namespace.class)
+        .because("the processor that receives content is named by the projection's @Namespace")
         .check(classes);
   }
 

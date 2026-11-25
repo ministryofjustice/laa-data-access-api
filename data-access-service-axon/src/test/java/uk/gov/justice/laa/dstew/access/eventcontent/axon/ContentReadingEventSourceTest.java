@@ -2,7 +2,6 @@ package uk.gov.justice.laa.dstew.access.eventcontent.axon;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
@@ -20,38 +19,49 @@ import org.axonframework.messaging.eventhandling.conversion.EventConverter;
 import org.axonframework.messaging.eventhandling.processing.streaming.token.TrackingToken;
 import org.axonframework.messaging.eventstreaming.StreamableEventSource;
 import org.axonframework.messaging.eventstreaming.StreamingCondition;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import tools.jackson.databind.JsonNode;
 import uk.gov.justice.laa.dstew.access.eventcontent.ContentTestEvent;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventContentSeparator;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventContentStore;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventJson;
 import uk.gov.justice.laa.dstew.access.eventcontent.MissingEventContentException;
-import uk.gov.justice.laa.dstew.access.eventcontent.RegisteredContentReaders;
+import uk.gov.justice.laa.dstew.access.eventcontent.ReadsEventContent;
 
+@ExtendWith(MockitoExtension.class)
 class ContentReadingEventSourceTest {
 
   private final EventJson json = new EventJson();
   private final EventConverter converter =
       new DelegatingEventConverter(new JacksonConverter(json.mapper()));
-  private final StreamableEventSource delegate = mock(StreamableEventSource.class);
-  private final EventContentStore store = mock(EventContentStore.class);
-  private final StreamableEventSource source =
-      ContentReadingEventSource.forProcessor(
-          RegisteredContentReaders.PRIOR_AUTHORITY_PROJECTION,
-          delegate,
-          () ->
-              new EventContentSeparator(
-                  json, Map.of(ContentTestEvent.TYPE, ContentTestEvent.class)),
-          () -> store,
-          () -> converter);
+  private final EventContentSeparator separator =
+      new EventContentSeparator(json, Map.of(ContentTestEvent.TYPE, ContentTestEvent.class));
+
+  @Mock private StreamableEventSource delegate;
+  @Mock private EventContentStore store;
+  @Mock private TrackingToken trackingToken;
+
+  private StreamableEventSource source;
+
+  @BeforeEach
+  void setUp() {
+    source =
+        ContentReadingEventSource.forHandler(
+            ContentReader.class, delegate, () -> separator, () -> store, () -> converter);
+  }
 
   @Test
-  void givenUnregisteredProcessor_whenWrapped_thenRejected() {
+  void givenHandlerNotReadingContent_whenWrapped_thenRejected() {
     assertThatThrownBy(
             () ->
-                ContentReadingEventSource.forProcessor(
-                    "work-list-projection", delegate, null, null, null))
-        .isInstanceOf(IllegalStateException.class);
+                ContentReadingEventSource.forHandler(
+                    OtherHandler.class, delegate, () -> separator, () -> store, () -> converter))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage(OtherHandler.class.getName() + " is not annotated @ReadsEventContent");
   }
 
   @Test
@@ -69,8 +79,9 @@ class ContentReadingEventSourceTest {
 
     MessageStream<EventMessage> stream = source.open(condition, null);
 
-    assertThat(read(stream.next().orElseThrow().message()).note()).isEqualTo("secret");
-    assertThat(read(stream.next().orElseThrow().message()).note()).isNull();
+    assertThat(payload(stream.next().orElseThrow().message()).get("note").asString())
+        .isEqualTo("secret");
+    assertThat(payload(stream.next().orElseThrow().message()).has("note")).isFalse();
     assertThat(stream.next().orElseThrow().message().payload()).isNull();
   }
 
@@ -90,8 +101,7 @@ class ContentReadingEventSourceTest {
 
   @Test
   void givenTokenRequests_whenMade_thenDelegated() {
-    CompletableFuture<TrackingToken> token =
-        CompletableFuture.completedFuture(mock(TrackingToken.class));
+    CompletableFuture<TrackingToken> token = CompletableFuture.completedFuture(trackingToken);
     Instant at = Instant.now();
     when(delegate.firstToken(null)).thenReturn(token);
     when(delegate.latestToken(null)).thenReturn(token);
@@ -111,7 +121,12 @@ class ContentReadingEventSourceTest {
         Instant.now());
   }
 
-  private ContentTestEvent read(EventMessage message) {
-    return converter.convert(message.payload(), ContentTestEvent.class);
+  private JsonNode payload(EventMessage message) {
+    return converter.convert(message.payload(), JsonNode.class);
   }
+
+  @ReadsEventContent
+  private static final class ContentReader {}
+
+  private static final class OtherHandler {}
 }

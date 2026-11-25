@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.config;
 
 import org.axonframework.extension.spring.config.EventProcessorDefinition;
+import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.conversion.EventConverter;
 import org.axonframework.messaging.eventhandling.processing.errorhandling.PropagatingErrorHandler;
 import org.springframework.beans.factory.ObjectProvider;
@@ -9,9 +10,11 @@ import org.springframework.context.annotation.Configuration;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventContentSeparator;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventContentStore;
-import uk.gov.justice.laa.dstew.access.eventcontent.RegisteredContentReaders;
+import uk.gov.justice.laa.dstew.access.eventcontent.ReadsEventContent;
 import uk.gov.justice.laa.dstew.access.eventcontent.axon.ContentReadingEventSource;
 import uk.gov.justice.laa.dstew.access.observability.ReportingErrorHandler;
+import uk.gov.justice.laa.dstew.access.query.application.ApplicationProjection;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityProjection;
 import uk.gov.justice.laa.dstew.access.query.lifecycle.LifecycleStreamProjection;
 
 /** Defines isolated processors for projections and synchronous command-side route updates. */
@@ -30,8 +33,7 @@ public class AxonEventProcessingConfig {
       ObjectProvider<EventContentSeparator> separator,
       ObjectProvider<EventContentStore> store,
       ObjectProvider<EventConverter> converter) {
-    return contentReadingProcessor(
-        RegisteredContentReaders.APPLICATION_PROJECTION, separator, store, converter);
+    return projectionProcessor(ApplicationProjection.class, separator, store, converter);
   }
 
   /** Writes lifecycle stream pointers; it needs no content, only IDs and timestamps. */
@@ -55,8 +57,7 @@ public class AxonEventProcessingConfig {
       ObjectProvider<EventContentSeparator> separator,
       ObjectProvider<EventContentStore> store,
       ObjectProvider<EventConverter> converter) {
-    return contentReadingProcessor(
-        RegisteredContentReaders.PRIOR_AUTHORITY_PROJECTION, separator, store, converter);
+    return projectionProcessor(PriorAuthorityProjection.class, separator, store, converter);
   }
 
   /** Keeps the disposable work-list projection replayable and isolated from command routing. */
@@ -91,19 +92,32 @@ public class AxonEventProcessingConfig {
             configuration -> configuration.errorHandler(PropagatingErrorHandler.instance()));
   }
 
-  /** A streaming processor that receives event content; it must be a registered content reader. */
-  private EventProcessorDefinition contentReadingProcessor(
-      String processingGroup,
+  /**
+   * A streaming processor for a projection, named by the projection's {@link Namespace}. It
+   * receives event content only if the projection is annotated {@link ReadsEventContent}.
+   *
+   * @throws IllegalStateException if the projection has no {@link Namespace}
+   */
+  EventProcessorDefinition projectionProcessor(
+      Class<?> projection,
       ObjectProvider<EventContentSeparator> separator,
       ObjectProvider<EventContentStore> store,
       ObjectProvider<EventConverter> converter) {
-    return EventProcessorDefinition.pooledStreamingMatching(processingGroup)
+    var namespace = projection.getAnnotation(Namespace.class);
+    if (namespace == null || namespace.value().isBlank()) {
+      throw new IllegalStateException(
+          projection.getName() + " has no @Namespace naming its processor");
+    }
+    if (!projection.isAnnotationPresent(ReadsEventContent.class)) {
+      return pooledStreamingProcessor(namespace.value());
+    }
+    return EventProcessorDefinition.pooledStreamingMatching(namespace.value())
         .customized(
             configuration ->
                 configuration
                     .eventSource(
-                        ContentReadingEventSource.forProcessor(
-                            processingGroup,
+                        ContentReadingEventSource.forHandler(
+                            projection,
                             configuration.eventSource(),
                             separator::getObject,
                             store::getObject,
