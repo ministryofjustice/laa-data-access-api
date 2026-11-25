@@ -201,6 +201,7 @@ public class GetPriorAuthorityResponseMapper {
       expertInfo.setGrantedFixedRateAmount(details.expert().getGrantedFixedRateAmount());
       expertInfo.setGrantedHourlyRateAmount(details.expert().getGrantedHourlyRateAmount());
       expertInfo.setGrantedTime(toTimeRequested(details.expert().getGrantedTime()));
+      expertInfo.setGrantedTotalAmount(details.expert().getGrantedTotalAmount());
       result.setExpert(expertInfo);
     }
     if (details.disbursement() != null) {

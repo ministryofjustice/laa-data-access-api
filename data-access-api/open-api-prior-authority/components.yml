@@ -103,6 +103,11 @@ components:
           description: Hourly rate amount granted by the Caseworker as part of the decision, whether or not it differs from the amount requested. Only for hourly-rate expert fees; mutually exclusive with grantedFixedRateAmount.
         grantedTime:
           $ref: "#/components/schemas/DecisionTimeRequested"
+        grantedTotalAmount:
+          type: number
+          description: >-
+            Total amount granted by the Caseworker for the expert (fixed-rate or hourly-rate).
+            May differ from the Provider's originally requested totalAmount, which is unchanged.
 
     PriorAuthorityResponse:
       type: object
@@ -642,6 +647,9 @@ components:
           description: Hourly rate amount granted by the Caseworker as part of the decision, whether or not it differs from the amount requested. Only for hourly-rate expert fees; mutually exclusive with grantedFixedRateAmount.
         grantedTime:
           $ref: "#/components/schemas/TimeRequested"
+        grantedTotalAmount:
+          type: number
+          description: Total amount granted by the Caseworker for the expert
 
     DisbursementInformation:
       type: object
