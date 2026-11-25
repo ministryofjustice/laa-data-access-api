@@ -26,7 +26,6 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.dao.DataIntegrityViolationException;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
-import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
 class ApplicationDataStoreTest {
 
@@ -151,7 +150,7 @@ class ApplicationDataStoreTest {
   }
 
   @Test
-  void givenCreationDetails_whenAppended_thenStoresVersionedPayloadAndStableHash() {
+  void givenCreationDetails_whenAppended_thenStoresVersionedPayload() {
     UUID applicationId = UUID.randomUUID();
     var details = applicationCreationDetails(applicationId);
 
@@ -161,26 +160,22 @@ class ApplicationDataStoreTest {
     verify(repository).saveAndFlush(captor.capture());
     assertThat(captor.getValue().getId()).isEqualTo(new ApplicationDataId(applicationId, 0L));
     assertThat(captor.getValue().getPayload()).isEqualTo(ApplicationDataPayload.from(details));
-    assertThat(captor.getValue().getPayloadHash())
-        .isEqualTo(PayloadFingerprint.compute(details.serialisedRequest()));
     assertThat(captor.getValue().getCreatedAt()).isEqualTo(details.occurredAt());
   }
 
   @Test
-  void givenReconstructedPayload_whenAppended_thenStoresRequestedVersionAndRequestHash() {
+  void givenReconstructedPayload_whenAppended_thenStoresRequestedVersion() {
     UUID applicationId = UUID.randomUUID();
     ApplicationDataPayload payload =
         ApplicationDataPayload.from(applicationCreationDetails(applicationId));
     Instant occurredAt = Instant.parse("2026-07-20T10:00:00Z");
 
-    store.append(applicationId, 3L, payload, "decision-request", occurredAt);
+    store.append(applicationId, 3L, payload, occurredAt);
 
     ArgumentCaptor<ApplicationData> captor = ArgumentCaptor.forClass(ApplicationData.class);
     verify(repository).saveAndFlush(captor.capture());
     assertThat(captor.getValue().getId()).isEqualTo(new ApplicationDataId(applicationId, 3L));
     assertThat(captor.getValue().getPayload()).isSameAs(payload);
-    assertThat(captor.getValue().getPayloadHash())
-        .isEqualTo(PayloadFingerprint.compute("decision-request"));
     assertThat(captor.getValue().getCreatedAt()).isEqualTo(occurredAt);
   }
 

@@ -31,9 +31,6 @@ public class PriorAuthorityData {
   @Column(nullable = false)
   private PriorAuthorityDataPayload payload;
 
-  @Column(name = "payload_hash", nullable = false)
-  private String payloadHash;
-
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 }

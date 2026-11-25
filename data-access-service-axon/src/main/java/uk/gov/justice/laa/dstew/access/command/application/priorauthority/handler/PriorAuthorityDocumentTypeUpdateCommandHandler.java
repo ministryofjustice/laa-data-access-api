@@ -47,7 +47,6 @@ public class PriorAuthorityDocumentTypeUpdateCommandHandler {
         existingDraft
             .withSerialisedRequest(command.serialisedRequest())
             .withSubmittedAt(command.occurredAt()),
-        command.serialisedRequest(),
         command.occurredAt());
     eventAppender.append(
         PriorAuthorityDecider.decideDocumentTypeUpdated(

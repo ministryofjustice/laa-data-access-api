@@ -444,10 +444,7 @@ class CreateApplicationInMemoryTest {
     assertThat(applicationDataRepository.findById(new ApplicationDataId(createdApplicationId, 0L)))
         .isPresent()
         .hasValueSatisfying(
-            data -> {
-              assertThat(data.getPayload().laaReference()).isEqualTo("LAA-123");
-              assertThat(data.getPayloadHash()).hasSize(64);
-            });
+            data -> assertThat(data.getPayload().laaReference()).isEqualTo("LAA-123"));
 
     var processors = axonConfiguration.getComponents(StreamingEventProcessor.class);
     assertThat(processors.get("application-projection")).isNotNull();

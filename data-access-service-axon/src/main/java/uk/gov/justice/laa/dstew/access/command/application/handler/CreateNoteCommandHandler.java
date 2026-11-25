@@ -27,7 +27,6 @@ public class CreateNoteCommandHandler {
         command.applicationId(),
         event.applicationDataVersion(),
         current.withNote(command.noteText(), command.occurredAt()),
-        command.serialisedNoteRequest(),
         command.occurredAt());
     eventAppender.append(event);
   }

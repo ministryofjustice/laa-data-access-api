@@ -55,7 +55,6 @@ public class PriorAuthorityDocumentDeleteCommandHandler {
         command.priorAuthorityId(),
         existingDraft.applicationId(),
         existingDraft.withoutDocumentFilename(command.documentId()),
-        existingDraft.serialisedRequest(),
         command.occurredAt());
     eventAppender.append(
         PriorAuthorityDecider.decideDocumentDeleted(command, priorAuthority.getApplicationId()));

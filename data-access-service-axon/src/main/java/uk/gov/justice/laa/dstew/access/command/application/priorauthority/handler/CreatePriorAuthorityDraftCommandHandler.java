@@ -54,11 +54,7 @@ public class CreatePriorAuthorityDraftCommandHandler {
             null);
 
     draftStore.upsert(
-        command.priorAuthorityId(),
-        command.applicationId(),
-        payload,
-        command.serialisedRequest(),
-        command.occurredAt());
+        command.priorAuthorityId(), command.applicationId(), payload, command.occurredAt());
     eventAppender.append(PriorAuthorityDecider.decideStartDraft(command, officeCode));
   }
 }

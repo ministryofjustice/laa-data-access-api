@@ -26,7 +26,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
-import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
 @ExtendWith(MockitoExtension.class)
 class PriorAuthorityDataStoreTest {
@@ -51,15 +50,13 @@ class PriorAuthorityDataStoreTest {
         new PriorAuthorityDataPayload(
             priorAuthorityId, applicationId, content, "request-json", occurredAt);
 
-    store.append(priorAuthorityId, 0L, applicationId, payload, "request-json", occurredAt);
+    store.append(priorAuthorityId, 0L, applicationId, payload, occurredAt);
 
     ArgumentCaptor<PriorAuthorityData> captor = ArgumentCaptor.forClass(PriorAuthorityData.class);
     verify(repository).saveAndFlush(captor.capture());
     assertThat(captor.getValue().getId()).isEqualTo(new PriorAuthorityDataId(priorAuthorityId, 0L));
     assertThat(captor.getValue().getApplicationId()).isEqualTo(applicationId);
     assertThat(captor.getValue().getPayload()).isEqualTo(payload);
-    assertThat(captor.getValue().getPayloadHash())
-        .isEqualTo(PayloadFingerprint.compute("request-json"));
     assertThat(captor.getValue().getCreatedAt()).isEqualTo(occurredAt);
   }
 
@@ -76,7 +73,6 @@ class PriorAuthorityDataStoreTest {
                     UUID.randomUUID(),
                     new PriorAuthorityDataPayload(
                         UUID.randomUUID(), UUID.randomUUID(), null, "req", Instant.now()),
-                    "req",
                     Instant.now()))
         .isInstanceOf(DataIntegrityViolationException.class)
         .hasMessageContaining("duplicate prior authority data version");

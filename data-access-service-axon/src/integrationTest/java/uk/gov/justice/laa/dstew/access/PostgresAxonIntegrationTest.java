@@ -578,8 +578,7 @@ class PostgresAxonIntegrationTest {
     assertThatThrownBy(
             () ->
                 jdbcTemplate.update(
-                    "UPDATE axon.application_data SET payload_hash = ? WHERE application_id = ?",
-                    "tampered",
+                    "UPDATE axon.application_data SET payload = '{}'::jsonb WHERE application_id = ?",
                     applicationId))
         .hasStackTraceContaining("application_data is append-only; UPDATE is prohibited");
     assertThatThrownBy(

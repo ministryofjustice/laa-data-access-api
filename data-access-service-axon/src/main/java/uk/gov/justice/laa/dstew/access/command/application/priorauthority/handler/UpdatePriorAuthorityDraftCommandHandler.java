@@ -44,7 +44,6 @@ public class UpdatePriorAuthorityDraftCommandHandler {
             .withContent(content)
             .withSerialisedRequest(command.serialisedRequest())
             .withSubmittedAt(command.occurredAt()),
-        command.serialisedRequest(),
         command.occurredAt());
     eventAppender.append(
         PriorAuthorityDecider.decideDraftUpdated(command, priorAuthority.getState(), content));

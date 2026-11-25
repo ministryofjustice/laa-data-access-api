@@ -34,9 +34,6 @@ public class PriorAuthorityDraft {
   @Column(nullable = false)
   private PriorAuthorityDataPayload payload;
 
-  @Column(name = "payload_hash", nullable = false)
-  private String payloadHash;
-
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 
@@ -48,9 +45,8 @@ public class PriorAuthorityDraft {
   private Long version;
 
   /** Updates the mutable draft fields while preserving creation metadata. */
-  public void update(PriorAuthorityDataPayload payload, String payloadHash, Instant updatedAt) {
+  public void update(PriorAuthorityDataPayload payload, Instant updatedAt) {
     this.payload = payload;
-    this.payloadHash = payloadHash;
     this.updatedAt = updatedAt;
   }
 }

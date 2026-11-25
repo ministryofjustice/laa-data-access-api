@@ -57,8 +57,7 @@ class UpdateApplicationCommandHandlerTest {
         .handle(command, application, applicationDataStore, detailsFactory, eventAppender);
 
     verify(detailsFactory).prepare(PARSED, command, current, false);
-    verify(applicationDataStore)
-        .append(eq(applicationId), eq(6L), eq(updated), eq("{}"), eq(OCCURRED_AT));
+    verify(applicationDataStore).append(eq(applicationId), eq(6L), eq(updated), eq(OCCURRED_AT));
     verify(eventAppender)
         .append(
             new ApplicationUpdatedEvent(
@@ -89,8 +88,7 @@ class UpdateApplicationCommandHandlerTest {
         .handle(command, application, applicationDataStore, detailsFactory, eventAppender);
 
     verify(detailsFactory).prepare(PARSED, command, current, true);
-    verify(applicationDataStore)
-        .append(eq(applicationId), eq(8L), eq(updated), eq("{}"), eq(OCCURRED_AT));
+    verify(applicationDataStore).append(eq(applicationId), eq(8L), eq(updated), eq(OCCURRED_AT));
     verify(eventAppender)
         .append(
             new ApplicationUpdatedEvent(
@@ -121,8 +119,7 @@ class UpdateApplicationCommandHandlerTest {
         .handle(command, application, applicationDataStore, detailsFactory, eventAppender);
 
     verify(detailsFactory).prepare(PARSED, command, current, false);
-    verify(applicationDataStore)
-        .append(eq(applicationId), eq(3L), eq(updated), eq("{}"), eq(OCCURRED_AT));
+    verify(applicationDataStore).append(eq(applicationId), eq(3L), eq(updated), eq(OCCURRED_AT));
     verify(eventAppender)
         .append(
             new ApplicationUpdatedEvent(

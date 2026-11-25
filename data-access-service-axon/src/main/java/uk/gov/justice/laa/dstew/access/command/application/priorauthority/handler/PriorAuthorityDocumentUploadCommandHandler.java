@@ -52,7 +52,6 @@ public class PriorAuthorityDocumentUploadCommandHandler {
         command.priorAuthorityId(),
         existingDraft.applicationId(),
         existingDraft.withDocumentFilename(command.documentId(), command.originalFilename()),
-        existingDraft.serialisedRequest(),
         command.occurredAt());
     eventAppender.append(
         PriorAuthorityDecider.decideDocumentUploaded(command, priorAuthority.getApplicationId()));

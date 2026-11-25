@@ -163,12 +163,7 @@ class ApplicationAggregateDraftTest {
     ArgumentCaptor<ApplicationDataPayload> payload =
         ArgumentCaptor.forClass(ApplicationDataPayload.class);
     verify(applicationDataStore)
-        .append(
-            eq(applicationId),
-            eq(0L),
-            payload.capture(),
-            eq(details.serialisedRequest()),
-            eq(details.occurredAt()));
+        .append(eq(applicationId), eq(0L), payload.capture(), eq(details.occurredAt()));
     assertThat(payload.getValue().documentFilenames())
         .containsEntry(documentId, "client-report.pdf");
   }
@@ -417,12 +412,7 @@ class ApplicationAggregateDraftTest {
                 applicationId, 0L, PayloadFingerprint.compute("{}"), details));
 
     verify(applicationDataStore)
-        .append(
-            applicationId,
-            0L,
-            ApplicationDataPayload.from(details),
-            details.serialisedRequest(),
-            details.occurredAt());
+        .append(applicationId, 0L, ApplicationDataPayload.from(details), details.occurredAt());
   }
 
   @Test

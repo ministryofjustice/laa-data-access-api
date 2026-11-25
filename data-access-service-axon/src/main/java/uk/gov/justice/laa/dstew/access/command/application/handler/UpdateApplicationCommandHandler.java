@@ -28,11 +28,7 @@ public class UpdateApplicationCommandHandler {
     var event = ApplicationDecider.decideUpdate(application.getState(), command, parsed);
     var updated = detailsFactory.prepare(parsed, command, current, event.enteredSubmitted());
     applicationDataStore.append(
-        command.applicationId(),
-        event.applicationDataVersion(),
-        updated,
-        command.serialisedRequest(),
-        command.occurredAt());
+        command.applicationId(), event.applicationDataVersion(), updated, command.occurredAt());
     eventAppender.append(event);
   }
 }

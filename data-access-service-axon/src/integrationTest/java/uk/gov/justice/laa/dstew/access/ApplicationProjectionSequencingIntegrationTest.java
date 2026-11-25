@@ -132,11 +132,10 @@ class ApplicationProjectionSequencingIntegrationTest {
     legacyPayload.remove(List.of("categoryOfLawCode", "matterTypeCode"));
     jdbcTemplate.update(
         "INSERT INTO axon.application_data "
-            + "(application_id, version, payload, payload_hash, created_at) "
-            + "VALUES (?, 0, ?::jsonb, ?, ?)",
+            + "(application_id, version, payload, created_at) "
+            + "VALUES (?, 0, ?::jsonb, ?)",
         applicationId,
         legacyPayload.toString(),
-        PayloadFingerprint.compute(details.serialisedRequest()),
         Timestamp.from(details.occurredAt()));
     ApplicationCreatedEvent event =
         new ApplicationCreatedEvent(

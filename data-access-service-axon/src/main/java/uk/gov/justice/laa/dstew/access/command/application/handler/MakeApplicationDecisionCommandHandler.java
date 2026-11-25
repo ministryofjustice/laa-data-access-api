@@ -64,11 +64,7 @@ public class MakeApplicationDecisionCommandHandler {
             command.serialisedRequest(),
             command.eventDescription());
     applicationDataStore.append(
-        command.applicationId(),
-        nextVersion,
-        updated,
-        command.serialisedRequest(),
-        command.occurredAt());
+        command.applicationId(), nextVersion, updated, command.occurredAt());
     eventAppender.append(decision);
   }
 

@@ -54,7 +54,6 @@ public class SubmitPriorAuthorityDraftCommandHandler {
         0L,
         priorAuthority.getApplicationId(),
         payload.withSubmittedAt(command.occurredAt()),
-        payload.serialisedRequest(),
         command.occurredAt());
 
     long applicationDataVersion =

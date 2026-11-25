@@ -49,7 +49,6 @@ public class MarkApplicationReadyCommandHandler {
         command.applicationId(),
         nextDataVersion,
         current.withManualAssessmentRequired(),
-        command.serialisedRequest(),
         command.occurredAt());
     List<Object> events = new ArrayList<>();
     events.add(

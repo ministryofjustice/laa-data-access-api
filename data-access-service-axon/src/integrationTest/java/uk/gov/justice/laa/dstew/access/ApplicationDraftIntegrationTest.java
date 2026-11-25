@@ -660,9 +660,7 @@ class ApplicationDraftIntegrationTest {
           return invocation.callRealMethod();
         };
     if (uploadCommitsFirst) {
-      doAnswer(gate)
-          .when(applicationDataStore)
-          .append(eq(applicationId), anyLong(), any(), any(), any());
+      doAnswer(gate).when(applicationDataStore).append(eq(applicationId), anyLong(), any(), any());
     } else {
       doAnswer(gate).when(uploadHandler).handle(any(), any(), any());
     }

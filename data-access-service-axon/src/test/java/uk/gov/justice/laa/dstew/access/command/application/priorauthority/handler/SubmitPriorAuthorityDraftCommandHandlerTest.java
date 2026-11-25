@@ -96,7 +96,6 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
             eq(0L),
             eq(applicationId),
             payloadCaptor.capture(),
-            eq("{}"),
             eq(OCCURRED_AT));
     assertThat(payloadCaptor.getValue()).isEqualTo(payload.withSubmittedAt(OCCURRED_AT));
     verify(eventAppender)

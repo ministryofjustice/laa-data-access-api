@@ -42,11 +42,7 @@ public class SubmitApplicationDraftCommandHandler {
       payload = payload.withDocumentFilename(filename.getKey(), filename.getValue());
     }
     applicationDataStore.append(
-        command.applicationId(),
-        applicationDataVersion,
-        payload,
-        details.serialisedRequest(),
-        details.occurredAt());
+        command.applicationId(), applicationDataVersion, payload, details.occurredAt());
     eventAppender.append(
         ApplicationDecider.decideSubmitDraft(
             command.applicationId(),

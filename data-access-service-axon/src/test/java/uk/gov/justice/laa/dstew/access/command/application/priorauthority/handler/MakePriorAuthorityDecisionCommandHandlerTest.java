@@ -93,7 +93,6 @@ class MakePriorAuthorityDecisionCommandHandlerTest {
             eq(dataVersion + 1),
             eq(applicationId),
             payloadCaptor.capture(),
-            eq("{}"),
             eq(OCCURRED_AT));
     assertThat(payloadCaptor.getValue().content()).isEqualTo(content);
     assertThat(payloadCaptor.getValue().decision()).isEqualTo("GRANTED");
@@ -172,7 +171,6 @@ class MakePriorAuthorityDecisionCommandHandlerTest {
             eq(dataVersion + 1),
             eq(applicationId),
             payloadCaptor.capture(),
-            eq("{}"),
             eq(OCCURRED_AT));
     assertThat(payloadCaptor.getValue().expert().getGrantedTime()).isEqualTo(timeRequested);
     verify(eventAppender)

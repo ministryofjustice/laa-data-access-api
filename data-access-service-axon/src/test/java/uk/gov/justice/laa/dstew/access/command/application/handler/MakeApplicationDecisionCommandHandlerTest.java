@@ -70,7 +70,7 @@ class MakeApplicationDecisionCommandHandlerTest {
         .handle(command, application, applicationDataStore, eventAppender);
 
     verify(applicationDataStore)
-        .append(eq(applicationId), eq(8L), payloadCaptor.capture(), eq("{}"), eq(OCCURRED_AT));
+        .append(eq(applicationId), eq(8L), payloadCaptor.capture(), eq(OCCURRED_AT));
     assertThat(payloadCaptor.getValue().overallDecision()).isEqualTo("GRANTED");
     assertThat(payloadCaptor.getValue().autoGranted()).isEqualTo(AutoGrantedState.MANUAL);
     assertThat(payloadCaptor.getValue().certificate()).containsEntry("reference", "CERT-1");
@@ -128,7 +128,7 @@ class MakeApplicationDecisionCommandHandlerTest {
         eventAppender);
 
     verify(applicationDataStore)
-        .append(eq(applicationId), eq(3L), payloadCaptor.capture(), eq("{}"), eq(OCCURRED_AT));
+        .append(eq(applicationId), eq(3L), payloadCaptor.capture(), eq(OCCURRED_AT));
     assertThat(payloadCaptor.getValue().certificate()).isNull();
     assertThat(payloadCaptor.getValue().meritsDecisions())
         .containsKey(existingProceedingId)

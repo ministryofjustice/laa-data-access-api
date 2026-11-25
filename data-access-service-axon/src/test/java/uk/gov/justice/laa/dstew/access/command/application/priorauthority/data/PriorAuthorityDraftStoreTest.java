@@ -17,7 +17,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
-import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
 @ExtendWith(MockitoExtension.class)
 class PriorAuthorityDraftStoreTest {
@@ -39,15 +38,13 @@ class PriorAuthorityDraftStoreTest {
 
     when(repository.findById(priorAuthorityId)).thenReturn(Optional.empty());
 
-    store.upsert(priorAuthorityId, applicationId, payload, "request-json", occurredAt);
+    store.upsert(priorAuthorityId, applicationId, payload, occurredAt);
 
     ArgumentCaptor<PriorAuthorityDraft> captor = ArgumentCaptor.forClass(PriorAuthorityDraft.class);
     verify(repository).saveAndFlush(captor.capture());
     assertThat(captor.getValue().getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(captor.getValue().getApplicationId()).isEqualTo(applicationId);
     assertThat(captor.getValue().getPayload()).isEqualTo(payload);
-    assertThat(captor.getValue().getPayloadHash())
-        .isEqualTo(PayloadFingerprint.compute("request-json"));
     assertThat(captor.getValue().getCreatedAt()).isEqualTo(occurredAt);
     assertThat(captor.getValue().getUpdatedAt()).isEqualTo(occurredAt);
   }
@@ -71,12 +68,11 @@ class PriorAuthorityDraftStoreTest {
 
     when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(existing));
 
-    store.upsert(priorAuthorityId, applicationId, payload, "second-request", secondOccurredAt);
+    store.upsert(priorAuthorityId, applicationId, payload, secondOccurredAt);
 
     verify(repository).flush();
     assertThat(existing.getCreatedAt()).isEqualTo(originalCreatedAt);
     assertThat(existing.getPayload()).isEqualTo(payload);
-    assertThat(existing.getPayloadHash()).isEqualTo(PayloadFingerprint.compute("second-request"));
     assertThat(existing.getUpdatedAt()).isEqualTo(secondOccurredAt);
   }
 

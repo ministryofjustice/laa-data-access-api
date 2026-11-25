@@ -421,7 +421,6 @@ class PriorAuthorityHistoryAssemblerTest {
         .id(new PriorAuthorityDataId(priorAuthorityId, 3L))
         .applicationId(applicationId)
         .payload(payload)
-        .payloadHash("hash")
         .createdAt(Instant.parse("2026-08-01T09:30:00Z"))
         .build();
   }

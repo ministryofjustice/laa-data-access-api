@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application.data;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -11,7 +12,6 @@ import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.JacksonExceptionMessageBuilder;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetails;
 import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
-import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
 /** Writes and retrieves immutable application-data versions. */
 @Component
@@ -37,7 +37,6 @@ public class ApplicationDataStore {
         ApplicationData.builder()
             .id(new ApplicationDataId(applicationId, version))
             .payload(ApplicationDataPayload.from(details))
-            .payloadHash(PayloadFingerprint.compute(details.serialisedRequest()))
             .createdAt(details.occurredAt())
             .build());
   }
@@ -48,20 +47,14 @@ public class ApplicationDataStore {
    * @param applicationId the application identifier
    * @param version the new data version
    * @param payload the complete payload for that version
-   * @param serialisedRequest the request responsible for the version
    * @param occurredAt when the version was created
    */
   public void append(
-      UUID applicationId,
-      long version,
-      ApplicationDataPayload payload,
-      String serialisedRequest,
-      java.time.Instant occurredAt) {
+      UUID applicationId, long version, ApplicationDataPayload payload, Instant occurredAt) {
     repository.saveAndFlush(
         ApplicationData.builder()
             .id(new ApplicationDataId(applicationId, version))
             .payload(payload)
-            .payloadHash(PayloadFingerprint.compute(serialisedRequest))
             .createdAt(occurredAt)
             .build());
   }

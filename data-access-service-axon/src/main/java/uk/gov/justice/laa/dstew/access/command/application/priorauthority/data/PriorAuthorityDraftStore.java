@@ -4,7 +4,6 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
-import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
 /** Writes and retrieves the mutable draft content for a prior-authority submission. */
 @Component
@@ -22,19 +21,16 @@ public class PriorAuthorityDraftStore {
    * @param priorAuthorityId the prior-authority submission identifier
    * @param applicationId the parent application identifier
    * @param payload the payload to persist
-   * @param serialisedRequest the raw request responsible for this update
    * @param occurredAt when the update occurred
    */
   public void upsert(
       UUID priorAuthorityId,
       UUID applicationId,
       PriorAuthorityDataPayload payload,
-      String serialisedRequest,
       Instant occurredAt) {
-    String fingerprint = PayloadFingerprint.compute(serialisedRequest);
     var existing = repository.findById(priorAuthorityId);
     if (existing.isPresent()) {
-      existing.get().update(payload, fingerprint, occurredAt);
+      existing.get().update(payload, occurredAt);
       repository.flush();
     } else {
       repository.saveAndFlush(
@@ -42,7 +38,6 @@ public class PriorAuthorityDraftStore {
               .priorAuthorityId(priorAuthorityId)
               .applicationId(applicationId)
               .payload(payload)
-              .payloadHash(fingerprint)
               .createdAt(occurredAt)
               .updatedAt(occurredAt)
               .build());

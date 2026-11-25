@@ -44,7 +44,6 @@ public class MakePriorAuthorityDecisionCommandHandler {
                           command.disbursementInformation(),
                           command.apportionmentInformation(),
                           command.serialisedRequest())),
-                  command.serialisedRequest(),
                   command.occurredAt());
               eventAppender.append(event);
             });

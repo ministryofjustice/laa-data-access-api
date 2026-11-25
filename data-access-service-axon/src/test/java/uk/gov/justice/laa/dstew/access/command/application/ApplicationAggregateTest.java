@@ -127,7 +127,7 @@ class ApplicationAggregateTest {
         .noEvents();
 
     verify(applicationDataStore, never()).get(any(), anyLong());
-    verify(applicationDataStore, never()).append(any(), anyLong(), any(), any(), any());
+    verify(applicationDataStore, never()).append(any(), anyLong(), any(), any());
   }
 
   private AxonTestFixture fixture;
@@ -315,7 +315,7 @@ class ApplicationAggregateTest {
     ApplicationCreationDetails details = detailsWithProceeding(applicationId, proceedingId);
     doThrow(new IllegalStateException("application data unavailable"))
         .when(applicationDataStore)
-        .append(any(), anyLong(), any(), any(), any());
+        .append(any(), anyLong(), any(), any());
 
     fixture
         .given()
@@ -423,7 +423,7 @@ class ApplicationAggregateTest {
     ApplicationCreationDetails details = applicationCreationDetails(applicationId);
     doThrow(new IllegalStateException("application data unavailable"))
         .when(applicationDataStore)
-        .append(any(), anyLong(), any(), any(), any());
+        .append(any(), anyLong(), any(), any());
 
     fixture
         .given()
@@ -676,7 +676,7 @@ class ApplicationAggregateTest {
         .exception(ValidationException.class)
         .noEvents();
 
-    verify(applicationDataStore, never()).append(any(), anyLong(), any(), any(), any());
+    verify(applicationDataStore, never()).append(any(), anyLong(), any(), any());
   }
 
   @ParameterizedTest
@@ -744,7 +744,7 @@ class ApplicationAggregateTest {
         .noEvents();
 
     verify(applicationDataStore, never()).get(any(), anyLong());
-    verify(applicationDataStore, never()).append(any(), anyLong(), any(), any(), any());
+    verify(applicationDataStore, never()).append(any(), anyLong(), any(), any());
   }
 
   @Test
@@ -781,7 +781,7 @@ class ApplicationAggregateTest {
         .exception(ValidationException.class)
         .noEvents();
 
-    verify(applicationDataStore, never()).append(any(), anyLong(), any(), any(), any());
+    verify(applicationDataStore, never()).append(any(), anyLong(), any(), any());
   }
 
   @Test
@@ -1068,7 +1068,7 @@ class ApplicationAggregateTest {
         .thenReturn(currentPayload);
     doThrow(new IllegalStateException("application data unavailable"))
         .when(applicationDataStore)
-        .append(any(), anyLong(), any(), any(), any());
+        .append(any(), anyLong(), any(), any());
 
     fixture
         .given()
@@ -1147,7 +1147,7 @@ class ApplicationAggregateTest {
         .then()
         .success()
         .noEvents();
-    verify(applicationDataStore, never()).append(any(), anyLong(), any(), any(), any());
+    verify(applicationDataStore, never()).append(any(), anyLong(), any(), any());
   }
 
   @Test

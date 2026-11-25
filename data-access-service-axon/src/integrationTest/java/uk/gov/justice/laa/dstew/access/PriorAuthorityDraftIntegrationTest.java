@@ -1165,7 +1165,7 @@ class PriorAuthorityDraftIntegrationTest {
               return invocation.callRealMethod();
             })
         .when(draftStore)
-        .upsert(any(), any(), any(), any(), any());
+        .upsert(any(), any(), any(), any());
     int eventsBefore = eventCount(priorAuthorityId);
 
     List<ResponseEntity<String>> responses =
@@ -1240,7 +1240,7 @@ class PriorAuthorityDraftIntegrationTest {
               return invocation.callRealMethod();
             })
         .when(draftStore)
-        .upsert(any(), any(), any(), any(), any());
+        .upsert(any(), any(), any(), any());
 
     List<ResponseEntity<String>> responses =
         race(
@@ -1625,7 +1625,7 @@ class PriorAuthorityDraftIntegrationTest {
 
   private Map<String, Object> draftRow(UUID priorAuthorityId) {
     return jdbcTemplate.queryForMap(
-        "SELECT payload::text AS payload, payload_hash, created_at, updated_at"
+        "SELECT payload::text AS payload, created_at, updated_at"
             + " FROM axon.prior_authority_draft WHERE prior_authority_id = ?",
         priorAuthorityId);
   }

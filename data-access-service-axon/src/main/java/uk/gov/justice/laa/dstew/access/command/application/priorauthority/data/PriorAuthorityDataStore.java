@@ -8,7 +8,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.JacksonExceptionMessageBuilder;
 import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
-import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
 /** Writes and retrieves immutable prior-authority data versions. */
 @Component
@@ -40,7 +39,6 @@ public class PriorAuthorityDataStore {
    * @param dataVersion the data version
    * @param applicationId the parent application identifier
    * @param payload the payload to persist
-   * @param serialisedRequest the raw request responsible for this version
    * @param occurredAt when the version was created
    */
   public void append(
@@ -48,14 +46,12 @@ public class PriorAuthorityDataStore {
       long dataVersion,
       UUID applicationId,
       PriorAuthorityDataPayload payload,
-      String serialisedRequest,
       Instant occurredAt) {
     repository.saveAndFlush(
         PriorAuthorityData.builder()
             .id(new PriorAuthorityDataId(priorAuthorityId, dataVersion))
             .applicationId(applicationId)
             .payload(payload)
-            .payloadHash(PayloadFingerprint.compute(serialisedRequest))
             .createdAt(occurredAt)
             .build());
   }
