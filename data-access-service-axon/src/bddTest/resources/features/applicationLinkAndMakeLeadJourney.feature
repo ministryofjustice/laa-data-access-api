@@ -1,4 +1,4 @@
-@smokeTest @applicationLinkAndMakeLeadJourney
+@smoke @applicationLinkAndMakeLeadJourney
 Feature: Applications can be linked and a lead can be changed
   As a user
   I want to be able to link applications and change the lead of application group.
