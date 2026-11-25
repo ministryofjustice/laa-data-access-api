@@ -73,7 +73,6 @@ class ApplicationListIndexProjectionTest {
         payload.categoryOfLawCode(),
         payload.matterTypeCode(),
         List.of(),
-        "{}",
         false);
   }
 
@@ -211,12 +210,10 @@ class ApplicationListIndexProjectionTest {
             basePayload.categoryOfLawCode(),
             basePayload.matterTypeCode(),
             basePayload.proceedings(),
-            basePayload.serialisedRequest(),
             basePayload.overallDecision(),
             basePayload.autoGranted(),
             basePayload.meritsDecisions(),
             basePayload.certificate(),
-            basePayload.decisionSerialisedRequest(),
             basePayload.decisionEventDescription(),
             basePayload.assignmentEventDescription(),
             basePayload.notes(),

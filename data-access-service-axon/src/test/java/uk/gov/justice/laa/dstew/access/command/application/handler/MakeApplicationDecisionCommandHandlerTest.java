@@ -206,12 +206,10 @@ class MakeApplicationDecisionCommandHandlerTest {
                 .description("Care order")
                 .code("SE003")
                 .build()),
-        base.serialisedRequest(),
         base.overallDecision(),
         base.autoGranted(),
         meritsDecisions,
         base.certificate(),
-        base.decisionSerialisedRequest(),
         base.decisionEventDescription(),
         base.assignmentEventDescription(),
         base.notes(),

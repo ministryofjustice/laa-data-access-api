@@ -92,7 +92,6 @@ public final class ApplicationEvolve {
                         update.categoryOfLawCode(),
                         update.matterTypeCode(),
                         update.proceedings(),
-                        event.serialisedRequest(),
                         event.enteredSubmitted()));
   }
 
@@ -123,7 +122,6 @@ public final class ApplicationEvolve {
                         event.autoGranted(),
                         mergedMeritsDecisions(state.content.value(), event),
                         event.certificate(),
-                        event.serialisedRequest(),
                         event.eventDescription()));
   }
 
@@ -182,8 +180,7 @@ public final class ApplicationEvolve {
       return Erasable.erased();
     }
     ApplicationDataPayload payload =
-        ApplicationDataPayload.from(
-            event.laaReference(), event.content(), event.serialisedRequest());
+        ApplicationDataPayload.from(event.laaReference(), event.content());
     for (Map.Entry<UUID, Erasable<String>> filename : state.draftDocumentFilenames.entrySet()) {
       if (!filename.getValue().isErased()) {
         payload = payload.withDocumentFilename(filename.getKey(), filename.getValue().value());

@@ -267,14 +267,12 @@ class ApplicationEvolveTest {
                     AutoGrantedState.MANUAL,
                     Map.of(firstProceedingId, granted),
                     certificate,
-                    "{\"d\":1}",
                     "first")
                 .withDecision(
                     "REFUSED",
                     AutoGrantedState.MANUAL,
                     Map.of(firstProceedingId, granted, secondProceedingId, refused),
                     null,
-                    "{\"d\":2}",
                     "second"));
     assertThat(state.proceedingIds).containsExactly(firstProceedingId);
     assertThat(state.decisionRequestFingerprint).isEqualTo("fp2");

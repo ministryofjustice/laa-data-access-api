@@ -89,7 +89,6 @@ class ApplicationReadModelAssemblerTest {
             "MAT",
             "KPBLW",
             List.of(proceeding),
-            "{}",
             false);
     ApplicationDataId dataId = new ApplicationDataId(applicationId, 0L);
     when(applicationDataStore.getAll(List.of(dataId))).thenReturn(Map.of(dataId, data));

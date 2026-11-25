@@ -61,7 +61,6 @@ public class MakeApplicationDecisionCommandHandler {
             DecisionValue.GRANTED.name().equals(command.overallDecision())
                 ? command.certificate()
                 : null,
-            command.serialisedRequest(),
             command.eventDescription());
     applicationDataStore.append(
         command.applicationId(), nextVersion, updated, command.occurredAt());

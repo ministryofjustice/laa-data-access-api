@@ -53,7 +53,6 @@ class ApplicationDataStoreTest {
                         .categoryOfLawCode("MAT")
                         .matterTypeCode("KPBLW")
                         .build()),
-                "{}",
                 false);
     ApplicationDataPayload payload = original.withDocumentFilename(documentId, "client-report.pdf");
 
@@ -68,7 +67,6 @@ class ApplicationDataStoreTest {
                 uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.MANUAL,
                 Map.of(),
                 null,
-                "{}",
                 "decision"),
             payload.withApplicationUpdate(
                 payload.client(),
@@ -81,7 +79,6 @@ class ApplicationDataStoreTest {
                 payload.categoryOfLawCode(),
                 payload.matterTypeCode(),
                 payload.proceedings(),
-                "{}",
                 true));
     assertThat(updates)
         .allSatisfy(

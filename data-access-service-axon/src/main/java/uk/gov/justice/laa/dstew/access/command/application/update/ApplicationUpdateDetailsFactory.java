@@ -37,7 +37,6 @@ public class ApplicationUpdateDetailsFactory {
         parsed.categoryOfLawCode(),
         parsed.matterTypeCode(),
         parsed.proceedings(),
-        command.serialisedRequest(),
         resetAssessment);
   }
 }

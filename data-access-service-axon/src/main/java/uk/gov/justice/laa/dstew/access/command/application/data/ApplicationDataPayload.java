@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application.data;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,8 +17,12 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetails;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 
-/** Sensitive application data stored outside the Axon event stream. */
+/**
+ * Sensitive application data stored outside the Axon event stream. Unknown properties are ignored
+ * so that rows written before the stored request was removed still load.
+ */
 @ExcludeFromGeneratedCodeCoverage
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record ApplicationDataPayload(
     String laaReference,
     ApplicationClient client,
@@ -30,12 +35,10 @@ public record ApplicationDataPayload(
     String categoryOfLawCode,
     String matterTypeCode,
     List<Proceeding> proceedings,
-    String serialisedRequest,
     String overallDecision,
     AutoGrantedState autoGranted,
     Map<UUID, ApplicationMeritsDecision> meritsDecisions,
     Map<String, Object> certificate,
-    String decisionSerialisedRequest,
     String decisionEventDescription,
     String assignmentEventDescription,
     List<ApplicationNote> notes,
@@ -80,12 +83,10 @@ public record ApplicationDataPayload(
       String categoryOfLaw,
       String matterType,
       List<Proceeding> proceedings,
-      String serialisedRequest,
       String overallDecision,
       AutoGrantedState autoGranted,
       Map<UUID, ApplicationMeritsDecision> meritsDecisions,
       Map<String, Object> certificate,
-      String decisionSerialisedRequest,
       String decisionEventDescription,
       String assignmentEventDescription,
       List<ApplicationNote> notes) {
@@ -101,12 +102,10 @@ public record ApplicationDataPayload(
         null,
         null,
         proceedings,
-        serialisedRequest,
         overallDecision,
         autoGranted,
         meritsDecisions,
         certificate,
-        decisionSerialisedRequest,
         decisionEventDescription,
         assignmentEventDescription,
         notes,
@@ -114,8 +113,7 @@ public record ApplicationDataPayload(
   }
 
   /** Creates the initial payload from the content carried by an {@code ApplicationCreatedEvent}. */
-  public static ApplicationDataPayload from(
-      String laaReference, ParsedAppContentDetails content, String serialisedRequest) {
+  public static ApplicationDataPayload from(String laaReference, ParsedAppContentDetails content) {
     return new ApplicationDataPayload(
         laaReference,
         content.client(),
@@ -128,11 +126,9 @@ public record ApplicationDataPayload(
         content.categoryOfLawCode(),
         content.matterTypeCode(),
         content.proceedings(),
-        serialisedRequest,
         null,
         AutoGrantedState.PENDING,
         Map.of(),
-        null,
         null,
         null,
         null,
@@ -159,11 +155,9 @@ public record ApplicationDataPayload(
         details.categoryOfLawCode(),
         details.matterTypeCode(),
         details.proceedings(),
-        details.serialisedRequest(),
         null,
         AutoGrantedState.PENDING,
         Map.of(),
-        null,
         null,
         null,
         null,
@@ -177,7 +171,6 @@ public record ApplicationDataPayload(
       AutoGrantedState newAutoGranted,
       Map<UUID, ApplicationMeritsDecision> newMeritsDecisions,
       Map<String, Object> newCertificate,
-      String newDecisionSerialisedRequest,
       String newDecisionEventDescription) {
     return new ApplicationDataPayload(
         laaReference,
@@ -191,12 +184,10 @@ public record ApplicationDataPayload(
         categoryOfLawCode,
         matterTypeCode,
         proceedings,
-        serialisedRequest,
         newOverallDecision,
         newAutoGranted,
         Map.copyOf(newMeritsDecisions),
         newCertificate == null ? null : Map.copyOf(newCertificate),
-        newDecisionSerialisedRequest,
         newDecisionEventDescription,
         assignmentEventDescription,
         notes,
@@ -217,12 +208,10 @@ public record ApplicationDataPayload(
         categoryOfLawCode,
         matterTypeCode,
         proceedings,
-        serialisedRequest,
         overallDecision,
         autoGranted,
         meritsDecisions,
         certificate,
-        decisionSerialisedRequest,
         decisionEventDescription,
         newAssignmentEventDescription,
         notes,
@@ -243,12 +232,10 @@ public record ApplicationDataPayload(
         categoryOfLawCode,
         matterTypeCode,
         proceedings,
-        serialisedRequest,
         overallDecision,
         AutoGrantedState.MANUAL,
         meritsDecisions,
         certificate,
-        decisionSerialisedRequest,
         decisionEventDescription,
         assignmentEventDescription,
         notes,
@@ -267,7 +254,6 @@ public record ApplicationDataPayload(
       String newCategoryOfLawCode,
       String newMatterTypeCode,
       List<Proceeding> newProceedings,
-      String newSerialisedRequest,
       boolean resetAssessment) {
     return new ApplicationDataPayload(
         laaReference,
@@ -281,12 +267,10 @@ public record ApplicationDataPayload(
         newCategoryOfLawCode,
         newMatterTypeCode,
         List.copyOf(newProceedings),
-        newSerialisedRequest,
         resetAssessment ? null : overallDecision,
         resetAssessment ? AutoGrantedState.PENDING : autoGranted,
         resetAssessment ? Map.of() : meritsDecisions,
         resetAssessment ? null : certificate,
-        resetAssessment ? null : decisionSerialisedRequest,
         resetAssessment ? null : decisionEventDescription,
         assignmentEventDescription,
         notes,
@@ -309,12 +293,10 @@ public record ApplicationDataPayload(
         categoryOfLawCode,
         matterTypeCode,
         proceedings,
-        serialisedRequest,
         overallDecision,
         autoGranted,
         meritsDecisions,
         certificate,
-        decisionSerialisedRequest,
         decisionEventDescription,
         assignmentEventDescription,
         List.copyOf(updated),
@@ -337,12 +319,10 @@ public record ApplicationDataPayload(
         categoryOfLawCode,
         matterTypeCode,
         proceedings,
-        serialisedRequest,
         overallDecision,
         autoGranted,
         meritsDecisions,
         certificate,
-        decisionSerialisedRequest,
         decisionEventDescription,
         assignmentEventDescription,
         notes,

@@ -69,8 +69,7 @@ class ApplicationHistoryAssemblerTest {
     var row = row(applicationId, "APPLICATION_MAKE_DECISION_GRANTED", 4L);
     var payload =
         ApplicationDataPayload.from(applicationCreationDetails(applicationId))
-            .withDecision(
-                "GRANTED", AutoGrantedState.MANUAL, Map.of(), null, "{}", "Decision recorded");
+            .withDecision("GRANTED", AutoGrantedState.MANUAL, Map.of(), null, "Decision recorded");
     when(applicationDataStore.findPayload(applicationId, 4L)).thenReturn(Optional.of(payload));
 
     var results = assembler.assemble(List.of(row));
