@@ -153,14 +153,12 @@ class MakePriorAuthorityDecisionCommandMapperTest {
             .priorAuthorityVersion(8L)
             .decision(DecisionStatus.REFUSED)
             .decisionJustification("  Refusal reason  ")
-            .amountGranted(BigDecimal.ZERO)
             .expert(
                 ExpertMakePriorAuthorityDecisionRequest.builder()
                     .grantedFixedRateAmount(BigDecimal.ZERO)
                     .build())
             .disbursement(DisbursementMakePriorAuthorityDecisionRequest.builder().build())
             .apportionment(ApportionmentMakePriorAuthorityDecisionRequest.builder().build())
-            .dateGranted(OffsetDateTime.parse("2026-09-08T12:40:00Z"))
             .eventHistory(EventHistoryRequest.builder().eventDescription("ignored").build())
             .build();
 
@@ -173,6 +171,8 @@ class MakePriorAuthorityDecisionCommandMapperTest {
     assertThat(command.expertFee().getGrantedHourlyRateAmount()).isNull();
     assertThat(command.disbursementInformation().getGrantedAmount()).isNull();
     assertThat(command.apportionmentInformation().getGrantedClientShareAmount()).isNull();
+    assertThat(command.amountGranted()).isNull();
+    assertThat(command.dateGranted()).isNull();
     assertThat(command.decisionJustification()).isEqualTo("Refusal reason");
   }
 

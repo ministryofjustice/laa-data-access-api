@@ -43,7 +43,7 @@ public class MakePriorAuthorityDecisionCommandMapper {
         expertFeeInformation(request.getExpert()),
         disbursementInformation(request.getDisbursement()),
         apportionmentInformation(request.getApportionment()),
-        request.getDateGranted().toInstant(),
+        request.getDateGranted() == null ? null : request.getDateGranted().toInstant(),
         serialise(request),
         Instant.now());
   }

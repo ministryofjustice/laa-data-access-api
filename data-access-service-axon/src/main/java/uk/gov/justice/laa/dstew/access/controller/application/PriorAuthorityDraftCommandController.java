@@ -19,9 +19,9 @@ import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.model.SubmitPriorAuthorityDraftResponse;
+import uk.gov.justice.laa.dstew.access.observability.logging.aspects.LogMethodArguments;
+import uk.gov.justice.laa.dstew.access.observability.logging.aspects.LogMethodResponse;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerFactory;
-import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
-import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 
 /** HTTP command adapter for Prior Authority draft writes. */
 @RestController

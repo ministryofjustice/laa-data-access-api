@@ -1,0 +1,74 @@
+openapi: 3.0.0
+info:
+  title: Documentation-only schema fixture
+  version: 1.0.0
+paths:
+  /widgets:
+    post:
+      requestBody:
+        $ref: "#/components/requestBodies/WidgetBody"
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WidgetResponse"
+components:
+  requestBodies:
+    WidgetBody:
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/WidgetRequest"
+  schemas:
+    WidgetResponse:
+      type: object
+      properties:
+        id:
+          type: string
+    WidgetRequest:
+      type: object
+      properties:
+        kind:
+          $ref: "#/components/schemas/WidgetKind"
+    WidgetKind:
+      type: string
+      enum: [ROUND, SQUARE]
+    WidgetValidationRequest:
+      allOf:
+        - $ref: "#/components/schemas/WidgetRequest"
+      oneOf:
+        - type: object
+          properties:
+            kind:
+              type: string
+              enum: [ROUND]
+          required: [radius]
+        - type: object
+          properties:
+            kind:
+              type: string
+              enum: [SQUARE]
+          not:
+            required: [radius]
+      properties:
+        detail:
+          $ref: "#/components/schemas/WidgetDetail"
+        parts:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+            anyOf:
+              - properties:
+                  name:
+                    type: string
+                required: [size]
+    WidgetDetail:
+      type: object
+      properties:
+        kind:
+          $ref: "#/components/schemas/WidgetKind"

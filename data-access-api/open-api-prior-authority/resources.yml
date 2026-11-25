@@ -56,6 +56,10 @@ paths:
       tags:
         - prior-authority-command
       summary: Record a decision for a Prior Authority request
+      description: |
+        `amountGranted` and `dateGranted` are required when `decision` is `GRANTED` and must be
+        omitted when `decision` is `REFUSED`. Decision-dependent validation requirements are
+        documented in the `MakePriorAuthorityDecisionValidationRequest` schema.
       operationId: makePriorAuthorityDecision
       parameters:
         - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
@@ -88,8 +92,8 @@ paths:
       summary: Submit an in-progress Prior Authority draft, sealing its content
       description: |
         This command endpoint does not accept a request body.
-        Submit-time content validation requirements are documented in
-        [`SubmitPriorAuthorityDraftValidationRequest`](#/components/schemas/SubmitPriorAuthorityDraftValidationRequest).
+        Submit-time content validation requirements are documented in the
+        `SubmitPriorAuthorityDraftValidationRequest` schema.
       operationId: submitPriorAuthorityDraft
       parameters:
         - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"

@@ -5,8 +5,6 @@ components:
       required:
         - decision
         - decisionJustification
-        - amountGranted
-        - dateGranted
         - eventHistory
         - priorAuthorityVersion
       properties:
@@ -16,9 +14,11 @@ components:
           type: string
         amountGranted:
           type: number
+          description: Required when decision is GRANTED; must be omitted when decision is REFUSED.
         dateGranted:
           type: string
           format: date-time
+          description: Required when decision is GRANTED; must be omitted when decision is REFUSED.
         eventHistory:
           $ref: "../open-api-common/components.yml#/components/schemas/EventHistoryRequest"
         priorAuthorityVersion:
@@ -32,6 +32,48 @@ components:
           $ref: "#/components/schemas/DisbursementMakePriorAuthorityDecisionRequest"
         apportionment:
           $ref: "#/components/schemas/ApportionmentMakePriorAuthorityDecisionRequest"
+
+    MakePriorAuthorityDecisionValidationRequest:
+      description: >-
+        Rules that depend on the decision value. Requests are sent as
+        MakePriorAuthorityDecisionRequest; this schema only documents which fields are required or
+        must be omitted for each decision.
+      allOf:
+        - $ref: "#/components/schemas/MakePriorAuthorityDecisionRequest"
+      oneOf:
+        - title: GRANTED
+          description: amountGranted and dateGranted are required.
+          type: object
+          properties:
+            decision:
+              type: string
+              enum: [GRANTED]
+            amountGranted:
+              type: number
+              description: Required when decision is GRANTED.
+            dateGranted:
+              type: string
+              format: date-time
+              description: Required when decision is GRANTED.
+          required:
+            - decision
+            - amountGranted
+            - dateGranted
+        - title: REFUSED
+          description: amountGranted and dateGranted must be omitted.
+          type: object
+          properties:
+            decision:
+              type: string
+              enum: [REFUSED]
+            amountGranted:
+              description: Must be omitted when decision is REFUSED.
+              not: {}
+            dateGranted:
+              description: Must be omitted when decision is REFUSED.
+              not: {}
+          required:
+            - decision
 
     ApportionmentMakePriorAuthorityDecisionRequest:
       type: object
@@ -216,26 +258,41 @@ components:
         disbursementDetails:
           $ref: "#/components/schemas/SubmitDisbursementDetails"
       oneOf:
-        - type: object
+        - title: EXPERT
+          description: expertDetails is required.
+          type: object
           properties:
             priorAuthorityType:
               type: string
               enum: [EXPERT]
+            expertDetails:
+              $ref: "#/components/schemas/SubmitExpertDetails"
           required:
+            - priorAuthorityType
             - expertDetails
-        - type: object
+        - title: COUNSEL
+          description: counselDetails is required.
+          type: object
           properties:
             priorAuthorityType:
               type: string
               enum: [COUNSEL]
+            counselDetails:
+              $ref: "#/components/schemas/SubmitCounselDetails"
           required:
+            - priorAuthorityType
             - counselDetails
-        - type: object
+        - title: DISBURSEMENT
+          description: disbursementDetails is required.
+          type: object
           properties:
             priorAuthorityType:
               type: string
               enum: [DISBURSEMENT]
+            disbursementDetails:
+              $ref: "#/components/schemas/SubmitDisbursementDetails"
           required:
+            - priorAuthorityType
             - disbursementDetails
 
     SubmitExpertDetails:
