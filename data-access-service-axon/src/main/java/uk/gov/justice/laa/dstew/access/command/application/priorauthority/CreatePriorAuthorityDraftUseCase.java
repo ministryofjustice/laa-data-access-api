@@ -7,10 +7,7 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ValidateP
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteResolver;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 
-/**
- * Validates application eligibility and dispatches a create-prior-authority-draft command, waiting
- * for the projection to confirm the draft is readable.
- */
+/** Validates application eligibility and dispatches a create-prior-authority-draft command. */
 @Component
 public class CreatePriorAuthorityDraftUseCase {
 
@@ -24,16 +21,14 @@ public class CreatePriorAuthorityDraftUseCase {
   }
 
   /**
-   * Validates the application is granted, dispatches the create-draft command, and waits for the
-   * projection to become readable.
+   * Validates the application is granted and dispatches the create-draft command. The draft is
+   * readable from its aggregate as soon as the command commits.
    *
-   * @return {@code true} when the projection confirms the submission within the configured timeout;
-   *     {@code false} on timeout — the command has still committed.
    * @throws RuntimeException propagated from validation if the application is not granted
    */
   @AllowApiCaseworker
   @Transactional
-  public boolean execute(CreatePriorAuthorityDraftCommand command) {
+  public void execute(CreatePriorAuthorityDraftCommand command) {
     dispatcher.dispatch(new ValidateApplicationGrantedCommand(command.applicationId()));
     routeResolver
         .resolveGroupForPriorAuthorityCreation(command.applicationId())
@@ -43,6 +38,5 @@ public class CreatePriorAuthorityDraftUseCase {
                     new ValidatePriorAuthorityGroupEligibilityCommand(
                         groupId, command.applicationId())));
     dispatcher.dispatch(command);
-    return true;
   }
 }

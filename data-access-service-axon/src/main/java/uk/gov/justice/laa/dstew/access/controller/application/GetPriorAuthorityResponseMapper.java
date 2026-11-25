@@ -30,6 +30,7 @@ public class GetPriorAuthorityResponseMapper {
     PriorAuthorityResponse response = new PriorAuthorityResponse();
     response.setPriorAuthorityId(result.priorAuthorityId());
     response.setApplicationId(result.applicationId());
+    response.setOfficeCode(result.officeCode());
     response.setJustification(result.justification());
     response.setStatus(
         result.status() == null

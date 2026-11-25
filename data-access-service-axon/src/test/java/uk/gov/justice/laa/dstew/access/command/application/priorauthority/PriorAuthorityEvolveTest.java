@@ -339,6 +339,8 @@ class PriorAuthorityEvolveTest {
             priorAuthorityId, applicationId, "EXPERT", 1, 0L, 0L, occurredAt, null));
 
     assertThat(state.draft()).isEmpty();
+    assertThat(state.draftSummary(null)).isEqualTo(PriorAuthorityDraftSummary.SUBMITTED);
+    assertThat(state.draftSummary(null).exists()).isFalse();
   }
 
   @Test

@@ -23,7 +23,6 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDraftStartedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
@@ -43,7 +42,6 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
   @Mock private PriorAuthorityAggregate existing;
   @Mock private ApplicationAggregate application;
   @Mock private OfficeCodeWriteAccessPolicy writeAccessPolicy;
-  @Mock private PriorAuthorityDraftStore draftStore;
   @Mock private EventAppender eventAppender;
 
   @Test
@@ -68,7 +66,7 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
     when(application.getOfficeCode()).thenReturn("1A001B");
 
     new CreatePriorAuthorityDraftCommandHandler()
-        .handle(command, null, application, writeAccessPolicy, draftStore, eventAppender);
+        .handle(command, null, application, writeAccessPolicy, eventAppender);
 
     verify(writeAccessPolicy).requireOfficeCodeWriteAccess(eq("1A001B"), eq(CALLER));
     verify(eventAppender)
@@ -108,7 +106,7 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
             () ->
                 new CreatePriorAuthorityDraftCommandHandler()
                     .handle(
-                        command, null, application, writeAccessPolicy, draftStore, eventAppender))
+                        command, null, application, writeAccessPolicy, eventAppender))
         .isInstanceOf(ValidationException.class)
         .isInstanceOfSatisfying(
             ValidationException.class,
@@ -142,7 +140,7 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
     when(application.isGranted()).thenReturn(true);
 
     new CreatePriorAuthorityDraftCommandHandler()
-        .handle(command, null, application, writeAccessPolicy, draftStore, eventAppender);
+        .handle(command, null, application, writeAccessPolicy, eventAppender);
 
     verify(writeAccessPolicy).requireOfficeCodeWriteAccess(isNull(), eq(CALLER));
     verify(eventAppender)
@@ -184,7 +182,6 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
                         existing,
                         application,
                         writeAccessPolicy,
-                        draftStore,
                         eventAppender))
         .isInstanceOf(PriorAuthorityCreationConflictException.class)
         .hasMessage("Prior authority already exists for submission: " + priorAuthorityId);
@@ -214,7 +211,7 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
             CALLER);
 
     new CreatePriorAuthorityDraftCommandHandler()
-        .handle(command, existing, application, writeAccessPolicy, draftStore, eventAppender);
+        .handle(command, existing, application, writeAccessPolicy, eventAppender);
 
     verify(eventAppender)
         .append(
@@ -255,7 +252,7 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
             () ->
                 new CreatePriorAuthorityDraftCommandHandler()
                     .handle(
-                        command, null, application, writeAccessPolicy, draftStore, eventAppender))
+                        command, null, application, writeAccessPolicy, eventAppender))
         .isInstanceOf(AccessDeniedException.class);
 
     verifyNoInteractions(eventAppender);

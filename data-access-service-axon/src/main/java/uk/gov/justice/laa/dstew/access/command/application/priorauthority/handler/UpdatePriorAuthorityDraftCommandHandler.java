@@ -7,7 +7,6 @@ import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecider;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.UpdatePriorAuthorityDraftCommand;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerResource;
 import uk.gov.justice.laa.dstew.access.security.OfficeCodeResourceWriteAccessResolver;
@@ -25,27 +24,13 @@ public class UpdatePriorAuthorityDraftCommandHandler {
       @AuthenticatedCallerResource UpdatePriorAuthorityDraftCommand command,
       @InjectEntity(idProperty = "priorAuthorityId") @WriteAccessResolverResource
           PriorAuthorityAggregate priorAuthority,
-      PriorAuthorityDraftStore draftStore,
       EventAppender eventAppender) {
 
-    var existingDraft =
-        priorAuthority
-            .getState()
-            .draft()
-            .orElseThrow(
-                () ->
-                    new ResourceNotFoundException(
-                        "Prior Authority %s not found".formatted(command.priorAuthorityId())));
+    if (priorAuthority.getState().draft().isEmpty()) {
+      throw new ResourceNotFoundException(
+          "Prior Authority %s not found".formatted(command.priorAuthorityId()));
+    }
     var content = PriorAuthorityDecider.updatedDraftContent(command, priorAuthority.getState());
-    draftStore.upsert(
-        command.priorAuthorityId(),
-        existingDraft.applicationId(),
-        existingDraft
-            .withContent(content)
-            .withSerialisedRequest(command.serialisedRequest())
-            .withSubmittedAt(command.occurredAt()),
-        command.serialisedRequest(),
-        command.occurredAt());
     eventAppender.append(
         PriorAuthorityDecider.decideDraftUpdated(command, priorAuthority.getState(), content));
   }

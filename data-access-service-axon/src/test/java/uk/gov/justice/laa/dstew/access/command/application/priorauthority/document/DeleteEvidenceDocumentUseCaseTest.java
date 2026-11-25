@@ -36,6 +36,7 @@ import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 @ExtendWith(MockitoExtension.class)
 class DeleteEvidenceDocumentUseCaseTest {
@@ -128,6 +129,24 @@ class DeleteEvidenceDocumentUseCaseTest {
 
     assertThatExceptionOfType(ResourceNotFoundException.class)
         .isThrownBy(() -> useCase.execute(priorAuthorityId, documentId, CALLER));
+
+    verifyNoInteractions(dispatcher, sdsService);
+  }
+
+  @Test
+  void givenSubmitted_whenExecute_thenRejectsAsNotDraftWithoutDeletingFromSds() {
+    DeletePriorAuthorityDocumentUseCase useCase =
+        new DeletePriorAuthorityDocumentUseCase(queryGateway, dispatcher, sdsService);
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    stubDraft(priorAuthorityId, documentId, PriorAuthorityDraftSummary.SUBMITTED);
+
+    assertThatExceptionOfType(ValidationException.class)
+        .isThrownBy(() -> useCase.execute(priorAuthorityId, documentId, CALLER))
+        .satisfies(
+            e ->
+                assertThat(e.errors())
+                    .containsExactly("Documents can only be changed on a prior authority draft"));
 
     verifyNoInteractions(dispatcher, sdsService);
   }

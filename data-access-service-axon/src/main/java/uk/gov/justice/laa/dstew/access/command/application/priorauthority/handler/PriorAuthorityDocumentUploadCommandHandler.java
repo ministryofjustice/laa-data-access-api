@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecider;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentUploadCommand;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerResource;
 import uk.gov.justice.laa.dstew.access.security.OfficeCodeResourceWriteAccessResolver;
@@ -28,7 +27,6 @@ public class PriorAuthorityDocumentUploadCommandHandler {
       @AuthenticatedCallerResource PriorAuthorityDocumentUploadCommand command,
       @InjectEntity(idProperty = "priorAuthorityId") @WriteAccessResolverResource
           PriorAuthorityAggregate priorAuthority,
-      PriorAuthorityDraftStore draftStore,
       EventAppender eventAppender) {
 
     requireDraftLifecycle(priorAuthority);
@@ -40,20 +38,10 @@ public class PriorAuthorityDocumentUploadCommandHandler {
       throw new ValidationException(List.of("Document ID already records an upload"));
     }
 
-    var existingDraft =
-        priorAuthority
-            .getState()
-            .draft()
-            .orElseThrow(
-                () ->
-                    new ResourceNotFoundException(
-                        "Prior Authority draft not found: " + command.priorAuthorityId()));
-    draftStore.upsert(
-        command.priorAuthorityId(),
-        existingDraft.applicationId(),
-        existingDraft.withDocumentFilename(command.documentId(), command.originalFilename()),
-        existingDraft.serialisedRequest(),
-        command.occurredAt());
+    if (priorAuthority.getState().draft().isEmpty()) {
+      throw new ResourceNotFoundException(
+          "Prior Authority draft not found: " + command.priorAuthorityId());
+    }
     eventAppender.append(
         PriorAuthorityDecider.decideDocumentUploaded(command, priorAuthority.getApplicationId()));
     return command.documentId();

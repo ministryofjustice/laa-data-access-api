@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecider;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentTypeUpdateCommand;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerResource;
 import uk.gov.justice.laa.dstew.access.security.OfficeCodeResourceWriteAccessResolver;
@@ -28,27 +27,14 @@ public class PriorAuthorityDocumentTypeUpdateCommandHandler {
       @AuthenticatedCallerResource PriorAuthorityDocumentTypeUpdateCommand command,
       @InjectEntity(idProperty = "priorAuthorityId") @WriteAccessResolverResource
           PriorAuthorityAggregate priorAuthority,
-      PriorAuthorityDraftStore draftStore,
       EventAppender eventAppender) {
 
     requireDraftLifecycle(priorAuthority);
-    var existingDraft =
-        priorAuthority
-            .getState()
-            .draft()
-            .orElseThrow(
-                () ->
-                    new ResourceNotFoundException(
-                        "Prior Authority draft not found: " + command.priorAuthorityId()));
+    if (priorAuthority.getState().draft().isEmpty()) {
+      throw new ResourceNotFoundException(
+          "Prior Authority draft not found: " + command.priorAuthorityId());
+    }
     requireActiveDocument(command, priorAuthority);
-    draftStore.upsert(
-        command.priorAuthorityId(),
-        existingDraft.applicationId(),
-        existingDraft
-            .withSerialisedRequest(command.serialisedRequest())
-            .withSubmittedAt(command.occurredAt()),
-        command.serialisedRequest(),
-        command.occurredAt());
     eventAppender.append(
         PriorAuthorityDecider.decideDocumentTypeUpdated(
             command, priorAuthority.getApplicationId()));

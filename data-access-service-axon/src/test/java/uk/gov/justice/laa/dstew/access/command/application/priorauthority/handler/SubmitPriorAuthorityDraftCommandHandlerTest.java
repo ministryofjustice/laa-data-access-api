@@ -34,7 +34,6 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.SubmitPriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.BillingType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertDetails;
@@ -58,7 +57,6 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
   @Mock private ApplicationDataStore applicationDataStore;
   @Mock private JsonSchemaValidator jsonSchemaValidator;
   @Mock private PriorAuthorityAggregate priorAuthority;
-  @Mock private PriorAuthorityDraftStore draftStore;
   @Mock private EventAppender eventAppender;
 
   @Captor private ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor;
@@ -89,7 +87,6 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
             applicationDataStore,
             jsonSchemaValidator,
             priorAuthority,
-            draftStore,
             eventAppender);
 
     verify(jsonSchemaValidator).validate(content, "PriorAuthority.json", 1);
@@ -134,7 +131,6 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
                         applicationDataStore,
                         jsonSchemaValidator,
                         priorAuthority,
-                        draftStore,
                         eventAppender))
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage("Prior Authority draft not found: " + priorAuthorityId);
@@ -166,7 +162,6 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
             applicationDataStore,
             jsonSchemaValidator,
             priorAuthority,
-            draftStore,
             eventAppender);
 
     verify(eventAppender)
@@ -224,7 +219,6 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
             applicationDataStore,
             jsonSchemaValidator,
             priorAuthority,
-            draftStore,
             eventAppender);
 
     verify(eventAppender)
@@ -272,7 +266,6 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
             applicationDataStore,
             jsonSchemaValidator,
             priorAuthority,
-            draftStore,
             eventAppender);
 
     var eventCaptor = ArgumentCaptor.forClass(PriorAuthoritySubmittedEvent.class);
@@ -304,7 +297,6 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
             applicationDataStore,
             jsonSchemaValidator,
             priorAuthority,
-            draftStore,
             eventAppender);
     var eventCaptor = ArgumentCaptor.forClass(PriorAuthoritySubmittedEvent.class);
     verify(eventAppender).append(eventCaptor.capture());

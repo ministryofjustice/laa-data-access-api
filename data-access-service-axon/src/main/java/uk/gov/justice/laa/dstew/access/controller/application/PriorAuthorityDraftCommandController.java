@@ -50,7 +50,7 @@ public class PriorAuthorityDraftCommandController implements PriorAuthorityDraft
     this.authenticatedCallerFactory = authenticatedCallerFactory;
   }
 
-  /** Creates a new Prior Authority draft and returns 201 once the projection is readable. */
+  /** Creates a new Prior Authority draft and returns 201. */
   @Override
   @LogMethodArguments
   @LogMethodResponse
@@ -67,10 +67,8 @@ public class PriorAuthorityDraftCommandController implements PriorAuthorityDraft
     SavePriorAuthorityDraftResponse response =
         new SavePriorAuthorityDraftResponse(
             command.priorAuthorityId(), OffsetDateTime.now(ZoneOffset.UTC));
-    boolean projected = createUseCase.execute(command);
-    return projected
-        ? ResponseEntity.created(location).body(response)
-        : ResponseEntity.accepted().location(location).body(response);
+    createUseCase.execute(command);
+    return ResponseEntity.created(location).body(response);
   }
 
   /** Updates an existing Prior Authority draft and returns 204. */
@@ -107,9 +105,7 @@ public class PriorAuthorityDraftCommandController implements PriorAuthorityDraft
     SubmitPriorAuthorityDraftResponse response =
         new SubmitPriorAuthorityDraftResponse(
             priorAuthorityId, command.occurredAt().atOffset(ZoneOffset.UTC));
-    boolean projected = submitUseCase.submit(command);
-    return projected
-        ? ResponseEntity.ok().location(location).body(response)
-        : ResponseEntity.accepted().location(location).body(response);
+    submitUseCase.submit(command);
+    return ResponseEntity.ok().location(location).body(response);
   }
 }

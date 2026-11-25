@@ -23,7 +23,6 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityEvolve;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityState;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
@@ -41,7 +40,6 @@ class PriorAuthorityDocumentDeleteCommandHandlerTest {
   private static final Instant OCCURRED_AT = Instant.parse("2026-09-01T10:00:00Z");
 
   @Mock private PriorAuthorityAggregate priorAuthority;
-  @Mock private PriorAuthorityDraftStore draftStore;
   @Mock private EventAppender eventAppender;
 
   @Test
@@ -61,7 +59,7 @@ class PriorAuthorityDocumentDeleteCommandHandlerTest {
 
     DocumentMetadata returnedDocument =
         new PriorAuthorityDocumentDeleteCommandHandler()
-            .handle(command, priorAuthority, draftStore, eventAppender);
+            .handle(command, priorAuthority, eventAppender);
 
     assertThat(returnedDocument)
         .isEqualTo(
@@ -92,7 +90,7 @@ class PriorAuthorityDocumentDeleteCommandHandlerTest {
     assertThatThrownBy(
             () ->
                 new PriorAuthorityDocumentDeleteCommandHandler()
-                    .handle(command, priorAuthority, draftStore, eventAppender))
+                    .handle(command, priorAuthority, eventAppender))
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage("Prior Authority draft not found: " + priorAuthorityId);
 
@@ -112,7 +110,7 @@ class PriorAuthorityDocumentDeleteCommandHandlerTest {
     assertThatThrownBy(
             () ->
                 new PriorAuthorityDocumentDeleteCommandHandler()
-                    .handle(command, priorAuthority, draftStore, eventAppender))
+                    .handle(command, priorAuthority, eventAppender))
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage(
             "Document %s not found for Prior Authority %s".formatted(documentId, priorAuthorityId));
@@ -137,7 +135,7 @@ class PriorAuthorityDocumentDeleteCommandHandlerTest {
     assertThatThrownBy(
             () ->
                 new PriorAuthorityDocumentDeleteCommandHandler()
-                    .handle(command, priorAuthority, draftStore, eventAppender))
+                    .handle(command, priorAuthority, eventAppender))
         .isInstanceOf(ValidationException.class);
 
     verifyNoInteractions(eventAppender);
@@ -162,7 +160,7 @@ class PriorAuthorityDocumentDeleteCommandHandlerTest {
     assertThatThrownBy(
             () ->
                 new PriorAuthorityDocumentDeleteCommandHandler()
-                    .handle(command, priorAuthority, draftStore, eventAppender))
+                    .handle(command, priorAuthority, eventAppender))
         .isInstanceOf(ResourceNotFoundException.class);
 
     verifyNoInteractions(eventAppender);

@@ -80,6 +80,7 @@ class GetPriorAuthorityResponseMapperTest {
         PriorAuthorityResult.builder()
             .priorAuthorityId(priorAuthorityId)
             .applicationId(applicationId)
+            .officeCode("1A001B")
             .justification("Expert is required")
             .status("SUBMITTED")
             .submittedAt(submittedAt)
@@ -105,6 +106,7 @@ class GetPriorAuthorityResponseMapperTest {
 
     assertThat(response.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(response.getApplicationId()).isEqualTo(applicationId);
+    assertThat(response.getOfficeCode()).isEqualTo("1A001B");
     assertThat(response.getSubmittedAt()).isEqualTo(submittedAt.atOffset(ZoneOffset.UTC));
     assertThat(response.getPriorAuthorityType().getValue()).isEqualTo("EXPERT");
     assertThat(response.getStatus()).isEqualTo(PriorAuthorityResponse.StatusEnum.SUBMITTED);

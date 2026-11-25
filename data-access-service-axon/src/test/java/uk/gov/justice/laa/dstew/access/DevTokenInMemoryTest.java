@@ -10,6 +10,7 @@ import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -21,6 +22,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthenticationToken;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import uk.gov.justice.laa.dstew.access.testsupport.InMemoryEventContentStoreConfig;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 @SpringBootTest(
@@ -38,6 +40,7 @@ import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
       "ENTRA_AUD=" + TestJwtDecoderConfig.AUDIENCE
     })
 @AutoConfigureTestRestTemplate
+@Import(InMemoryEventContentStoreConfig.class)
 class DevTokenInMemoryTest {
 
   @LocalServerPort private int port;

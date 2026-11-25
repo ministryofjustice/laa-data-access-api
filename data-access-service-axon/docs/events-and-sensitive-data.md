@@ -80,9 +80,10 @@ justification, amounts, dates, expert, disbursement and apportionment details an
 The kept fields include `dataVersion`, `billingType`, `priorAuthorityType` and `overallDecision`,
 so decision validation and conflicts still work after content is erased. Aggregate state folds
 the submitted payload as an `Erasable`; the decision handler builds the next `prior_authority_data`
-version from it and returns not found when it has been erased. `prior_authority_data` and
-`prior_authority_draft` are still written, and API reads, projections and history descriptions
-still read from them.
+version from it and returns not found when it has been erased. `prior_authority_data` is
+still written, and projections and history descriptions still read from it. Prior Authority GET and
+document reads fold the aggregate from events and their content; the `prior_authority_draft` read
+copy has been removed (migration V39).
 
 The exact file suffix, such as `.PDF`, is non-sensitive storage metadata. Application and Prior
 Authority upload events persist it as optional `fileSuffix`; aggregate state and projected
