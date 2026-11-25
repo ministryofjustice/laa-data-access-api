@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.bdd.fixtures;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -25,20 +26,21 @@ public final class PriorAuthorityFixtureFactory {
         Map.of("disbursementPurpose", "Interpreter", "disbursementAmount", 175.50));
   }
 
-  /** Builds a decision request; {@code decision} is {@code GRANTED} or {@code REFUSED}. */
+  /**
+   * Builds a decision request; {@code decision} is {@code GRANTED} or {@code REFUSED}. The amount
+   * and date are only sent for {@code GRANTED}.
+   */
   public Map<String, Object> decision(String decision, long priorAuthorityVersion) {
-    return Map.of(
-        "decision",
-        decision,
-        "decisionJustification",
-        "Decision justification",
-        "amountGranted",
-        150.25,
-        "dateGranted",
-        Instant.now().toString(),
-        "eventHistory",
-        Map.of("eventType", "DECISION", "eventDescription", "Decision recorded"),
-        "priorAuthorityVersion",
-        priorAuthorityVersion);
+    Map<String, Object> request = new LinkedHashMap<>();
+    request.put("decision", decision);
+    request.put("decisionJustification", "Decision justification");
+    if ("GRANTED".equals(decision)) {
+      request.put("amountGranted", 150.25);
+      request.put("dateGranted", Instant.now().toString());
+    }
+    request.put(
+        "eventHistory", Map.of("eventType", "DECISION", "eventDescription", "Decision recorded"));
+    request.put("priorAuthorityVersion", priorAuthorityVersion);
+    return request;
   }
 }
