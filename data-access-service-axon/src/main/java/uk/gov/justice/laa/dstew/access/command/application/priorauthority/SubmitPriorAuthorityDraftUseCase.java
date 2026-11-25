@@ -26,8 +26,8 @@ public class SubmitPriorAuthorityDraftUseCase {
   }
 
   /**
-   * Re-validates the application is still granted and dispatches the submit command. The
-   * submission is readable from its aggregate as soon as the command commits.
+   * Re-validates the application is still granted and dispatches the submit command. The submission
+   * is readable from its aggregate as soon as the command commits.
    *
    * <p>The application may have been granted when the draft was started but could have changed
    * state since — so eligibility is re-checked here.

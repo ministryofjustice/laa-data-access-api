@@ -30,7 +30,8 @@ public class PriorAuthorityQueryHandler {
     return state(aggregate)
         .filter(state -> query.accessScope().permitsOfficeCode(state.getOfficeCode()))
         .flatMap(
-            state -> state.currentPayload().map(payload -> PriorAuthorityResult.from(state, payload)))
+            state ->
+                state.currentPayload().map(payload -> PriorAuthorityResult.from(state, payload)))
         .orElse(null);
   }
 

@@ -106,7 +106,6 @@ class PriorAuthorityDraftIntegrationTest {
 
   @MockitoBean private SdsService sdsService;
 
-
   private ProjectionAwaiter projectionAwaiter;
 
   @PostConstruct

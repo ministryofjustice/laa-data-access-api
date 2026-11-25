@@ -51,8 +51,7 @@ class UpdatePriorAuthorityDraftCommandHandlerTest {
     when(priorAuthority.getState())
         .thenReturn(draftState(priorAuthorityId, applicationId, Erasable.of(existingContent)));
 
-    new UpdatePriorAuthorityDraftCommandHandler()
-        .handle(command, priorAuthority, eventAppender);
+    new UpdatePriorAuthorityDraftCommandHandler().handle(command, priorAuthority, eventAppender);
 
     verify(eventAppender)
         .append(

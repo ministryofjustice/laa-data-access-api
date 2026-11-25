@@ -98,7 +98,6 @@ class PriorAuthorityDraftCommandControllerTest {
     verify(createUseCase).execute(command);
   }
 
-
   @Test
   void givenRequest_whenUpdatePriorAuthorityDraft_thenDelegatesToUseCaseAndReturnsNoContent() {
     UUID priorAuthorityId = UUID.randomUUID();

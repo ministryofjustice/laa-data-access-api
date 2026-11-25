@@ -105,8 +105,7 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
     assertThatThrownBy(
             () ->
                 new CreatePriorAuthorityDraftCommandHandler()
-                    .handle(
-                        command, null, application, writeAccessPolicy, eventAppender))
+                    .handle(command, null, application, writeAccessPolicy, eventAppender))
         .isInstanceOf(ValidationException.class)
         .isInstanceOfSatisfying(
             ValidationException.class,
@@ -177,12 +176,7 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
     assertThatThrownBy(
             () ->
                 new CreatePriorAuthorityDraftCommandHandler()
-                    .handle(
-                        command,
-                        existing,
-                        application,
-                        writeAccessPolicy,
-                        eventAppender))
+                    .handle(command, existing, application, writeAccessPolicy, eventAppender))
         .isInstanceOf(PriorAuthorityCreationConflictException.class)
         .hasMessage("Prior authority already exists for submission: " + priorAuthorityId);
 
@@ -251,8 +245,7 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
     assertThatThrownBy(
             () ->
                 new CreatePriorAuthorityDraftCommandHandler()
-                    .handle(
-                        command, null, application, writeAccessPolicy, eventAppender))
+                    .handle(command, null, application, writeAccessPolicy, eventAppender))
         .isInstanceOf(AccessDeniedException.class);
 
     verifyNoInteractions(eventAppender);
