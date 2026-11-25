@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.observability;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -15,10 +16,15 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.UUID;
 import org.axonframework.messaging.core.Context;
+import org.axonframework.messaging.core.MessageType;
+import org.axonframework.messaging.eventhandling.GenericEventMessage;
 import org.axonframework.messaging.eventhandling.processing.errorhandling.ErrorContext;
 import org.axonframework.messaging.eventhandling.processing.errorhandling.ErrorHandler;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 
 class ReportingErrorHandlerTest {
 
@@ -155,6 +161,27 @@ class ReportingErrorHandlerTest {
     handler.handleError(errorContext);
 
     verify(errorReporter, times(1)).report(anyString(), any());
+  }
+
+  @Test
+  void givenFailedEventWithContent_whenReported_thenReportOmitsTheContent() throws Exception {
+    ErrorReporter errorReporter = mock(ErrorReporter.class);
+    ErrorHandler delegate = mock(ErrorHandler.class);
+    ReportingErrorHandler handler =
+        new ReportingErrorHandler(
+            errorReporter, delegate, Clock.fixed(Instant.EPOCH, ZoneOffset.UTC), COOLDOWN);
+    var event = new NoteCreatedEvent(UUID.randomUUID(), 1L, Instant.EPOCH, "Client disclosed");
+    var message = new GenericEventMessage(new MessageType(NoteCreatedEvent.class), event);
+    var error = new RuntimeException("failed");
+
+    handler.handleError(
+        new ErrorContext("application-projection", error, List.of(message), Context.empty()));
+
+    var reported = ArgumentCaptor.forClass(String.class);
+    verify(errorReporter).report(reported.capture(), same(error));
+    assertThat(reported.getValue())
+        .isEqualTo("Event processor [application-projection] failed to process 1 event(s)");
+    assertThat(message.toString()).doesNotContain("Client disclosed");
   }
 
   private ErrorContext errorContext(String eventProcessor, Throwable error) {

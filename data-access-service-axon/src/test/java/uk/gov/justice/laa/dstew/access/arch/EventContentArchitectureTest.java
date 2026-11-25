@@ -9,6 +9,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static java.util.Map.entry;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
@@ -28,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.command.EventTypes;
 import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.eventcontent.ReadsEventContent;
+import uk.gov.justice.laa.dstew.access.eventcontent.RedactedEventString;
 import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 
 /** Rules that keep event content readable only where erasure has been accounted for. */
@@ -203,6 +205,42 @@ class EventContentArchitectureTest {
             .toList();
 
     assertThat(erasable).as("event components declared Erasable").isEmpty();
+  }
+
+  /**
+   * A record's default toString() prints every component, and Axon prints the payload when it
+   * describes an event message, so an event with content must redact its toString().
+   */
+  @Test
+  void givenEventsWithContent_whenInspected_thenEachRedactsItsToString() {
+    var unredacted =
+        EventTypes.all().values().stream()
+            .filter(Class::isRecord)
+            .filter(EventContentArchitectureTest::hasContentComponents)
+            .filter(event -> !redactsToString(classes.get(event)))
+            .map(Class::getName)
+            .sorted()
+            .toList();
+
+    assertThat(unredacted)
+        .as("events with content whose toString() does not return RedactedEventString.of(this)")
+        .isEmpty();
+  }
+
+  private static boolean hasContentComponents(Class<?> event) {
+    return Arrays.stream(event.getRecordComponents())
+        .anyMatch(component -> !component.isAnnotationPresent(RetainedField.class));
+  }
+
+  private static boolean redactsToString(JavaClass event) {
+    return event.getMethods().stream()
+        .filter(method -> method.getName().equals("toString"))
+        .filter(method -> method.getRawParameterTypes().isEmpty())
+        .flatMap(method -> method.getMethodCallsFromSelf().stream())
+        .anyMatch(
+            call ->
+                call.getTargetOwner().isEquivalentTo(RedactedEventString.class)
+                    && call.getName().equals("of"));
   }
 
   private static Stream<RecordComponent> eventComponents() {
