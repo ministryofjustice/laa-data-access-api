@@ -68,8 +68,7 @@ public final class ApplicationStateEvents {
             "APPLICATION_SUBMITTED",
             OCCURRED_AT,
             List.of(),
-            ParsedAppContentDetails.builder().proceedings(List.of()).build(),
-            "{}"));
+            ParsedAppContentDetails.builder().proceedings(List.of()).build()));
   }
 
   /** Folds an application event history into its current state. */

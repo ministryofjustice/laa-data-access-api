@@ -79,7 +79,6 @@
       "matterTypeCode": "KPBLW",
       "categoryOfLawCode": "MAT",
       "usedDelegatedFunctions": false
-    },
-    "serialisedRequest": "{\"applicationContent\":{\"createdAt\":\"2026-07-14T12:00:00Z\",\"client\":{\"lastName\":\"Client\",\"appliedPreviously\":false,\"firstName\":\"Fixture\",\"addresses\":[{\"postcode\":\"AA1 1AA\",\"city\":\"Testtown\",\"countryName\":\"United Kingdom\",\"addressLineOne\":\"1 Fixture Street\",\"countryCode\":\"GBR\",\"location\":\"home\"}],\"dateOfBirth\":\"2000-01-01\"},\"proceedings\":[{\"categoryOfLaw\":\"Family\",\"description\":\"Care order\",\"scopeLimitations\":[{\"code\":\"FM062\",\"id\":\"00000000-0000-0000-0000-000000000005\",\"meaning\":\"Final hearing\",\"description\":\"Limited to all steps up to and including the final hearing\",\"type\":\"SUBSTANTIVE\"}],\"id\":\"00000000-0000-0000-0000-000000000002\",\"categoryOfLawCode\":\"MAT\",\"clientInvolvementTypeCode\":\"A\",\"leadProceeding\":true,\"emergencyLevelOfServiceCode\":3,\"emergencyLevelOfServiceName\":\"Full Representation\",\"matterType\":\"special children act (SCA)\",\"substantiveLevelOfServiceCode\":3,\"substantiveLevelOfServiceName\":\"Full Representation\",\"code\":\"SE003\",\"substantiveCostLimitation\":\"2500\",\"meaning\":\"Care order\",\"clientInvolvementType\":\"Respondent\",\"matterTypeCode\":\"KPBLW\",\"delegatedFunctionsCostLimitation\":\"0\",\"usedDelegatedFunctions\":false}],\"submittedAt\":\"2026-07-14T12:30:00Z\",\"provider\":{\"officeCode\":\"1A001B\",\"contactEmail\":\"updated-provider@example.com\"}},\"status\":\"APPLICATION_SUBMITTED\"}"
+    }
   }
 }

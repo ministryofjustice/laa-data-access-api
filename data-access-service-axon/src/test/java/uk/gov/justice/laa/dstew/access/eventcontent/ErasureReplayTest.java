@@ -188,7 +188,6 @@ class ErasureReplayTest {
                 PayloadFingerprint.compute(DECISION_REQUEST),
                 Map.of(proceedingId, new ApplicationMeritsDecision("GRANTED", "reason", "why")),
                 Map.of("reference", "CERT-1"),
-                DECISION_REQUEST,
                 "Auto-granted"));
 
     ApplicationState full = fold(new ApplicationState(), ApplicationEvolve.class, history);

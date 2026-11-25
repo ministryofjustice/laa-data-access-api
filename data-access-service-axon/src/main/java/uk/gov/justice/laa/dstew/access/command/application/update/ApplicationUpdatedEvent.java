@@ -14,8 +14,8 @@ import uk.gov.justice.laa.dstew.access.eventcontent.RedactedEventString;
 import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 
 /**
- * Replaces an Application's content. The replacement content and request are erasable content;
- * proceeding IDs are kept as linking keys.
+ * Replaces an Application's content. The replacement content is erasable content; proceeding IDs
+ * are kept as linking keys.
  */
 @Event(namespace = "access", name = "ApplicationUpdated")
 public record ApplicationUpdatedEvent(
@@ -26,8 +26,7 @@ public record ApplicationUpdatedEvent(
     @RetainedField String status,
     @RetainedField Instant occurredAt,
     @RetainedField List<UUID> proceedingIds,
-    @Nullable ParsedAppContentDetails content,
-    @Nullable String serialisedRequest)
+    @Nullable ParsedAppContentDetails content)
     implements GenesisScoped {
 
   /** Normalises missing proceeding IDs to none. */
@@ -51,7 +50,6 @@ public record ApplicationUpdatedEvent(
         status,
         occurredAt,
         List.of(),
-        null,
         null);
   }
 

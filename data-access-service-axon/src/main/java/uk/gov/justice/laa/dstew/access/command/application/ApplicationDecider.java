@@ -295,7 +295,6 @@ public final class ApplicationDecider {
         DecisionValue.GRANTED.name().equals(command.overallDecision())
             ? command.certificate()
             : null,
-        command.serialisedRequest(),
         command.eventDescription());
   }
 
@@ -389,8 +388,7 @@ public final class ApplicationDecider {
         nextStatus,
         command.occurredAt(),
         proceedingIds(content.proceedings()),
-        content,
-        command.serialisedRequest());
+        content);
   }
 
   /** Validates that the application holds an overall decision of {@code GRANTED}. */

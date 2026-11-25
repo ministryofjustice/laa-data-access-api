@@ -87,7 +87,6 @@ class MakeApplicationDecisionCommandHandlerTest {
                 PayloadFingerprint.compute("{}"),
                 Map.of(proceedingId, new ApplicationMeritsDecision("GRANTED", "reason", "just")),
                 certificate,
-                "{}",
                 "decision made"));
   }
 
@@ -149,7 +148,6 @@ class MakeApplicationDecisionCommandHandlerTest {
                     newProceedingId,
                     new ApplicationMeritsDecision("REFUSED", "new reason", "new just")),
                 null,
-                "{}",
                 "decision made"));
   }
 

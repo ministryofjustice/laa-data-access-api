@@ -68,8 +68,7 @@ class UpdateApplicationCommandHandlerTest {
                 "APPLICATION_SUBMITTED",
                 OCCURRED_AT,
                 List.of(PROCEEDING_ID),
-                PARSED,
-                "{}"));
+                PARSED));
   }
 
   @Test
@@ -99,8 +98,7 @@ class UpdateApplicationCommandHandlerTest {
                 "APPLICATION_SUBMITTED",
                 OCCURRED_AT,
                 List.of(PROCEEDING_ID),
-                PARSED,
-                "{}"));
+                PARSED));
   }
 
   @Test
@@ -130,8 +128,7 @@ class UpdateApplicationCommandHandlerTest {
                 "APPLICATION_GRANTED",
                 OCCURRED_AT,
                 List.of(PROCEEDING_ID),
-                PARSED,
-                "{}"));
+                PARSED));
   }
 
   private static ApplicationState state(

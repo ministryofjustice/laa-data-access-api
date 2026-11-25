@@ -13,6 +13,7 @@ import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetails;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
@@ -97,8 +98,7 @@ class RedactedEventStringTest {
             Map.of(),
             null,
             null,
-            CONTENT_SECRET,
-            null),
+            CONTENT_SECRET),
         new ApplicationDraftStartedEvent(
             ID,
             1,
@@ -111,7 +111,14 @@ class RedactedEventStringTest {
             CONTENT_SECRET,
             null),
         new ApplicationUpdatedEvent(
-            ID, 1, 1, "DRAFT", "DRAFT", Instant.EPOCH, List.of(), null, CONTENT_SECRET),
+            ID,
+            1,
+            1,
+            "DRAFT",
+            "DRAFT",
+            Instant.EPOCH,
+            List.of(),
+            ParsedAppContentDetails.builder().categoryOfLawCode(CONTENT_SECRET).build()),
         new NoteCreatedEvent(ID, 1, Instant.EPOCH, CONTENT_SECRET),
         new PriorAuthorityDecisionMadeEvent(
             ID,

@@ -22,7 +22,6 @@
         "justification": "Synthetic merits justification"
       }
     },
-    "eventDescription": "Synthetic decision",
-    "serialisedRequest": "{\"overallDecision\":\"GRANTED\",\"proceedings\":[{\"proceedingId\":\"00000000-0000-0000-0000-000000000002\",\"meritsDecision\":{\"decision\":\"GRANTED\",\"justification\":\"Synthetic merits justification\",\"reason\":null}}],\"eventHistory\":{\"eventDescription\":\"Synthetic decision\"},\"applicationVersion\":2,\"autoGranted\":false,\"certificate\":{\"certificateNumber\":\"FIXTURE-CERT-001\"}}"
+    "eventDescription": "Synthetic decision"
   }
 }

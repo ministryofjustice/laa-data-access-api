@@ -75,7 +75,7 @@ public final class ApplicationEvolve {
     }
     var update = event.content();
     state.content =
-        state.content.isErased() || update == null || event.serialisedRequest() == null
+        state.content.isErased() || update == null
             ? Erasable.erased()
             : Erasable.of(
                 state
@@ -109,20 +109,15 @@ public final class ApplicationEvolve {
     state.overallDecision = event.overallDecision();
     state.decisionRequestFingerprint = event.decisionRequestFingerprint();
     state.proceedingDecisions.putAll(event.proceedingDecisions());
-    // The request is always present with decision content; the other parts may be null.
     state.content =
-        state.content.isErased() || event.serialisedRequest() == null
-            ? Erasable.erased()
-            : Erasable.of(
-                state
-                    .content
-                    .value()
-                    .withDecision(
-                        event.overallDecision(),
-                        event.autoGranted(),
-                        mergedMeritsDecisions(state.content.value(), event),
-                        event.certificate(),
-                        event.eventDescription()));
+        state.content.map(
+            content ->
+                content.withDecision(
+                    event.overallDecision(),
+                    event.autoGranted(),
+                    mergedMeritsDecisions(content, event),
+                    event.certificate(),
+                    event.eventDescription()));
   }
 
   /** Applies an {@link ApplicationReadyForManualAssessmentEvent} to the given state. */

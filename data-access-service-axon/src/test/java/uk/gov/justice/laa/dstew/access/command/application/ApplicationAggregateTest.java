@@ -258,7 +258,6 @@ class ApplicationAggregateTest {
                     proceedingId,
                     new ApplicationMeritsDecision("REFUSED", "reason", "justification")),
                 null,
-                "{\"overallDecision\":\"REFUSED\"}",
                 "Decision recorded"));
   }
 
@@ -352,7 +351,6 @@ class ApplicationAggregateTest {
                 PayloadFingerprint.compute("{}"),
                 Map.of(proceedingId, new ApplicationMeritsDecision("REFUSED", "reason", "first")),
                 null,
-                "{}",
                 "First decision"))
         .when()
         .command(
@@ -381,7 +379,6 @@ class ApplicationAggregateTest {
                     proceedingId,
                     new ApplicationMeritsDecision("REFUSED", "reason", "justification")),
                 null,
-                "{}",
                 null));
   }
 
@@ -1055,8 +1052,7 @@ class ApplicationAggregateTest {
                 List.of(proceedingIdFor(applicationId)),
                 ParsedAppContentDetails.builder()
                     .proceedings(applicationCreationDetails(applicationId).proceedings())
-                    .build(),
-                "{}"));
+                    .build()));
   }
 
   @Test
@@ -1212,7 +1208,6 @@ class ApplicationAggregateTest {
                     proceedingId,
                     new ApplicationMeritsDecision("GRANTED", "reason", "justification")),
                 certificate,
-                "{\"overallDecision\":\"GRANTED\",\"certificate\":{\"reference\":\"CERT-REF-123\"}}",
                 "Decision recorded"));
   }
 
@@ -1328,7 +1323,6 @@ class ApplicationAggregateTest {
         PayloadFingerprint.compute("{}"),
         Map.of(),
         null,
-        "{}",
         "Auto-granted");
   }
 }

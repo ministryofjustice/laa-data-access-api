@@ -17,7 +17,7 @@ import uk.gov.justice.laa.dstew.access.eventcontent.RetainedField;
 
 /**
  * Records an Application decision. The merits decisions for the proceedings it covers, the
- * certificate, the request and its description are erasable content. Kept fields: {@code
+ * certificate and the event description are erasable content. Kept fields: {@code
  * decisionRequestFingerprint}, so that a retried automatic grant can be recognised, and {@code
  * proceedingDecisions}, the decision value per proceeding, which is not personal data and informs
  * retention schedules.
@@ -34,7 +34,6 @@ public record ApplicationDecisionMadeEvent(
     @RetainedField Map<UUID, String> proceedingDecisions,
     @Nullable Map<UUID, ApplicationMeritsDecision> meritsDecisions,
     @Nullable Map<String, Object> certificate,
-    @Nullable String serialisedRequest,
     @Nullable String eventDescription)
     implements GenesisScoped {
 
@@ -57,7 +56,6 @@ public record ApplicationDecisionMadeEvent(
       String decisionRequestFingerprint,
       @Nullable Map<UUID, ApplicationMeritsDecision> meritsDecisions,
       @Nullable Map<String, Object> certificate,
-      @Nullable String serialisedRequest,
       @Nullable String eventDescription) {
     this(
         applicationId,
@@ -70,7 +68,6 @@ public record ApplicationDecisionMadeEvent(
         proceedingDecisions(meritsDecisions),
         meritsDecisions,
         certificate,
-        serialisedRequest,
         eventDescription);
   }
 
@@ -89,7 +86,6 @@ public record ApplicationDecisionMadeEvent(
         overallDecision,
         autoGranted,
         occurredAt,
-        null,
         null,
         null,
         null,

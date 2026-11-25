@@ -494,7 +494,6 @@ class ApplicationDeciderTest {
         .isEqualTo(
             Map.of(proceedingId, new ApplicationMeritsDecision("REFUSED", "reason", "just")));
     assertThat(event.certificate()).isNull();
-    assertThat(event.serialisedRequest()).isEqualTo("{}");
     assertThat(event.eventDescription()).isEqualTo("desc");
   }
 

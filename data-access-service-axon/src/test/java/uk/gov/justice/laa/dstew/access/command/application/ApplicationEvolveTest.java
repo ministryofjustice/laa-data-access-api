@@ -13,7 +13,6 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetails;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
@@ -240,7 +239,6 @@ class ApplicationEvolveTest {
             "fp1",
             Map.of(firstProceedingId, granted),
             certificate,
-            "{\"d\":1}",
             "first"));
     ApplicationEvolve.apply(
         state,
@@ -254,7 +252,6 @@ class ApplicationEvolveTest {
             "fp2",
             Map.of(secondProceedingId, refused),
             null,
-            "{\"d\":2}",
             "second"));
 
     assertThat(state.content.value())
@@ -297,13 +294,10 @@ class ApplicationEvolveTest {
             "APPLICATION_SUBMITTED",
             at,
             created.proceedingIds(),
-            created.content(),
-            "{}");
+            created.content());
 
     assertThat(fold(withoutRequest(created)).content.isErased()).isTrue();
-    assertThat(fold(created, withUpdate(updated, null, "{}")).content.isErased()).isTrue();
-    assertThat(fold(created, withUpdate(updated, created.content(), null)).content.isErased())
-        .isTrue();
+    assertThat(fold(created, withoutContent(updated)).content.isErased()).isTrue();
     assertThat(fold(withoutRequest(created), updated).content.isErased()).isTrue();
     assertThat(fold(created, new NoteCreatedEvent(applicationId, 1L, at)).content.isErased())
         .isTrue();
@@ -356,8 +350,7 @@ class ApplicationEvolveTest {
         null);
   }
 
-  private static ApplicationUpdatedEvent withUpdate(
-      ApplicationUpdatedEvent event, ParsedAppContentDetails content, String serialisedRequest) {
+  private static ApplicationUpdatedEvent withoutContent(ApplicationUpdatedEvent event) {
     return new ApplicationUpdatedEvent(
         event.applicationId(),
         event.applicationVersion(),
@@ -366,7 +359,6 @@ class ApplicationEvolveTest {
         event.status(),
         event.occurredAt(),
         event.proceedingIds(),
-        content,
-        serialisedRequest);
+        null);
   }
 }
