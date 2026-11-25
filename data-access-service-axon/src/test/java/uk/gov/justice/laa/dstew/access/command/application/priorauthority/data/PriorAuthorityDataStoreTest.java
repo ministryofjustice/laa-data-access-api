@@ -41,8 +41,7 @@ class PriorAuthorityDataStoreTest {
   }
 
   @Test
-  void
-      givenPayload_whenAppended_thenStoresExactIdApplicationIdPayloadHashAndTimestampAndReturns64CharFingerprint() {
+  void givenPayload_whenAppended_thenStoresIdApplicationIdPayloadHashAndTimestamp() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityContent content =
@@ -52,16 +51,15 @@ class PriorAuthorityDataStoreTest {
         new PriorAuthorityDataPayload(
             priorAuthorityId, applicationId, content, "request-json", occurredAt);
 
-    String hash =
-        store.append(priorAuthorityId, 0L, applicationId, payload, "request-json", occurredAt);
+    store.append(priorAuthorityId, 0L, applicationId, payload, "request-json", occurredAt);
 
     ArgumentCaptor<PriorAuthorityData> captor = ArgumentCaptor.forClass(PriorAuthorityData.class);
     verify(repository).saveAndFlush(captor.capture());
-    assertThat(hash).isEqualTo(PayloadFingerprint.compute("request-json")).hasSize(64);
     assertThat(captor.getValue().getId()).isEqualTo(new PriorAuthorityDataId(priorAuthorityId, 0L));
     assertThat(captor.getValue().getApplicationId()).isEqualTo(applicationId);
     assertThat(captor.getValue().getPayload()).isEqualTo(payload);
-    assertThat(captor.getValue().getPayloadHash()).isEqualTo(hash);
+    assertThat(captor.getValue().getPayloadHash())
+        .isEqualTo(PayloadFingerprint.compute("request-json"));
     assertThat(captor.getValue().getCreatedAt()).isEqualTo(occurredAt);
   }
 
@@ -82,12 +80,6 @@ class PriorAuthorityDataStoreTest {
                     Instant.now()))
         .isInstanceOf(DataIntegrityViolationException.class)
         .hasMessageContaining("duplicate prior authority data version");
-  }
-
-  @Test
-  void givenKnownInput_whenComputeFingerprint_thenReturnsDeterministicSha256() {
-    assertThat(PayloadFingerprint.compute("abc"))
-        .isEqualTo("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
   }
 
   @Test

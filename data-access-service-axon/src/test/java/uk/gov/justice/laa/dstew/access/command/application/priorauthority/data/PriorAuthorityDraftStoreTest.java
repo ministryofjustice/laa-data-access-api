@@ -27,7 +27,7 @@ class PriorAuthorityDraftStoreTest {
   @InjectMocks private PriorAuthorityDraftStore store;
 
   @Test
-  void givenNoExistingDraft_whenUpsert_thenInsertsRowAndReturnsFingerprint() {
+  void givenNoExistingDraft_whenUpsert_thenInsertsRow() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityContent content =
@@ -39,16 +39,15 @@ class PriorAuthorityDraftStoreTest {
 
     when(repository.findById(priorAuthorityId)).thenReturn(Optional.empty());
 
-    String fingerprint =
-        store.upsert(priorAuthorityId, applicationId, payload, "request-json", occurredAt);
+    store.upsert(priorAuthorityId, applicationId, payload, "request-json", occurredAt);
 
-    assertThat(fingerprint).isEqualTo(PayloadFingerprint.compute("request-json")).hasSize(64);
     ArgumentCaptor<PriorAuthorityDraft> captor = ArgumentCaptor.forClass(PriorAuthorityDraft.class);
     verify(repository).saveAndFlush(captor.capture());
     assertThat(captor.getValue().getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(captor.getValue().getApplicationId()).isEqualTo(applicationId);
     assertThat(captor.getValue().getPayload()).isEqualTo(payload);
-    assertThat(captor.getValue().getPayloadHash()).isEqualTo(fingerprint);
+    assertThat(captor.getValue().getPayloadHash())
+        .isEqualTo(PayloadFingerprint.compute("request-json"));
     assertThat(captor.getValue().getCreatedAt()).isEqualTo(occurredAt);
     assertThat(captor.getValue().getUpdatedAt()).isEqualTo(occurredAt);
   }
@@ -72,13 +71,12 @@ class PriorAuthorityDraftStoreTest {
 
     when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(existing));
 
-    String fingerprint =
-        store.upsert(priorAuthorityId, applicationId, payload, "second-request", secondOccurredAt);
+    store.upsert(priorAuthorityId, applicationId, payload, "second-request", secondOccurredAt);
 
     verify(repository).flush();
     assertThat(existing.getCreatedAt()).isEqualTo(originalCreatedAt);
     assertThat(existing.getPayload()).isEqualTo(payload);
-    assertThat(existing.getPayloadHash()).isEqualTo(fingerprint);
+    assertThat(existing.getPayloadHash()).isEqualTo(PayloadFingerprint.compute("second-request"));
     assertThat(existing.getUpdatedAt()).isEqualTo(secondOccurredAt);
   }
 

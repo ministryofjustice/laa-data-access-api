@@ -42,25 +42,22 @@ public class PriorAuthorityDataStore {
    * @param payload the payload to persist
    * @param serialisedRequest the raw request responsible for this version
    * @param occurredAt when the version was created
-   * @return the fingerprint of the serialised request
    */
-  public String append(
+  public void append(
       UUID priorAuthorityId,
       long dataVersion,
       UUID applicationId,
       PriorAuthorityDataPayload payload,
       String serialisedRequest,
       Instant occurredAt) {
-    String fingerprint = PayloadFingerprint.compute(serialisedRequest);
     repository.saveAndFlush(
         PriorAuthorityData.builder()
             .id(new PriorAuthorityDataId(priorAuthorityId, dataVersion))
             .applicationId(applicationId)
             .payload(payload)
-            .payloadHash(fingerprint)
+            .payloadHash(PayloadFingerprint.compute(serialisedRequest))
             .createdAt(occurredAt)
             .build());
-    return fingerprint;
   }
 
   /**

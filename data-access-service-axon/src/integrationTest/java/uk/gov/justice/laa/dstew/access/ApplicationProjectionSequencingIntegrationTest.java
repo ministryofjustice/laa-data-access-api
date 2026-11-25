@@ -52,6 +52,7 @@ import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuer
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexProjection;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadRepository;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
+import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
 @Testcontainers
 @SpringBootTest(
@@ -89,7 +90,7 @@ class ApplicationProjectionSequencingIntegrationTest {
         new ApplicationCreatedEvent(
             applicationId,
             0L,
-            ApplicationDataStore.fingerprint(details.serialisedRequest()),
+            PayloadFingerprint.compute(details.serialisedRequest()),
             details.status(),
             details.schemaVersion(),
             createdAt,
@@ -135,13 +136,13 @@ class ApplicationProjectionSequencingIntegrationTest {
             + "VALUES (?, 0, ?::jsonb, ?, ?)",
         applicationId,
         legacyPayload.toString(),
-        ApplicationDataStore.fingerprint(details.serialisedRequest()),
+        PayloadFingerprint.compute(details.serialisedRequest()),
         Timestamp.from(details.occurredAt()));
     ApplicationCreatedEvent event =
         new ApplicationCreatedEvent(
             applicationId,
             0L,
-            ApplicationDataStore.fingerprint(details.serialisedRequest()),
+            PayloadFingerprint.compute(details.serialisedRequest()),
             details.status(),
             details.schemaVersion(),
             createdAt,

@@ -59,6 +59,7 @@ import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationLi
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadRepository;
+import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
 @ExtendWith(MockitoExtension.class)
 class ApplicationProjectionTest {
@@ -501,7 +502,7 @@ class ApplicationProjectionTest {
         new ApplicationCreatedEvent(
             applicationId,
             0L,
-            ApplicationDataStore.fingerprint("{}"),
+            PayloadFingerprint.compute("{}"),
             "APPLICATION_SUBMITTED",
             1,
             Instant.parse("2026-07-15T08:00:00Z"),

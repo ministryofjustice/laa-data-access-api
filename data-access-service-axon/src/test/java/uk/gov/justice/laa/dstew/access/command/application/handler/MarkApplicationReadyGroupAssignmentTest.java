@@ -2,8 +2,6 @@ package uk.gov.justice.laa.dstew.access.command.application.handler;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -64,7 +62,6 @@ class MarkApplicationReadyGroupAssignmentTest {
   @Test
   void givenGroupAssignedToC1_whenMemberReady_thenReadyEventThenAssignedToC1() {
     givenApplicationState(stateOf(notReady(APPLICATION_ID)));
-    givenDataStore();
     givenGroup(List.of(APPLICATION_ID, OTHER_MEMBER_ID));
     givenMember(OTHER_MEMBER_ID, activeAssigned(OTHER_MEMBER_ID, CASEWORKER_ID));
 
@@ -90,7 +87,6 @@ class MarkApplicationReadyGroupAssignmentTest {
   @Test
   void givenResubmittedMemberOfUnassignedGroup_whenReady_thenReadyEventThenUnassigned() {
     givenApplicationState(stateOf(resubmittedAfterAssignment(APPLICATION_ID, CASEWORKER_ID)));
-    givenDataStore();
     givenGroup(List.of(APPLICATION_ID, OTHER_MEMBER_ID));
     givenMember(OTHER_MEMBER_ID, activeUnassigned(OTHER_MEMBER_ID));
 
@@ -119,7 +115,6 @@ class MarkApplicationReadyGroupAssignmentTest {
   @Test
   void givenStandalone_whenReady_thenOnlyReadyEvent() {
     givenApplicationState(stateOf(notReady(APPLICATION_ID)));
-    givenDataStore();
     handler.handle(
         command().withLinkedGroupId(null),
         application,
@@ -138,7 +133,6 @@ class MarkApplicationReadyGroupAssignmentTest {
   @Test
   void givenGroupWithoutMembers_whenReady_thenRejectsChangedMembership() {
     givenApplicationState(stateOf(notReady(APPLICATION_ID)));
-    givenDataStore();
     givenGroup(List.of());
 
     assertThatThrownBy(
@@ -190,10 +184,6 @@ class MarkApplicationReadyGroupAssignmentTest {
 
   private void givenApplicationState(ApplicationState state) {
     when(application.getState()).thenReturn(state);
-  }
-
-  private void givenDataStore() {
-    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
   }
 
   private void givenMember(UUID applicationId, List<Object> events) {

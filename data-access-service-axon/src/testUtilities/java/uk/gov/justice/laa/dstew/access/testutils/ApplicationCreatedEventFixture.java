@@ -8,7 +8,7 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetails;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDecider;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
+import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
 /** Builds compact Application events for aggregate and factory fixture tests. */
 public final class ApplicationCreatedEventFixture {
@@ -24,7 +24,7 @@ public final class ApplicationCreatedEventFixture {
   public static ApplicationCreatedEvent applicationCreatedEvent(
       UUID applicationId, ApplicationCreationDetails details) {
     return ApplicationDecider.decideSubmitDraft(
-        applicationId, 0L, ApplicationDataStore.fingerprint(details.serialisedRequest()), details);
+        applicationId, 0L, PayloadFingerprint.compute(details.serialisedRequest()), details);
   }
 
   /** Creates minimal creation details with stable values for the supplied identifier. */

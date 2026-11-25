@@ -26,6 +26,7 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.dao.DataIntegrityViolationException;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
+import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
 class ApplicationDataStoreTest {
 
@@ -154,16 +155,14 @@ class ApplicationDataStoreTest {
     UUID applicationId = UUID.randomUUID();
     var details = applicationCreationDetails(applicationId);
 
-    String hash = store.append(applicationId, 0L, details);
+    store.append(applicationId, 0L, details);
 
     ArgumentCaptor<ApplicationData> captor = ArgumentCaptor.forClass(ApplicationData.class);
     verify(repository).saveAndFlush(captor.capture());
-    assertThat(hash)
-        .isEqualTo(ApplicationDataStore.fingerprint(details.serialisedRequest()))
-        .hasSize(64);
     assertThat(captor.getValue().getId()).isEqualTo(new ApplicationDataId(applicationId, 0L));
     assertThat(captor.getValue().getPayload()).isEqualTo(ApplicationDataPayload.from(details));
-    assertThat(captor.getValue().getPayloadHash()).isEqualTo(hash);
+    assertThat(captor.getValue().getPayloadHash())
+        .isEqualTo(PayloadFingerprint.compute(details.serialisedRequest()));
     assertThat(captor.getValue().getCreatedAt()).isEqualTo(details.occurredAt());
   }
 
@@ -181,7 +180,7 @@ class ApplicationDataStoreTest {
     assertThat(captor.getValue().getId()).isEqualTo(new ApplicationDataId(applicationId, 3L));
     assertThat(captor.getValue().getPayload()).isSameAs(payload);
     assertThat(captor.getValue().getPayloadHash())
-        .isEqualTo(ApplicationDataStore.fingerprint("decision-request"));
+        .isEqualTo(PayloadFingerprint.compute("decision-request"));
     assertThat(captor.getValue().getCreatedAt()).isEqualTo(occurredAt);
   }
 
@@ -306,11 +305,5 @@ class ApplicationDataStoreTest {
     store.getAll(List.of(dataId));
 
     verifyNoInteractions(errorReporter);
-  }
-
-  @Test
-  void givenKnownInput_whenFingerprinted_thenReturnsExpectedSha256Digest() {
-    assertThat(ApplicationDataStore.fingerprint("abc"))
-        .isEqualTo("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
   }
 }

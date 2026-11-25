@@ -24,9 +24,8 @@ public class PriorAuthorityDraftStore {
    * @param payload the payload to persist
    * @param serialisedRequest the raw request responsible for this update
    * @param occurredAt when the update occurred
-   * @return the fingerprint of the serialised request
    */
-  public String upsert(
+  public void upsert(
       UUID priorAuthorityId,
       UUID applicationId,
       PriorAuthorityDataPayload payload,
@@ -48,7 +47,6 @@ public class PriorAuthorityDraftStore {
               .updatedAt(occurredAt)
               .build());
     }
-    return fingerprint;
   }
 
   /**

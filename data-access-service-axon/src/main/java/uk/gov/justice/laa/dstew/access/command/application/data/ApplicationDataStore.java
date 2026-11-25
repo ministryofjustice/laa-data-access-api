@@ -1,10 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application.data;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.Collection;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -15,6 +11,7 @@ import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.JacksonExceptionMessageBuilder;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetails;
 import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
+import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
 /** Writes and retrieves immutable application-data versions. */
 @Component
@@ -34,18 +31,15 @@ public class ApplicationDataStore {
    * @param applicationId the application identifier
    * @param version the data version
    * @param details the application details to persist
-   * @return the fingerprint of the serialised request
    */
-  public String append(UUID applicationId, long version, ApplicationCreationDetails details) {
-    String fingerprint = fingerprint(details.serialisedRequest());
+  public void append(UUID applicationId, long version, ApplicationCreationDetails details) {
     repository.saveAndFlush(
         ApplicationData.builder()
             .id(new ApplicationDataId(applicationId, version))
             .payload(ApplicationDataPayload.from(details))
-            .payloadHash(fingerprint)
+            .payloadHash(PayloadFingerprint.compute(details.serialisedRequest()))
             .createdAt(details.occurredAt())
             .build());
-    return fingerprint;
   }
 
   /**
@@ -56,23 +50,20 @@ public class ApplicationDataStore {
    * @param payload the complete payload for that version
    * @param serialisedRequest the request responsible for the version
    * @param occurredAt when the version was created
-   * @return the fingerprint of the request
    */
-  public String append(
+  public void append(
       UUID applicationId,
       long version,
       ApplicationDataPayload payload,
       String serialisedRequest,
       java.time.Instant occurredAt) {
-    String fingerprint = fingerprint(serialisedRequest);
     repository.saveAndFlush(
         ApplicationData.builder()
             .id(new ApplicationDataId(applicationId, version))
             .payload(payload)
-            .payloadHash(fingerprint)
+            .payloadHash(PayloadFingerprint.compute(serialisedRequest))
             .createdAt(occurredAt)
             .build());
-    return fingerprint;
   }
 
   /**
@@ -171,22 +162,6 @@ public class ApplicationDataStore {
                       "application_data load failed: %s=%s".formatted(identifierName, identifiers),
                       exception));
       throw exception;
-    }
-  }
-
-  /**
-   * Calculates a stable SHA-256 fingerprint for a serialised request.
-   *
-   * @param value the serialised request
-   * @return the lowercase hexadecimal SHA-256 digest
-   */
-  public static String fingerprint(String value) {
-    try {
-      byte[] digest =
-          MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
-      return HexFormat.of().formatHex(digest);
-    } catch (NoSuchAlgorithmException exception) {
-      throw new IllegalStateException("SHA-256 is not available", exception);
     }
   }
 }

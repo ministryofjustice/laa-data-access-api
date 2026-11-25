@@ -14,7 +14,6 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
@@ -277,7 +276,7 @@ class ApplicationDeciderTest {
     ApplicationState state = new ApplicationState();
     UUID applicationId = UUID.randomUUID();
     ApplicationCreationDetails details = minimalDetails();
-    String fingerprint = ApplicationDataStore.fingerprint("{}");
+    String fingerprint = PayloadFingerprint.compute("{}");
 
     List<Object> events =
         ApplicationDecider.decideCreate(state, applicationId, 1, fingerprint, details, 0L);
@@ -300,7 +299,7 @@ class ApplicationDeciderTest {
   @Test
   void givenExistingStateWithMatchingFingerprint_whenDecideCreate_thenReturnsEmptyList() {
     UUID applicationId = UUID.randomUUID();
-    String fingerprint = ApplicationDataStore.fingerprint("{}");
+    String fingerprint = PayloadFingerprint.compute("{}");
     ApplicationState state = stateAfterCreate(applicationId, fingerprint, 1);
 
     List<Object> events =
@@ -312,9 +311,9 @@ class ApplicationDeciderTest {
   @Test
   void givenExistingStateWithDifferentFingerprint_whenDecideCreate_thenThrowsConflict() {
     UUID applicationId = UUID.randomUUID();
-    String originalFingerprint = ApplicationDataStore.fingerprint("{}");
+    String originalFingerprint = PayloadFingerprint.compute("{}");
     ApplicationState state = stateAfterCreate(applicationId, originalFingerprint, 1);
-    String differentFingerprint = ApplicationDataStore.fingerprint("{\"different\":true}");
+    String differentFingerprint = PayloadFingerprint.compute("{\"different\":true}");
 
     assertThatThrownBy(
             () ->
@@ -326,7 +325,7 @@ class ApplicationDeciderTest {
   @Test
   void givenExistingStateWithDifferentSchemaVersion_whenDecideCreate_thenThrowsConflict() {
     UUID applicationId = UUID.randomUUID();
-    String fingerprint = ApplicationDataStore.fingerprint("{}");
+    String fingerprint = PayloadFingerprint.compute("{}");
     ApplicationState state = stateAfterCreate(applicationId, fingerprint, 1);
 
     assertThatThrownBy(
@@ -339,7 +338,7 @@ class ApplicationDeciderTest {
     ApplicationState state = new ApplicationState();
     UUID applicationId = UUID.randomUUID();
     ApplicationCreationDetails details = minimalDetails();
-    String fingerprint = ApplicationDataStore.fingerprint("{}");
+    String fingerprint = PayloadFingerprint.compute("{}");
 
     List<Object> events =
         ApplicationDecider.decideCreate(state, applicationId, 1, fingerprint, details, 0L);
@@ -370,7 +369,7 @@ class ApplicationDeciderTest {
   void givenEmptyState_whenDecideStartDraft_thenReturnsDraftStartedEvent() {
     ApplicationState state = new ApplicationState();
     UUID applicationId = UUID.randomUUID();
-    String fingerprint = ApplicationDataStore.fingerprint("{}");
+    String fingerprint = PayloadFingerprint.compute("{}");
 
     ApplicationDraftStartedEvent draft =
         new ApplicationDraftStartedEvent(
@@ -395,14 +394,14 @@ class ApplicationDeciderTest {
     assertThatThrownBy(
             () ->
                 ApplicationDecider.decideStartDraft(
-                    new ApplicationState(), 1, ApplicationDataStore.fingerprint("{}")))
+                    new ApplicationState(), 1, PayloadFingerprint.compute("{}")))
         .isInstanceOf(IllegalStateException.class);
   }
 
   @Test
   void givenDraftStateWithMatchingFingerprint_whenDecideStartDraft_thenReturnsEmptyList() {
     UUID applicationId = UUID.randomUUID();
-    String fingerprint = ApplicationDataStore.fingerprint("{}");
+    String fingerprint = PayloadFingerprint.compute("{}");
     ApplicationState state = stateAfterStartDraft(applicationId, fingerprint, 1);
 
     List<Object> events = ApplicationDecider.decideStartDraft(state, 1, fingerprint);
@@ -413,9 +412,9 @@ class ApplicationDeciderTest {
   @Test
   void givenDraftStateWithDifferentFingerprint_whenDecideStartDraft_thenThrowsConflict() {
     UUID applicationId = UUID.randomUUID();
-    String originalFingerprint = ApplicationDataStore.fingerprint("{}");
+    String originalFingerprint = PayloadFingerprint.compute("{}");
     ApplicationState state = stateAfterStartDraft(applicationId, originalFingerprint, 1);
-    String differentFingerprint = ApplicationDataStore.fingerprint("{\"different\":true}");
+    String differentFingerprint = PayloadFingerprint.compute("{\"different\":true}");
 
     assertThatThrownBy(() -> ApplicationDecider.decideStartDraft(state, 1, differentFingerprint))
         .isInstanceOf(ApplicationCreationConflictException.class);
@@ -424,7 +423,7 @@ class ApplicationDeciderTest {
   @Test
   void givenDraftStateWithDifferentSchemaVersion_whenDecideStartDraft_thenThrowsConflict() {
     UUID applicationId = UUID.randomUUID();
-    String fingerprint = ApplicationDataStore.fingerprint("{}");
+    String fingerprint = PayloadFingerprint.compute("{}");
     ApplicationState state = stateAfterStartDraft(applicationId, fingerprint, 1);
 
     assertThatThrownBy(() -> ApplicationDecider.decideStartDraft(state, 2, fingerprint))
@@ -434,7 +433,7 @@ class ApplicationDeciderTest {
   @Test
   void givenFullyCreatedState_whenDecideStartDraft_thenThrowsConflictEvenWithMatchingFingerprint() {
     UUID applicationId = UUID.randomUUID();
-    String fingerprint = ApplicationDataStore.fingerprint("{}");
+    String fingerprint = PayloadFingerprint.compute("{}");
     ApplicationState state = stateAfterCreate(applicationId, fingerprint, 1);
     state.status = "APPLICATION_SUBMITTED";
 
@@ -446,7 +445,7 @@ class ApplicationDeciderTest {
   void givenDetails_whenDecideSubmitDraft_thenReturnsCreatedEventWithVersionZero() {
     UUID applicationId = UUID.randomUUID();
     ApplicationCreationDetails details = applicationCreationDetails(applicationId);
-    String fingerprint = ApplicationDataStore.fingerprint(details.serialisedRequest());
+    String fingerprint = PayloadFingerprint.compute(details.serialisedRequest());
 
     ApplicationCreatedEvent event =
         ApplicationDecider.decideSubmitDraft(applicationId, 0L, fingerprint, details);

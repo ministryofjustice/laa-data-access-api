@@ -138,14 +138,6 @@ class ApplicationAggregateDraftTest {
             1,
             List.of(new PotentialDuplicate("LAA-456"))))
         .thenReturn(details);
-    when(applicationDataStore.append(
-            eq(applicationId),
-            eq(0L),
-            any(),
-            eq(details.serialisedRequest()),
-            eq(details.occurredAt())))
-        .thenReturn("hash");
-
     fixture
         .given()
         .events(
@@ -410,17 +402,8 @@ class ApplicationAggregateDraftTest {
         draftStarted(
             applicationId, PayloadFingerprint.compute("{}"), startedAt, applicationContent);
     ApplicationCreationDetails details = applicationCreationDetails(applicationId);
-    String fingerprint = PayloadFingerprint.compute(details.serialisedRequest());
-
     when(creationDetailsFactory.prepare(any(), any(), any(), any(), anyInt(), any()))
         .thenReturn(details);
-    when(applicationDataStore.append(
-            eq(applicationId),
-            eq(0L),
-            eq(ApplicationDataPayload.from(details)),
-            eq(details.serialisedRequest()),
-            eq(details.occurredAt())))
-        .thenReturn(fingerprint);
 
     fixture
         .given()
@@ -429,7 +412,9 @@ class ApplicationAggregateDraftTest {
         .command(new SubmitApplicationDraftCommand(applicationId, submittedAt))
         .then()
         .resultMessagePayload(applicationId)
-        .events(ApplicationDecider.decideSubmitDraft(applicationId, 0L, fingerprint, details));
+        .events(
+            ApplicationDecider.decideSubmitDraft(
+                applicationId, 0L, PayloadFingerprint.compute("{}"), details));
 
     verify(applicationDataStore)
         .append(
@@ -438,6 +423,26 @@ class ApplicationAggregateDraftTest {
             ApplicationDataPayload.from(details),
             details.serialisedRequest(),
             details.occurredAt());
+  }
+
+  @Test
+  void givenDraftFingerprint_whenSubmit_thenCreatedEventCarriesDraftFingerprint() {
+    UUID applicationId = UUID.randomUUID();
+    Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
+    Map<String, Object> applicationContent =
+        validApplicationContent(applicationId, UUID.randomUUID());
+    ApplicationCreationDetails details = applicationCreationDetails(applicationId);
+    when(creationDetailsFactory.prepare(any(), any(), any(), any(), anyInt(), any()))
+        .thenReturn(details);
+    fixture
+        .given()
+        .events(draftStarted(applicationId, "draft-fingerprint", startedAt, applicationContent))
+        .when()
+        .command(new SubmitApplicationDraftCommand(applicationId, startedAt.plusSeconds(60)))
+        .then()
+        .resultMessagePayload(applicationId)
+        .events(
+            ApplicationDecider.decideSubmitDraft(applicationId, 0L, "draft-fingerprint", details));
   }
 
   @Test

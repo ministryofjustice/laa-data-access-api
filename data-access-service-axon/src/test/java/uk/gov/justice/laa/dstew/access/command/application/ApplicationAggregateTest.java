@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -152,11 +153,6 @@ class ApplicationAggregateTest {
             invocation ->
                 applicationCreationDetails(
                     invocation.<CreateApplicationCommand>getArgument(0).applicationId()));
-    when(applicationDataStore.append(any(), anyLong(), any()))
-        .thenAnswer(
-            invocation ->
-                ApplicationDataStore.fingerprint(
-                    invocation.<ApplicationCreationDetails>getArgument(2).serialisedRequest()));
     fixture = fixtureWith(factory);
   }
 
@@ -231,8 +227,6 @@ class ApplicationAggregateTest {
     ApplicationCreatedEvent created = applicationCreatedEvent(applicationId, details);
     ApplicationDataPayload current =
         ApplicationDataPayload.from(details).withManualAssessmentRequired();
-    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
-
     fixture
         .given()
         .events(
@@ -319,8 +313,9 @@ class ApplicationAggregateTest {
     UUID applicationId = UUID.randomUUID();
     UUID proceedingId = UUID.randomUUID();
     ApplicationCreationDetails details = detailsWithProceeding(applicationId, proceedingId);
-    when(applicationDataStore.append(any(), anyLong(), any(), any(), any()))
-        .thenThrow(new IllegalStateException("application data unavailable"));
+    doThrow(new IllegalStateException("application data unavailable"))
+        .when(applicationDataStore)
+        .append(any(), anyLong(), any(), any(), any());
 
     fixture
         .given()
@@ -343,8 +338,6 @@ class ApplicationAggregateTest {
     Instant secondOccurredAt = Instant.parse("2026-07-19T10:15:00Z");
     ApplicationCreationDetails details = detailsWithProceeding(applicationId, proceedingId);
     ApplicationDataPayload current = ApplicationDataPayload.from(details);
-    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
-
     fixture
         .given()
         .events(
@@ -413,8 +406,6 @@ class ApplicationAggregateTest {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-21T09:30:00Z");
     ApplicationCreationDetails details = applicationCreationDetails(applicationId);
-    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
-
     fixture
         .given()
         .events(applicationCreatedEvent(applicationId, details))
@@ -430,8 +421,9 @@ class ApplicationAggregateTest {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-21T09:30:00Z");
     ApplicationCreationDetails details = applicationCreationDetails(applicationId);
-    when(applicationDataStore.append(any(), anyLong(), any(), any(), any()))
-        .thenThrow(new IllegalStateException("application data unavailable"));
+    doThrow(new IllegalStateException("application data unavailable"))
+        .when(applicationDataStore)
+        .append(any(), anyLong(), any(), any(), any());
 
     fixture
         .given()
@@ -602,8 +594,6 @@ class ApplicationAggregateTest {
         applicationCreatedEvent(applicationId, applicationCreationDetails(applicationId));
     ApplicationDataPayload currentPayload =
         ApplicationDataPayload.from(applicationCreationDetails(applicationId));
-    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
-
     fixture
         .given()
         .events(created)
@@ -1045,8 +1035,6 @@ class ApplicationAggregateTest {
         ApplicationDataPayload.from(applicationCreationDetails(applicationId));
     when(updateDetailsFactory.prepare(any(), any(), any(), anyBoolean()))
         .thenReturn(currentPayload);
-    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
-
     fixture
         .given()
         .events(applicationCreatedEvent(applicationId))
@@ -1078,8 +1066,9 @@ class ApplicationAggregateTest {
         ApplicationDataPayload.from(applicationCreationDetails(applicationId));
     when(updateDetailsFactory.prepare(any(), any(), any(), anyBoolean()))
         .thenReturn(currentPayload);
-    when(applicationDataStore.append(any(), anyLong(), any(), any(), any()))
-        .thenThrow(new IllegalStateException("application data unavailable"));
+    doThrow(new IllegalStateException("application data unavailable"))
+        .when(applicationDataStore)
+        .append(any(), anyLong(), any(), any(), any());
 
     fixture
         .given()
@@ -1119,8 +1108,6 @@ class ApplicationAggregateTest {
         ApplicationDataPayload.from(applicationCreationDetails(applicationId));
     when(updateDetailsFactory.prepare(any(), any(), any(), anyBoolean()))
         .thenReturn(currentPayload);
-    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
-
     fixture
         .given()
         .events(applicationCreatedEvent(applicationId))
@@ -1190,8 +1177,6 @@ class ApplicationAggregateTest {
     ApplicationCreatedEvent created = applicationCreatedEvent(applicationId, details);
     ApplicationDataPayload current =
         ApplicationDataPayload.from(details).withManualAssessmentRequired();
-    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
-
     Map<String, Object> certificate = new HashMap<>();
     certificate.put("reference", "CERT-REF-123");
 
@@ -1238,7 +1223,6 @@ class ApplicationAggregateTest {
     ApplicationCreationDetails details = applicationCreationDetails(applicationId);
     ApplicationDataPayload currentPayload = ApplicationDataPayload.from(details);
     ApplicationDataPayload updatedPayload = ApplicationDataPayload.from(details);
-    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
     when(updateDetailsFactory.prepare(any(), any(), any(), anyBoolean()))
         .thenReturn(updatedPayload);
 
@@ -1258,7 +1242,6 @@ class ApplicationAggregateTest {
     ApplicationCreationDetails details = applicationCreationDetails(applicationId);
     ApplicationDataPayload currentPayload = ApplicationDataPayload.from(details);
     ApplicationDataPayload updatedPayload = ApplicationDataPayload.from(details);
-    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
     when(updateDetailsFactory.prepare(any(), any(), any(), eq(true))).thenReturn(updatedPayload);
 
     fixture
@@ -1278,7 +1261,6 @@ class ApplicationAggregateTest {
     Instant occurredAt = Instant.parse("2026-07-20T10:00:00Z");
     ApplicationCreatedEvent submitted = applicationCreatedEvent(applicationId);
     ApplicationDataPayload updatedPayload = mock(ApplicationDataPayload.class);
-    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
     when(updateDetailsFactory.prepare(any(), any(), any(), eq(false))).thenReturn(updatedPayload);
 
     fixture
@@ -1299,7 +1281,6 @@ class ApplicationAggregateTest {
     ApplicationCreationDetails details = applicationCreationDetails(applicationId);
     ApplicationDataPayload currentPayload = ApplicationDataPayload.from(details);
     ApplicationDataPayload updatedPayload = ApplicationDataPayload.from(details);
-    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
     when(updateDetailsFactory.prepare(any(), any(), any(), eq(false))).thenReturn(updatedPayload);
 
     fixture

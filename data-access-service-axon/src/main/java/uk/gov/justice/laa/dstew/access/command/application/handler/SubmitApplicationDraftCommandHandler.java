@@ -41,16 +41,18 @@ public class SubmitApplicationDraftCommandHandler {
     for (var filename : draft.documentFilenames().entrySet()) {
       payload = payload.withDocumentFilename(filename.getKey(), filename.getValue());
     }
-    String fingerprint =
-        applicationDataStore.append(
-            command.applicationId(),
-            applicationDataVersion,
-            payload,
-            details.serialisedRequest(),
-            details.occurredAt());
+    applicationDataStore.append(
+        command.applicationId(),
+        applicationDataVersion,
+        payload,
+        details.serialisedRequest(),
+        details.occurredAt());
     eventAppender.append(
         ApplicationDecider.decideSubmitDraft(
-            command.applicationId(), applicationDataVersion, fingerprint, details));
+            command.applicationId(),
+            applicationDataVersion,
+            application.getState().getRequestFingerprint(),
+            details));
     return command.applicationId();
   }
 }
