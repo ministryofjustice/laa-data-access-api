@@ -107,7 +107,8 @@ public final class HttpDataAccessApiClient implements DataAccessApiClient {
               .valueStream()
               .map(proceeding -> UUID.fromString(proceeding.required("proceedingId").asText()))
               .toList(),
-          application.required("version").asLong());
+          application.required("version").asLong(),
+          application);
     } catch (JsonProcessingException | IllegalArgumentException exception) {
       throw new ApiException(
           "GET /api/v0/applications/" + applicationId + " returned invalid JSON", exception);
