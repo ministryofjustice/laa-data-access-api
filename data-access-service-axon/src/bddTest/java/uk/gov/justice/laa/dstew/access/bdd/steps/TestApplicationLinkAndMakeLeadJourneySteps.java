@@ -84,6 +84,15 @@ public class TestApplicationLinkAndMakeLeadJourneySteps {
     awaitLinkedApplications();
   }
 
+  @Then("the remaining applications are still linked")
+  public void theRemainingApplicationsAreStillLinked() {
+    context.lastResponse(
+        applications.awaitApplication(
+            context.relatedApplicationId("another application"),
+            response ->
+                linksOnly(response.body(), context.relatedApplicationId("linked application"))));
+  }
+
   @When("I change the lead of the application group")
   public void iChangeTheLeadOfTheApplicationGroup() {
     assertStatus(
@@ -99,7 +108,7 @@ public class TestApplicationLinkAndMakeLeadJourneySteps {
             context.applicationId(), response -> response.body().path("isLead").asBoolean()));
   }
 
-  private UUID createSubmittedApplication() {
+  UUID createSubmittedApplication() {
     UUID applicationId = UUID.randomUUID();
     assertStatus(
         "create an application draft",
@@ -111,11 +120,11 @@ public class TestApplicationLinkAndMakeLeadJourneySteps {
     return applicationId;
   }
 
-  private String linkedGroupVersion() {
+  String linkedGroupVersion() {
     return applications.get(context.applicationId()).body().path("linkedGroupVersion").asText();
   }
 
-  private void awaitLinkedApplications(UUID... expected) {
+  void awaitLinkedApplications(UUID... expected) {
     context.lastResponse(
         applications.awaitApplication(
             context.applicationId(), response -> linksOnly(response.body(), expected)));

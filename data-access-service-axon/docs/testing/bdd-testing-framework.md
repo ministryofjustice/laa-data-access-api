@@ -102,7 +102,8 @@ Each feature file covers one journey.
 | `draftApplicationJourney.feature` | Create a draft application, upload a document and submit it |
 | `applicationDecisionJourney.feature` | Assign a manually granted application to yourself, decide it as `GRANTED` or `REFUSED`, or unassign it |
 | `applicationUpdateAndNoteJourney.feature` | Add a note to a submitted application |
-| `applicationLinkAndMakeLeadJourney.feature` | Link applications into a group, unlink one, and change the group's lead |
+| `applicationLinkAndMakeLeadJourney.feature` | Link applications into a group, unlink one (including from a group of three), and change the group's lead |
+| `applicationGroupAssignmentJourney.feature` | Assign or unassign one application in a linked group and see the whole group follow, including an application that joins or becomes ready in an assigned group |
 | `priorAuthorityApplication.feature` | Update a prior authority draft, upload, retype and delete its documents, and submit it |
 | `PrioAuthorityApplicationDecisionJourney.feature` | Assign a submitted prior authority to yourself, decide it as `GRANTED` or `REFUSED`, or unassign it |
 
@@ -127,7 +128,8 @@ expressions, for example `{string}`, receive quoted values from Gherkin.
 
 The journey-specific step classes (`TestDraftApplicationJourneySteps`,
 `TestApplicationDecisionJourneySteps`, `TestApplicationUpdateAndNoteJourneySteps`,
-`TestApplicationLinkAndMakeLeadJourneySteps`, `TestPriorAuthorityApplicationSteps` and
+`TestApplicationLinkAndMakeLeadJourneySteps`, `TestApplicationGroupAssignmentJourneySteps`,
+`TestPriorAuthorityApplicationSteps` and
 `PriorAuthorityApplicationDecisionJourney`) hold the steps written for one feature file. They reuse
 the shared step classes above through constructor injection rather than repeating API calls.
 
