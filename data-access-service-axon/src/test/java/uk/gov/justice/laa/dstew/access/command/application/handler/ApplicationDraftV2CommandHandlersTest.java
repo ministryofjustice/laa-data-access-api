@@ -18,6 +18,8 @@ import java.util.UUID;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -219,6 +221,52 @@ class ApplicationDraftV2CommandHandlersTest {
             detailsFactory,
             applicationDataStore,
             eventAppender);
+  }
+
+  @ParameterizedTest
+  @CsvSource({"proceedings,true", "client,false"})
+  void identicalCreateRetryUpdatesMetadataOnlyWhenItChanged(
+      String retryStep, boolean expectUpdate) {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-01-04T10:00:00Z");
+    Map<String, Object> content = Map.of("provider", Map.of("officeCode", "OFF-1"));
+    var existing =
+        new ApplicationDraftPayload(
+            "APPLICATION_IN_PROGRESS",
+            "LAA-1",
+            content,
+            "{}",
+            List.of(),
+            Map.of(),
+            Map.of("currentStep", "client"));
+    when(application.getState()).thenReturn(applicationState);
+    when(draftStore.find(applicationId)).thenReturn(Optional.of(existing));
+    when(draftStore.findVersion(applicationId)).thenReturn(Optional.of(0L));
+    var command =
+        new CreateApplicationDraftV2Command(
+            applicationId,
+            "APPLICATION_IN_PROGRESS",
+            "LAA-1",
+            content,
+            "{}",
+            2,
+            occurredAt,
+            List.of(),
+            Map.of("currentStep", retryStep));
+
+    long version = createHandler.handle(command, application, draftStore, eventAppender);
+
+    if (expectUpdate) {
+      ArgumentCaptor<ApplicationDraftPayload> payload =
+          ArgumentCaptor.forClass(ApplicationDraftPayload.class);
+      verify(draftStore).upsert(eq(applicationId), payload.capture(), eq("{}"), eq(occurredAt));
+      assertThat(payload.getValue().metadata()).containsEntry("currentStep", retryStep);
+      verify(eventAppender).append(new ApplicationDraftUpdatedEvent(applicationId, occurredAt));
+    } else {
+      verify(draftStore, never()).upsert(any(), any(), any(), any());
+      verifyNoInteractions(eventAppender);
+    }
+    assertThat(version).isZero();
   }
 
   private static ApplicationDraftPayload draftWithContent(Map<String, Object> content) {

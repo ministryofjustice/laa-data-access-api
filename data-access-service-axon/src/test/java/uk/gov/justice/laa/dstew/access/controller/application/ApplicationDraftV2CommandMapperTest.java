@@ -57,6 +57,32 @@ class ApplicationDraftV2CommandMapperTest {
     assertThat(readJson(command.serialisedRequest()).has("metadata")).isFalse();
   }
 
+  @Test
+  void updateCommandWithoutStatusHasNullStatus() {
+    var request =
+        new UpdateApplicationDraftV2Request()
+            .laaReference("2-123456")
+            .applicationContent(Map.of("incomplete", true));
+
+    UpdateApplicationDraftCommand command =
+        mapper.toUpdateCommand(UUID.randomUUID(), request, null);
+
+    assertThat(command.status()).isNull();
+  }
+
+  @Test
+  void createCommandWithoutStatusHasNullStatus() {
+    var request =
+        new CreateApplicationDraftV2Request()
+            .id(UUID.randomUUID())
+            .laaReference("2-123456")
+            .applicationContent(Map.of("incomplete", true));
+
+    CreateApplicationDraftV2Command command = mapper.toCreateCommand(request, 2);
+
+    assertThat(command.status()).isNull();
+  }
+
   private JsonNode readJson(String json) {
     return objectMapper.readTree(json);
   }
