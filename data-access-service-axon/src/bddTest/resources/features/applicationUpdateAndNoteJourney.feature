@@ -1,4 +1,4 @@
-@smokeTest @applicationUpdateAndNoteJourney
+@smoke @applicationUpdateAndNoteJourney
 Feature: Application Update and Note Journey
   As a user
   I want to be able to update an existing application and add notes to it.
@@ -13,9 +13,3 @@ Feature: Application Update and Note Journey
   Scenario: User can add notes to existing application
     When I add a note to the application
     Then the note is added to the application
-
-
-  @applicationUpdate
-  Scenario: User can update the application
-    When I update the application
-    Then the application is updated

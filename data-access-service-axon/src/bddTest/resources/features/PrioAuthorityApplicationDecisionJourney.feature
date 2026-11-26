@@ -1,4 +1,4 @@
-@smokeTest @PAApplicationDecisionJourney
+@smoke @PAApplicationDecisionJourney
 Feature: caseworker makes decision on PA applications
   As a caseworker
   I want to be able to make a decision on PA application

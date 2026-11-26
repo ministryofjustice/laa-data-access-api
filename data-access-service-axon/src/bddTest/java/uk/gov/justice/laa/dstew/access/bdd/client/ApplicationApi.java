@@ -2,6 +2,8 @@ package uk.gov.justice.laa.dstew.access.bdd.client;
 
 import com.microsoft.playwright.options.FilePayload;
 import com.microsoft.playwright.options.FormData;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 import java.util.function.Predicate;
 import uk.gov.justice.laa.dstew.access.bdd.support.ApiClient;
@@ -72,5 +74,38 @@ public final class ApplicationApi {
     return polling.awaitGet(
         "/api/v0/applications/" + applicationId,
         response -> decision.equals(response.body().path("decisionStatus").asText()));
+  }
+
+  public ApiResponse awaitApplication(UUID applicationId, Predicate<ApiResponse> condition) {
+    return polling.awaitGet("/api/v0/applications/" + applicationId, condition);
+  }
+
+  public ApiResponse addNote(UUID applicationId, String note) {
+    return apiClient.post(
+        "/api/v0/applications/" + applicationId + "/notes", Map.of("notes", note));
+  }
+
+  public ApiResponse awaitNotes(UUID applicationId, Predicate<ApiResponse> condition) {
+    return polling.awaitGet("/api/v0/applications/" + applicationId + "/notes", condition);
+  }
+
+  public ApiResponse link(UUID applicationId, UUID targetApplicationId, String linkedGroupVersion) {
+    Map<String, Object> body = new LinkedHashMap<>();
+    body.put("applicationId", targetApplicationId.toString());
+    body.put("linkType", "FAMILY");
+    if (linkedGroupVersion != null) body.put("linkedGroupVersion", linkedGroupVersion);
+    return apiClient.post("/api/v0/applications/" + applicationId + "/link", body);
+  }
+
+  public ApiResponse unlink(UUID applicationId, String linkedGroupVersion) {
+    return apiClient.post(
+        "/api/v0/applications/" + applicationId + "/unlink",
+        Map.of("linkedGroupVersion", linkedGroupVersion));
+  }
+
+  public ApiResponse makeLead(UUID applicationId, String linkedGroupVersion) {
+    return apiClient.post(
+        "/api/v0/applications/" + applicationId + "/make-lead",
+        Map.of("linkedGroupVersion", linkedGroupVersion));
   }
 }

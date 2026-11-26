@@ -1,4 +1,4 @@
-@draftApplicationJourney @smokeTest
+@draftApplicationJourney @smoke
 Feature: Draft Application Journey
   As a user
   I want to be able to create a draft application, upload supporting documents, and submit it.

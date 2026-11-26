@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.bdd.fixtures;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -22,10 +23,11 @@ public final class ApplicationFixtureFactory {
             "proceedings", List.of(proceeding(proceedingId))));
   }
 
-  public Map<String, Object> grantDecision(UUID proceedingId, long applicationVersion) {
-    return Map.of(
-        "overallDecision",
-        "GRANTED",
+  /** Builds a decision request; {@code decision} is {@code GRANTED} or {@code REFUSED}. */
+  public Map<String, Object> decision(UUID proceedingId, long applicationVersion, String decision) {
+    Map<String, Object> request = new LinkedHashMap<>();
+    request.put("overallDecision", decision);
+    request.put(
         "proceedings",
         List.of(
             Map.of(
@@ -33,17 +35,16 @@ public final class ApplicationFixtureFactory {
                 "meritsDecision",
                     Map.of(
                         "decision",
-                        "GRANTED",
+                        decision,
                         "reason",
-                        "BDD smoke",
+                        "Decision reason",
                         "justification",
-                        "BDD smoke"))),
-        "certificate",
-        Map.of("source", "bdd"),
-        "eventHistory",
-        Map.of("eventType", "DECISION", "eventDescription", "BDD smoke"),
-        "applicationVersion",
-        applicationVersion);
+                        "Decision justification"))));
+    if ("GRANTED".equals(decision)) request.put("certificate", Map.of("source", "bdd"));
+    request.put(
+        "eventHistory", Map.of("eventType", "DECISION", "eventDescription", "Decision recorded"));
+    request.put("applicationVersion", applicationVersion);
+    return request;
   }
 
   private Map<String, Object> client() {

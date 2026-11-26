@@ -1,4 +1,4 @@
-@smokeTest @applicationLinkAndMakeLeadJourney
+@smoke @applicationLinkAndMakeLeadJourney
 Feature: Applications can be linked and a lead can be changed
   As a user
   I want to be able to link applications and change the lead of application group.
@@ -17,6 +17,14 @@ Feature: Applications can be linked and a lead can be changed
   Scenario: User can unlink applications
     When I unlink the application from another application
     Then the applications are unlinked
+
+  @applicationUnlinkFromGroupOfThree
+  Scenario: User can unlink an application from a group of three
+    Given I link the application to another application
+    And the applications are linked
+    When I unlink the application from another application
+    Then the applications are unlinked
+    And the remaining applications are still linked
 
   @applicationChangeLead
   Scenario: User can change the lead of an application group
