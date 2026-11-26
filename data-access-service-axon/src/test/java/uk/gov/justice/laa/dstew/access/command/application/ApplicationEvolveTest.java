@@ -1,9 +1,11 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -11,8 +13,15 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetails;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
+import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
+import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 
 /** Unit tests for {@link ApplicationEvolve} decision-fold behaviour. */
 class ApplicationEvolveTest {
@@ -200,5 +209,178 @@ class ApplicationEvolveTest {
         .extracting(DocumentMetadata::documentId)
         .containsExactly(firstDocumentId, secondDocumentId);
     assertThat(state.uploadedDocuments.getFirst().documentType()).isEqualTo("GATEWAY_EVIDENCE");
+  }
+
+  @Test
+  void givenSubmittedHistory_whenFolded_thenContentMatchesStoredApplicationData() {
+    UUID applicationId = UUID.randomUUID();
+    Instant at = Instant.parse("2026-11-02T10:00:00Z");
+    ApplicationCreationDetails details = applicationCreationDetails(applicationId);
+    UUID firstProceedingId = details.proceedings().getFirst().getId();
+    UUID secondProceedingId = UUID.randomUUID();
+    ApplicationMeritsDecision granted = new ApplicationMeritsDecision("GRANTED", "r1", "j1");
+    ApplicationMeritsDecision refused = new ApplicationMeritsDecision("REFUSED", "r2", "j2");
+    Map<String, Object> certificate = Map.of("reference", "CERT-1");
+    ApplicationState state = new ApplicationState();
+
+    ApplicationEvolve.apply(
+        state, ApplicationDecider.decideSubmitDraft(applicationId, 0L, "fingerprint", details));
+    ApplicationEvolve.apply(
+        state, new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, at));
+    ApplicationEvolve.apply(state, new NoteCreatedEvent(applicationId, 2L, at, "note"));
+    ApplicationEvolve.apply(
+        state,
+        new ApplicationDecisionMadeEvent(
+            applicationId,
+            2L,
+            3L,
+            "GRANTED",
+            AutoGrantedState.MANUAL,
+            at,
+            "fp1",
+            Map.of(firstProceedingId, granted),
+            certificate,
+            "{\"d\":1}",
+            "first"));
+    ApplicationEvolve.apply(
+        state,
+        new ApplicationDecisionMadeEvent(
+            applicationId,
+            3L,
+            4L,
+            "REFUSED",
+            AutoGrantedState.MANUAL,
+            at,
+            "fp2",
+            Map.of(secondProceedingId, refused),
+            null,
+            "{\"d\":2}",
+            "second"));
+
+    assertThat(state.content.value())
+        .isEqualTo(
+            ApplicationDataPayload.from(details)
+                .withManualAssessmentRequired()
+                .withNote("note", at)
+                .withDecision(
+                    "GRANTED",
+                    AutoGrantedState.MANUAL,
+                    Map.of(firstProceedingId, granted),
+                    certificate,
+                    "{\"d\":1}",
+                    "first")
+                .withDecision(
+                    "REFUSED",
+                    AutoGrantedState.MANUAL,
+                    Map.of(firstProceedingId, granted, secondProceedingId, refused),
+                    null,
+                    "{\"d\":2}",
+                    "second"));
+    assertThat(state.proceedingIds).containsExactly(firstProceedingId);
+    assertThat(state.decisionRequestFingerprint).isEqualTo("fp2");
+    assertThat(state.proceedingDecisions)
+        .containsExactlyInAnyOrderEntriesOf(
+            Map.of(firstProceedingId, "GRANTED", secondProceedingId, "REFUSED"));
+  }
+
+  @Test
+  void givenAnyPartOfTheContentErased_whenFolded_thenContentIsErased() {
+    UUID applicationId = UUID.randomUUID();
+    Instant at = Instant.parse("2026-11-02T10:00:00Z");
+    ApplicationCreatedEvent created =
+        ApplicationDecider.decideSubmitDraft(
+            applicationId, 0L, "fingerprint", applicationCreationDetails(applicationId));
+    ApplicationUpdatedEvent updated =
+        new ApplicationUpdatedEvent(
+            applicationId,
+            1L,
+            1L,
+            "APPLICATION_SUBMITTED",
+            "APPLICATION_SUBMITTED",
+            at,
+            created.proceedingIds(),
+            created.content(),
+            Erasable.of("{}"));
+
+    assertThat(fold(withoutRequest(created)).content.isErased()).isTrue();
+    assertThat(
+            fold(created, withUpdate(updated, Erasable.erased(), Erasable.of("{}")))
+                .content
+                .isErased())
+        .isTrue();
+    assertThat(
+            fold(created, withUpdate(updated, created.content(), Erasable.erased()))
+                .content
+                .isErased())
+        .isTrue();
+    assertThat(fold(withoutRequest(created), updated).content.isErased()).isTrue();
+    assertThat(
+            fold(created, new NoteCreatedEvent(applicationId, 1L, at, Erasable.<String>erased()))
+                .content
+                .isErased())
+        .isTrue();
+  }
+
+  @Test
+  void givenErasedDraftFilename_whenSubmitted_thenContentKeepsOnlyRemainingFilenames() {
+    UUID applicationId = UUID.randomUUID();
+    UUID keptDocumentId = UUID.randomUUID();
+    UUID erasedDocumentId = UUID.randomUUID();
+    ApplicationState state = new ApplicationState();
+    state.draftDocumentFilenames.put(keptDocumentId, Erasable.of("evidence.pdf"));
+    state.draftDocumentFilenames.put(erasedDocumentId, Erasable.erased());
+
+    ApplicationEvolve.apply(
+        state,
+        ApplicationDecider.decideSubmitDraft(
+            applicationId, 0L, "fingerprint", applicationCreationDetails(applicationId)));
+
+    assertThat(state.content.value().documentFilenames())
+        .containsExactlyEntriesOf(Map.of(keptDocumentId, "evidence.pdf"));
+  }
+
+  private static ApplicationState fold(Object... events) {
+    ApplicationState state = new ApplicationState();
+    for (Object event : events) {
+      switch (event) {
+        case ApplicationCreatedEvent created -> ApplicationEvolve.apply(state, created);
+        case ApplicationUpdatedEvent updated -> ApplicationEvolve.apply(state, updated);
+        case NoteCreatedEvent note -> ApplicationEvolve.apply(state, note);
+        default -> throw new IllegalArgumentException(event.toString());
+      }
+    }
+    return state;
+  }
+
+  private static ApplicationCreatedEvent withoutRequest(ApplicationCreatedEvent event) {
+    return new ApplicationCreatedEvent(
+        event.applicationId(),
+        event.applicationDataVersion(),
+        event.requestFingerprint(),
+        event.status(),
+        event.schemaVersion(),
+        event.occurredAt(),
+        event.potentialDuplicates(),
+        event.officeCode(),
+        event.laaReference(),
+        event.proceedingIds(),
+        event.content(),
+        Erasable.erased());
+  }
+
+  private static ApplicationUpdatedEvent withUpdate(
+      ApplicationUpdatedEvent event,
+      Erasable<ParsedAppContentDetails> content,
+      Erasable<String> serialisedRequest) {
+    return new ApplicationUpdatedEvent(
+        event.applicationId(),
+        event.applicationVersion(),
+        event.applicationDataVersion(),
+        event.previousStatus(),
+        event.status(),
+        event.occurredAt(),
+        event.proceedingIds(),
+        content,
+        serialisedRequest);
   }
 }

@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.command.application;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetails;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
@@ -60,7 +61,15 @@ public final class ApplicationStateEvents {
         ready(applicationId),
         assigned(applicationId, caseworkerId, 1L, 1L),
         new ApplicationUpdatedEvent(
-            applicationId, 2L, 2L, "APPLICATION_GRANTED", "APPLICATION_SUBMITTED", OCCURRED_AT));
+            applicationId,
+            2L,
+            2L,
+            "APPLICATION_GRANTED",
+            "APPLICATION_SUBMITTED",
+            OCCURRED_AT,
+            List.of(),
+            ParsedAppContentDetails.builder().proceedings(List.of()).build(),
+            "{}"));
   }
 
   /** Folds an application event history into its current state. */
@@ -90,7 +99,10 @@ public final class ApplicationStateEvents {
         OCCURRED_AT,
         (List<PotentialDuplicate>) null,
         null,
-        null);
+        null,
+        List.of(),
+        ParsedAppContentDetails.builder().proceedings(List.of()).build(),
+        "{}");
   }
 
   private static ApplicationReadyForManualAssessmentEvent ready(UUID applicationId) {

@@ -137,14 +137,15 @@ retention period, scheduler and any erasure endpoint are later work.
 
 An event keeps only:
 
-1. identity and linking keys: aggregate, document, group, caseworker and work-item IDs, the LAA
-   reference, and the application IDs its `genesisIds()` derive from (ADR 0006);
+1. identity and linking keys: aggregate, document, group, caseworker, work-item and proceeding
+   IDs, the LAA reference, and the application IDs its `genesisIds()` derive from (ADR 0006);
 2. values a decider rule uses: status, versions, decision outcome, `autoGranted`, schema
    version, request fingerprint, `checksum`, Prior Authority `billingType`;
 3. values that decide access or work allocation: `officeCode`, `priorAuthorityType`,
    `workItemType`;
 4. the event's own timestamp (`occurredAt`, or `uploadedAt` / `deletedAt` on document events);
-5. non-personal decision outcomes.
+5. non-personal decision outcomes, including the decision value for each proceeding, which
+   informs retention schedules.
 
 Everything else is content. Usefulness after erasure is not a reason to keep a field; data that
 is needed after erasure needs its own solution.
@@ -161,15 +162,25 @@ The one deliberate exception is an Application draft: its content is what submit
 Application, so a draft whose content is erased counts as no draft and submit and upload return
 not found.
 
+Note, decision, auto-grant outcome, update and mark-ready commands that need to write a new
+`application_data` version treat erased submitted content as missing (`EntityNotFoundException`,
+HTTP 404). If a manual or automatic outcome was already recorded, no new version is needed:
+matching retries still succeed without writing, and conflicting outcomes still return 409.
+The guard recognises submission by the `ApplicationCreated` event, not by a non-null status;
+an open draft has no submitted payload to erase.
+
 | Event | Content |
 |---|---|
-| `ApplicationCreated` | `potentialDuplicates` (links this person to other applications). Gains the kept `laaReference`. |
+| `ApplicationCreated` | `content` (parsed application content), `serialisedRequest`, `potentialDuplicates` (links this person to other applications). Gains the kept `laaReference` and `proceedingIds`. |
+| `ApplicationUpdated` | `content`, `serialisedRequest`. Gains the kept `proceedingIds`. |
+| `NoteCreated` | `noteText` |
+| `ApplicationDecisionMade` | `meritsDecisions`, `certificate`, `serialisedRequest`, `eventDescription`. Gains the kept `decisionRequestFingerprint` and `proceedingDecisions`. |
 | `ApplicationDraftStarted` | `applicationContent`, `serialisedRequest`, `potentialDuplicates`. Gains the kept `status` and `laaReference`. |
 | `ApplicationDocumentUploaded` | `documentType`, `size`, `contentType`, `sourceService`, `fileSuffix`, `originalFilename` |
 | `PriorAuthorityDocumentUploaded` | `size`, `contentType`, `sourceService`, `fileSuffix` |
 | `PriorAuthorityDocumentTypeUpdated` | `documentType` |
 | `PriorAuthorityDecisionMade` | `decisionJustification`, `amountGranted`, `dateGranted` |
-| The other 15 event types | None |
+| The other 12 event types | None |
 
 `fileSuffix` can hold part of a filename, so it is content. Once erased, deleting a Prior
 Authority document cannot build the SDS filename; that clean-up is best-effort and logged, and
@@ -303,8 +314,11 @@ This layer moves no content into events that was not there already. Later layers
 1. move draft content into events and remove `ApplicationDraftStore` (done: Application draft
    content and upload filenames are event content; submit and the upload pre-check read the draft
    from the aggregate, and the projection records draft filenames for document downloads);
-2. move submitted content into events, read application details from the aggregate and remove
-   `ApplicationDataStore`;
+2. move submitted content into events (done: created, updated, note and decision content is event
+   content, and command handlers build the next `application_data` version from aggregate state;
+   `application_data` is still written and still serves API reads, projections and history
+   descriptions); reading application details from the aggregate and removing
+   `ApplicationDataStore` is later work;
 3. do the same for Prior Authority drafts, submissions and decisions;
 4. build erasure on the store mechanism: the soft deletion event, the retention period and the
    automatic hard erasure.
