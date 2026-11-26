@@ -14,8 +14,8 @@ import java.util.UUID;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationUseCase;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftExistsQuery;
 import uk.gov.justice.laa.dstew.access.command.application.draft.CreateApplicationDraftUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkApplicationUseCase;
@@ -81,7 +81,6 @@ class ApplicationStateSeeder {
   private final CreateNoteCommandMapper createNoteCommandMapper;
   private final CreateApplicationDraftUseCase createApplicationDraftUseCase;
   private final SaveApplicationDraftCommandMapper saveApplicationDraftCommandMapper;
-  private final ApplicationDraftStore applicationDraftStore;
   private final GeneratedRequestFactory requestFactory = new GeneratedRequestFactory("pact");
 
   ApplicationStateSeeder(
@@ -98,8 +97,7 @@ class ApplicationStateSeeder {
       MakeDecisionCommandMapper makeDecisionCommandMapper,
       CreateNoteCommandMapper createNoteCommandMapper,
       CreateApplicationDraftUseCase createApplicationDraftUseCase,
-      SaveApplicationDraftCommandMapper saveApplicationDraftCommandMapper,
-      ApplicationDraftStore applicationDraftStore) {
+      SaveApplicationDraftCommandMapper saveApplicationDraftCommandMapper) {
     this.queryGateway = queryGateway;
     this.workListItemReadRepository = workListItemReadRepository;
     this.createApplicationUseCase = createApplicationUseCase;
@@ -114,11 +112,10 @@ class ApplicationStateSeeder {
     this.createNoteCommandMapper = createNoteCommandMapper;
     this.createApplicationDraftUseCase = createApplicationDraftUseCase;
     this.saveApplicationDraftCommandMapper = saveApplicationDraftCommandMapper;
-    this.applicationDraftStore = applicationDraftStore;
   }
 
   /**
-   * A brand-new draft under a generated identifier: in the draft store, which is what submit and
+   * A brand-new draft under a generated identifier: in its aggregate, which is what submit and
    * document upload look up, and in the application projection. Every call creates another one, so
    * nothing an earlier interaction did can be observed. A draft is not returned by GET application
    * by id until it is submitted.
@@ -138,8 +135,12 @@ class ApplicationStateSeeder {
     await()
         .atMost(PROJECTION_WAIT)
         .pollInterval(POLL_INTERVAL)
-        .until(() -> applicationDraftStore.find(applicationId).isPresent());
+        .until(() -> draftExists(applicationId));
     return applicationId;
+  }
+
+  boolean draftExists(UUID applicationId) {
+    return queryGateway.query(new ApplicationDraftExistsQuery(applicationId), Boolean.class).join();
   }
 
   /**

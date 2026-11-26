@@ -103,6 +103,11 @@ public class ApplicationReadModel {
 
   @Transient private Map<UUID, String> documentFilenames;
 
+  /** Original filenames of a draft's documents, projected from event content until submission. */
+  @Column(name = "draft_document_filenames")
+  @JdbcTypeCode(SqlTypes.JSON)
+  private Map<UUID, String> draftDocumentFilenames;
+
   @Column(name = "potential_duplicates")
   @JdbcTypeCode(SqlTypes.JSON)
   private List<PotentialDuplicate> potentialDuplicates;

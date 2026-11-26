@@ -22,7 +22,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import uk.gov.justice.laa.dstew.access.DataAccessServiceAxonApplication;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationUseCase;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.draft.CreateApplicationDraftUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkApplicationUseCase;
@@ -85,7 +84,6 @@ public abstract class AbstractProviderPactTests {
   @Autowired private MakeApplicationDecisionUseCase makeApplicationDecisionUseCase;
   @Autowired private CreateNoteUseCase createNoteUseCase;
   @Autowired private CreateApplicationDraftUseCase createApplicationDraftUseCase;
-  @Autowired private ApplicationDraftStore applicationDraftStore;
   @Autowired private LinkApplicationUseCase linkApplicationUseCase;
   @Autowired private CreatePriorAuthorityDraftUseCase createPriorAuthorityDraftUseCase;
   @Autowired private SubmitPriorAuthorityDraftUseCase submitPriorAuthorityDraftUseCase;
@@ -132,8 +130,7 @@ public abstract class AbstractProviderPactTests {
             makeDecisionCommandMapper,
             createNoteCommandMapper,
             createApplicationDraftUseCase,
-            saveApplicationDraftCommandMapper,
-            applicationDraftStore);
+            saveApplicationDraftCommandMapper);
     PriorAuthorityStateSeeder priorAuthorities =
         new PriorAuthorityStateSeeder(
             queryGateway,
