@@ -8,7 +8,7 @@ import org.axonframework.messaging.eventhandling.annotation.Event;
 import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 
 /** Thin replayable event returning a direct work item to the open list. */
-@Event
+@Event(namespace = "access", name = "WorkItemUnassigned")
 public record WorkItemUnassigned(
     @EventTag UUID workItemId,
     WorkItemType workItemType,

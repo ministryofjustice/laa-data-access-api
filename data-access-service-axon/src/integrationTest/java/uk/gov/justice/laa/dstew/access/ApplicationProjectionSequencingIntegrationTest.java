@@ -93,7 +93,8 @@ class ApplicationProjectionSequencingIntegrationTest {
             details.schemaVersion(),
             createdAt,
             List.of(),
-            details.provider().getOfficeCode());
+            details.provider().getOfficeCode(),
+            "LAA-123");
 
     applicationProjection.reset();
     applicationProjection.on(
@@ -134,7 +135,8 @@ class ApplicationProjectionSequencingIntegrationTest {
             details.schemaVersion(),
             createdAt,
             List.of(),
-            details.provider().getOfficeCode());
+            details.provider().getOfficeCode(),
+            "LAA-123");
 
     applicationProjection.reset();
     applicationProjection.on(event);

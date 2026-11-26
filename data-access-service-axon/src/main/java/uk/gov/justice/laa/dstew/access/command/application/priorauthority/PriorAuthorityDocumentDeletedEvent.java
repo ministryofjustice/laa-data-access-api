@@ -8,7 +8,7 @@ import org.axonframework.messaging.eventhandling.annotation.Event;
 import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 
 /** Persisted event emitted when a prior-authority draft document is marked deleted. */
-@Event
+@Event(namespace = "access", name = "PriorAuthorityDocumentDeleted")
 public record PriorAuthorityDocumentDeletedEvent(
     @EventTag(key = "PriorAuthorityAggregate") UUID priorAuthorityId,
     UUID documentId,

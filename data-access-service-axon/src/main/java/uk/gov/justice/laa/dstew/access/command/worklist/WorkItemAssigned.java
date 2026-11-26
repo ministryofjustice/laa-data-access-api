@@ -8,7 +8,7 @@ import org.axonframework.messaging.eventhandling.annotation.Event;
 import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 
 /** Thin replayable event recording a direct work-item assignment. */
-@Event
+@Event(namespace = "access", name = "WorkItemAssigned")
 public record WorkItemAssigned(
     @EventTag UUID workItemId,
     WorkItemType workItemType,

@@ -28,6 +28,7 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.App
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
+import uk.gov.justice.laa.dstew.access.testutils.EventTypeNames;
 
 /** Verifies assignment and membership changes serialize on the locked group routes. */
 class LinkedGroupAssignmentConcurrencyIntegrationTest extends AbstractLinkedGroupIntegrationTest {
@@ -54,8 +55,8 @@ class LinkedGroupAssignmentConcurrencyIntegrationTest extends AbstractLinkedGrou
     var assignmentFirst = order == RaceOrder.ASSIGN_FIRST;
     var eventType =
         assignmentFirst
-            ? WorkItemAssigned.class.getName()
-            : MemberAddedToGroupEvent.class.getName();
+            ? EventTypeNames.of(WorkItemAssigned.class)
+            : EventTypeNames.of(MemberAddedToGroupEvent.class);
     try (var gate = pauseEvent(eventType)) {
       final CompletableFuture<ResponseEntity<String>> first =
           CompletableFuture.supplyAsync(
@@ -102,7 +103,7 @@ class LinkedGroupAssignmentConcurrencyIntegrationTest extends AbstractLinkedGrou
     var winnerItemId = addressedFirst == AddressedFirst.LEAD ? leadId : memberId;
     var loserItemId = addressedFirst == AddressedFirst.LEAD ? memberId : leadId;
 
-    try (var gate = pauseEvent(WorkItemAssigned.class.getName())) {
+    try (var gate = pauseEvent(EventTypeNames.of(WorkItemAssigned.class))) {
       final CompletableFuture<ResponseEntity<String>> first =
           CompletableFuture.supplyAsync(
               () -> assign(winnerItemId, TestJwtDecoderConfig.CASEWORKER_ID, 0L));
@@ -146,7 +147,9 @@ class LinkedGroupAssignmentConcurrencyIntegrationTest extends AbstractLinkedGrou
     }
     var startVersion = assignFirst ? 0L : 1L;
     var gatedEvent =
-        assignFirst ? WorkItemAssigned.class.getName() : WorkItemUnassigned.class.getName();
+        assignFirst
+            ? EventTypeNames.of(WorkItemAssigned.class)
+            : EventTypeNames.of(WorkItemUnassigned.class);
 
     try (var gate = pauseEvent(gatedEvent)) {
       final CompletableFuture<ResponseEntity<String>> first =
@@ -195,7 +198,7 @@ class LinkedGroupAssignmentConcurrencyIntegrationTest extends AbstractLinkedGrou
             applicationId ->
                 awaitWorkListAssignee(applicationId, TestJwtDecoderConfig.CASEWORKER_ID, 1L));
 
-    try (var gate = pauseEvent(WorkItemUnassigned.class.getName())) {
+    try (var gate = pauseEvent(EventTypeNames.of(WorkItemUnassigned.class))) {
       final CompletableFuture<ResponseEntity<String>> first =
           CompletableFuture.supplyAsync(
               () -> unassign(leadId, TestJwtDecoderConfig.CASEWORKER_ID, 1L));
@@ -238,9 +241,9 @@ class LinkedGroupAssignmentConcurrencyIntegrationTest extends AbstractLinkedGrou
     var assignFirst = order == AssignUnlinkOrder.ASSIGN_FIRST;
     var unlinkEvent =
         threeMembers
-            ? MemberRemovedFromGroupEvent.class.getName()
-            : LinkedApplicationGroupDissolvedEvent.class.getName();
-    var gatedEvent = assignFirst ? WorkItemAssigned.class.getName() : unlinkEvent;
+            ? EventTypeNames.of(MemberRemovedFromGroupEvent.class)
+            : EventTypeNames.of(LinkedApplicationGroupDissolvedEvent.class);
+    var gatedEvent = assignFirst ? EventTypeNames.of(WorkItemAssigned.class) : unlinkEvent;
 
     try (var gate = pauseEvent(gatedEvent)) {
       final CompletableFuture<ResponseEntity<String>> first =

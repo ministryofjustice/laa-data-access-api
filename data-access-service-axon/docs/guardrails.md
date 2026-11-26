@@ -46,15 +46,18 @@ group lead and membership. Do not duplicate group membership rules in controller
 
 ### Events are persisted contracts
 
-An event record is not an ordinary refactorable DTO. Its fully qualified type name, serialized
-fields, revision, and meaning may be stored for years. Read [Event evolution](event-evolution.md)
+An event record is not an ordinary refactorable DTO. Its `@Event` name, serialized fields,
+kept-field schema, revision, and meaning may be stored for years. Read [Event evolution](event-evolution.md)
 before renaming, moving, or changing one.
 
 ### Keep events thin and reviewed
 
 Do not add application content, individuals, proceedings, certificates, note text, serialized
 requests, or free-text descriptions to events. Append them to `application_data` and reference the
-new version. Identifiers may still be personal data and also require review.
+new version. Identifiers may still be personal data and also require review. A field the event's
+kept-field schema does not list is content: it must be `Erasable` and no decider rule may depend
+on it. Never delete an `event_content` row: erasure replaces its content, and a missing row fails
+loading (see [ADR 0007](adr/0007-event-content-is-stored-beside-its-event.md)).
 
 ### Do not nest events inside events
 

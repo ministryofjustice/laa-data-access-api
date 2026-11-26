@@ -72,6 +72,7 @@ import uk.gov.justice.laa.dstew.access.query.application.history.FindApplication
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
+import uk.gov.justice.laa.dstew.access.testutils.EventTypeNames;
 import uk.gov.justice.laa.dstew.access.version.VersionToken;
 import util.ProjectionAwaiter;
 
@@ -117,7 +118,8 @@ public class ApplicationLinkingIntegrationTest {
     String clientLastName = uniqueClientLastName();
     createApplication(sourceApplicationId, clientLastName);
     createApplication(targetApplicationId, clientLastName);
-    long createdEventCount = countDomainEvents(LinkedApplicationGroupCreatedEvent.class.getName());
+    long createdEventCount =
+        countDomainEvents(EventTypeNames.of(LinkedApplicationGroupCreatedEvent.class));
 
     ResponseEntity<Void> response = linkApplication(sourceApplicationId, targetApplicationId);
 
@@ -131,9 +133,10 @@ public class ApplicationLinkingIntegrationTest {
     assertThat(sourceRoute.getRouteKind()).isEqualTo(ApplicationGroupRouteKind.LINKED_GROUP);
     assertThat(groupId).isNotNull().isNotIn(sourceApplicationId, targetApplicationId);
     assertThat(sourceRoute.getGroupId()).isEqualTo(groupId);
-    assertThat(countDomainEvents(LinkedApplicationGroupCreatedEvent.class.getName()))
+    assertThat(countDomainEvents(EventTypeNames.of(LinkedApplicationGroupCreatedEvent.class)))
         .isEqualTo(createdEventCount + 1);
-    assertThat(countDomainEvents(groupId, LinkedApplicationGroupCreatedEvent.class.getName()))
+    assertThat(
+            countDomainEvents(groupId, EventTypeNames.of(LinkedApplicationGroupCreatedEvent.class)))
         .isOne();
 
     LinkedApplicationGroupReadModel group =
@@ -475,13 +478,13 @@ public class ApplicationLinkingIntegrationTest {
     awaitGroupProjection(
         groupId, targetApplicationId, targetApplicationId, existingMemberApplicationId);
     long memberAddedEventCount =
-        countDomainEvents(groupId, MemberAddedToGroupEvent.class.getName());
+        countDomainEvents(groupId, EventTypeNames.of(MemberAddedToGroupEvent.class));
 
     ResponseEntity<Void> response =
         linkApplication(sourceApplicationId, targetApplicationId, token(groupId, 0));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    assertThat(countDomainEvents(groupId, MemberAddedToGroupEvent.class.getName()))
+    assertThat(countDomainEvents(groupId, EventTypeNames.of(MemberAddedToGroupEvent.class)))
         .isEqualTo(memberAddedEventCount + 1);
     assertRoutesInGroup(
         groupId, targetApplicationId, existingMemberApplicationId, sourceApplicationId);
@@ -582,17 +585,18 @@ public class ApplicationLinkingIntegrationTest {
         awaitGroupProjection(
             groupId, targetApplicationId, targetApplicationId, sourceApplicationId);
     long createdEventCount =
-        countDomainEvents(groupId, LinkedApplicationGroupCreatedEvent.class.getName());
+        countDomainEvents(groupId, EventTypeNames.of(LinkedApplicationGroupCreatedEvent.class));
     long memberAddedEventCount =
-        countDomainEvents(groupId, MemberAddedToGroupEvent.class.getName());
+        countDomainEvents(groupId, EventTypeNames.of(MemberAddedToGroupEvent.class));
 
     ResponseEntity<Void> secondResponse =
         linkApplication(sourceApplicationId, targetApplicationId, token(groupId, 0));
 
     assertThat(secondResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    assertThat(countDomainEvents(groupId, LinkedApplicationGroupCreatedEvent.class.getName()))
+    assertThat(
+            countDomainEvents(groupId, EventTypeNames.of(LinkedApplicationGroupCreatedEvent.class)))
         .isEqualTo(createdEventCount);
-    assertThat(countDomainEvents(groupId, MemberAddedToGroupEvent.class.getName()))
+    assertThat(countDomainEvents(groupId, EventTypeNames.of(MemberAddedToGroupEvent.class)))
         .isEqualTo(memberAddedEventCount);
     LinkedApplicationGroupReadModel finalGroup =
         awaitGroupProjection(
@@ -678,13 +682,14 @@ public class ApplicationLinkingIntegrationTest {
                 .getStatusCode())
         .isEqualTo(HttpStatus.NO_CONTENT);
     var groupId = targetRoute.getGroupId();
-    long membersBefore = countDomainEvents(groupId, MemberAddedToGroupEvent.class.getName());
+    long membersBefore =
+        countDomainEvents(groupId, EventTypeNames.of(MemberAddedToGroupEvent.class));
 
     ResponseEntity<Void> response =
         linkApplication(sourceApplicationId, targetApplicationId, token(groupId, 0));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-    assertThat(countDomainEvents(groupId, MemberAddedToGroupEvent.class.getName()))
+    assertThat(countDomainEvents(groupId, EventTypeNames.of(MemberAddedToGroupEvent.class)))
         .isEqualTo(membersBefore);
     assertStandaloneRoute(sourceApplicationId);
   }
@@ -768,8 +773,8 @@ public class ApplicationLinkingIntegrationTest {
         secondTargetApplicationId,
         secondExistingMemberApplicationId);
     long memberAddedEventCount =
-        countDomainEvents(firstGroupId, MemberAddedToGroupEvent.class.getName())
-            + countDomainEvents(secondGroupId, MemberAddedToGroupEvent.class.getName());
+        countDomainEvents(firstGroupId, EventTypeNames.of(MemberAddedToGroupEvent.class))
+            + countDomainEvents(secondGroupId, EventTypeNames.of(MemberAddedToGroupEvent.class));
 
     CyclicBarrier barrier = new CyclicBarrier(2);
     ExecutorService executor = Executors.newFixedThreadPool(2);
@@ -801,8 +806,9 @@ public class ApplicationLinkingIntegrationTest {
     assertThat(sourceRoute.getGroupId()).isIn(firstGroupId, secondGroupId);
     assertThat(countRoutes(sourceApplicationId)).isOne();
     assertThat(
-            countDomainEvents(firstGroupId, MemberAddedToGroupEvent.class.getName())
-                + countDomainEvents(secondGroupId, MemberAddedToGroupEvent.class.getName()))
+            countDomainEvents(firstGroupId, EventTypeNames.of(MemberAddedToGroupEvent.class))
+                + countDomainEvents(
+                    secondGroupId, EventTypeNames.of(MemberAddedToGroupEvent.class)))
         .isEqualTo(memberAddedEventCount + 1);
     if (sourceRoute.getGroupId().equals(firstGroupId)) {
       assertGroupMembers(
@@ -967,8 +973,8 @@ public class ApplicationLinkingIntegrationTest {
                                 WHERE payload_type IN (?, ?)
                                 """,
             Long.class,
-            LinkedApplicationGroupCreatedEvent.class.getName(),
-            MemberAddedToGroupEvent.class.getName()));
+            EventTypeNames.of(LinkedApplicationGroupCreatedEvent.class),
+            EventTypeNames.of(MemberAddedToGroupEvent.class)));
   }
 
   private long countRoutes(UUID applicationId) {

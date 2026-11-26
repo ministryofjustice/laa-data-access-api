@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.axonframework.common.configuration.AxonConfiguration;
-import org.axonframework.messaging.core.MessageTypeResolver;
 import org.axonframework.messaging.core.unitofwork.UnitOfWorkFactory;
 import org.axonframework.modelling.StateManager;
 import org.junit.jupiter.api.Test;
@@ -53,6 +52,7 @@ import uk.gov.justice.laa.dstew.access.model.WorkListUnassignRequest;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsUploadResult;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
+import uk.gov.justice.laa.dstew.access.testutils.EventTypeNames;
 
 /**
  * ADR 0006 rollout without a data reset: events stored before their genesis field existed must
@@ -100,15 +100,7 @@ class LegacyGenesisPayloadReplayIntegrationTest extends BaseIntegrationTest {
     storeAsLegacy(
         priorAuthorityId, PriorAuthorityDocumentTypeUpdatedEvent.class, "parentApplicationId");
     storeAsLegacy(priorAuthorityId, WorkItemAssigned.class, "applicationId");
-    assertThat(storedPayloads(priorAuthorityId, PriorAuthorityDraftUpdatedEvent.class))
-        .as("plain @Event keeps the class name stored before the annotation was added")
-        .hasSize(1);
-    assertThat(
-            axonConfiguration
-                .getComponent(MessageTypeResolver.class)
-                .resolveOrThrow(PriorAuthorityDraftUpdatedEvent.class)
-                .name())
-        .isEqualTo(PriorAuthorityDraftUpdatedEvent.class.getName());
+    assertThat(storedPayloads(priorAuthorityId, PriorAuthorityDraftUpdatedEvent.class)).hasSize(1);
 
     PriorAuthorityAggregate aggregate = load(PriorAuthorityAggregate.class, priorAuthorityId);
     assertThat(aggregate.getApplicationId()).isEqualTo(applicationId);
@@ -148,7 +140,7 @@ class LegacyGenesisPayloadReplayIntegrationTest extends BaseIntegrationTest {
         "SELECT global_index, payload FROM axon.domain_event_entry"
             + " WHERE aggregate_identifier = ? AND payload_type = ? ORDER BY global_index",
         streamId.toString(),
-        eventType.getName());
+        EventTypeNames.of(eventType));
   }
 
   private <T> T load(Class<T> type, UUID id) {

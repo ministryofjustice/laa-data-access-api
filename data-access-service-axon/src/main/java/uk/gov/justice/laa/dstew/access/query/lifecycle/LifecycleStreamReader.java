@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.access.query.lifecycle;
 
 import jakarta.persistence.EntityManager;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -10,26 +9,22 @@ import java.util.stream.Collectors;
 import org.axonframework.common.TypeReference;
 import org.axonframework.eventsourcing.eventstore.jpa.AggregateEventEntry;
 import org.axonframework.messaging.core.MessageType;
-import org.axonframework.messaging.core.MessageTypeResolver;
-import org.axonframework.messaging.core.annotation.AnnotationMessageTypeResolver;
 import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.GenericEventMessage;
-import org.axonframework.messaging.eventhandling.annotation.Event;
 import org.axonframework.messaging.eventhandling.conversion.EventConverter;
-import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
-import org.springframework.core.type.filter.AnnotationTypeFilter;
 import org.springframework.stereotype.Component;
-import org.springframework.util.ClassUtils;
+import uk.gov.justice.laa.dstew.access.command.EventTypes;
 
 /**
  * Reads a genesis's lifecycle stream: its events, in the order they occurred, whichever aggregate
  * appended them. Axon has no load-by-identifier API, so stored rows are decoded here the same way
- * Axon's JPA storage engine decodes them.
+ * Axon's JPA storage engine decodes them, with the same {@link EventConverter}.
+ *
+ * <p>Stored rows hold kept fields only. Content is not joined, so content fields read as erased;
+ * readers of the stream must use kept fields only.
  */
 @Component
 public class LifecycleStreamReader {
-
-  static final String EVENTS_PACKAGE = "uk.gov.justice.laa.dstew.access.command";
 
   private static final TypeReference<Map<String, String>> METADATA = new TypeReference<>() {};
 
@@ -44,7 +39,7 @@ public class LifecycleStreamReader {
     this.repository = repository;
     this.converter = converter;
     this.entityManager = entityManager;
-    this.eventTypes = eventTypesIn(EVENTS_PACKAGE, new AnnotationMessageTypeResolver());
+    this.eventTypes = EventTypes.all();
   }
 
   /**
@@ -99,26 +94,5 @@ public class LifecycleStreamReader {
             metadata,
             entry.timestamp());
     return converter.convertEvent(stored, type);
-  }
-
-  /**
-   * Finds every {@code @Event} class under a package, keyed by the event name Axon stores.
-   *
-   * @throws IllegalStateException if two classes share a name
-   */
-  static Map<String, Class<?>> eventTypesIn(String basePackage, MessageTypeResolver resolver) {
-    var scanner = new ClassPathScanningCandidateComponentProvider(false);
-    scanner.addIncludeFilter(new AnnotationTypeFilter(Event.class));
-    Map<String, Class<?>> types = new HashMap<>();
-    for (var candidate : scanner.findCandidateComponents(basePackage)) {
-      Class<?> type = ClassUtils.resolveClassName(candidate.getBeanClassName(), null);
-      String name = resolver.resolveOrThrow(type).name();
-      Class<?> previous = types.put(name, type);
-      if (previous != null) {
-        throw new IllegalStateException(
-            "Event name " + name + " is used by " + previous + " and " + type);
-      }
-    }
-    return Map.copyOf(types);
   }
 }
