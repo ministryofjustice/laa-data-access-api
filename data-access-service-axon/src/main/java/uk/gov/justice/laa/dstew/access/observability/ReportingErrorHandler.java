@@ -10,7 +10,7 @@ import org.axonframework.messaging.eventhandling.processing.errorhandling.ErrorH
 import org.axonframework.messaging.eventhandling.processing.errorhandling.PropagatingErrorHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -46,15 +46,11 @@ public class ReportingErrorHandler implements ErrorHandler {
   /**
    * Creates the handler, delegating rethrow behaviour to the real {@code PropagatingErrorHandler}.
    */
-  @Autowired
   public ReportingErrorHandler(
       ErrorReporter errorReporter,
+      @Qualifier("projectionErrorDelegate") ErrorHandler delegate,
+      Clock clock,
       @Value("${application.error-reporting.axon-projection-cooldown:5m}") Duration cooldown) {
-    this(errorReporter, PropagatingErrorHandler.instance(), Clock.systemUTC(), cooldown);
-  }
-
-  ReportingErrorHandler(
-      ErrorReporter errorReporter, ErrorHandler delegate, Clock clock, Duration cooldown) {
     this.errorReporter = errorReporter;
     this.delegate = delegate;
     this.clock = clock;

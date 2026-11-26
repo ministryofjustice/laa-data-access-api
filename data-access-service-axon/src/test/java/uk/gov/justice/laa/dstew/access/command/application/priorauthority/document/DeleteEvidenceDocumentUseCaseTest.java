@@ -7,12 +7,13 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -41,17 +42,20 @@ class DeleteEvidenceDocumentUseCaseTest {
 
   private static final AuthenticatedCaller CALLER =
       new AuthenticatedCaller(Optional.empty(), Set.of(), Set.of("1A001B"), Set.of());
+  private static final Clock CLOCK = Clock.fixed(Instant.EPOCH, ZoneOffset.UTC);
 
   @Mock private PriorAuthorityDraftStore draftStore;
   @Mock private RetryingCommandDispatcher dispatcher;
   @Mock private SdsService sdsService;
+  @Mock private ErrorReporter errorReporter;
 
   @ParameterizedTest
   @NullAndEmptySource
   @ValueSource(strings = {"evidence.pdf", "evidence.PDF", "evidence.png", "evidence"})
   void givenDraftExists_whenExecute_thenDispatchesBeforeDeletingTheSdsFile(String filename) {
-    DeletePriorAuthorityDocumentUseCase useCase =
-        new DeletePriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
+    final DeletePriorAuthorityDocumentUseCase useCase =
+        new DeletePriorAuthorityDocumentUseCase(
+            draftStore, dispatcher, sdsService, errorReporter, CLOCK);
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
     var draft = draft(priorAuthorityId);
@@ -77,8 +81,9 @@ class DeleteEvidenceDocumentUseCaseTest {
 
   @Test
   void givenSdsDeletionFails_whenExecute_thenDoesNotPropagateTheFailure() {
-    DeletePriorAuthorityDocumentUseCase useCase =
-        new DeletePriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
+    final DeletePriorAuthorityDocumentUseCase useCase =
+        new DeletePriorAuthorityDocumentUseCase(
+            draftStore, dispatcher, sdsService, errorReporter, CLOCK);
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
     when(draftStore.find(priorAuthorityId))
@@ -98,9 +103,9 @@ class DeleteEvidenceDocumentUseCaseTest {
 
   @Test
   void givenSdsDeletionFails_whenExecute_thenReportsToSentry() {
-    ErrorReporter errorReporter = mock(ErrorReporter.class);
-    DeletePriorAuthorityDocumentUseCase useCase =
-        new DeletePriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService, errorReporter);
+    final DeletePriorAuthorityDocumentUseCase useCase =
+        new DeletePriorAuthorityDocumentUseCase(
+            draftStore, dispatcher, sdsService, errorReporter, CLOCK);
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
     when(draftStore.find(priorAuthorityId))
@@ -120,7 +125,8 @@ class DeleteEvidenceDocumentUseCaseTest {
   @Test
   void givenDraftMissing_whenExecute_thenThrowsNotFoundWithoutDeletingFromSds() {
     DeletePriorAuthorityDocumentUseCase useCase =
-        new DeletePriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
+        new DeletePriorAuthorityDocumentUseCase(
+            draftStore, dispatcher, sdsService, errorReporter, CLOCK);
     UUID priorAuthorityId = UUID.randomUUID();
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.empty());
 
@@ -136,7 +142,7 @@ class DeleteEvidenceDocumentUseCaseTest {
         UUID.randomUUID(),
         new PriorAuthorityContent(null, null, null, null, null),
         "{}",
-        Instant.now());
+        Instant.EPOCH);
   }
 
   @ParameterizedTest
@@ -149,7 +155,8 @@ class DeleteEvidenceDocumentUseCaseTest {
             any(PriorAuthorityDocumentDeleteCommand.class), eq(DocumentMetadata.class)))
         .thenReturn(pdfDocument(documentId).withFileSuffix(suffix));
 
-    new DeletePriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService)
+    new DeletePriorAuthorityDocumentUseCase(
+            draftStore, dispatcher, sdsService, errorReporter, CLOCK)
         .execute(ownerId, documentId, CALLER);
 
     verify(sdsService).deleteEvidenceFile(ownerId, documentId, documentId + suffix);
@@ -157,6 +164,6 @@ class DeleteEvidenceDocumentUseCaseTest {
 
   private DocumentMetadata pdfDocument(UUID documentId) {
     return new DocumentMetadata(
-        documentId, null, Instant.now(), 1L, "application/pdf", null, "test", false);
+        documentId, null, Instant.EPOCH, 1L, "application/pdf", null, "test", false);
   }
 }

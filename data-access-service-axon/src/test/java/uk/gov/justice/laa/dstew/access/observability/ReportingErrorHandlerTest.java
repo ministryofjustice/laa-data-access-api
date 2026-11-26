@@ -19,14 +19,19 @@ import org.axonframework.messaging.core.Context;
 import org.axonframework.messaging.eventhandling.processing.errorhandling.ErrorContext;
 import org.axonframework.messaging.eventhandling.processing.errorhandling.ErrorHandler;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+@ExtendWith(MockitoExtension.class)
 class ReportingErrorHandlerTest {
 
   private static final Duration COOLDOWN = Duration.ofMinutes(5);
 
+  @Mock private ErrorReporter errorReporter;
+
   @Test
   void givenFirstFailure_whenHandled_thenReportsAndDelegates() throws Exception {
-    ErrorReporter errorReporter = mock(ErrorReporter.class);
     ErrorHandler delegate = mock(ErrorHandler.class);
     ReportingErrorHandler handler =
         new ReportingErrorHandler(
@@ -43,7 +48,6 @@ class ReportingErrorHandlerTest {
   @Test
   void givenSecondFailureWithinCooldown_whenHandled_thenDoesNotReportAgainButStillDelegates()
       throws Exception {
-    ErrorReporter errorReporter = mock(ErrorReporter.class);
     ErrorHandler delegate = mock(ErrorHandler.class);
     Instant start = Instant.EPOCH;
     MutableClock clock = new MutableClock(start);
@@ -65,7 +69,6 @@ class ReportingErrorHandlerTest {
 
   @Test
   void givenDifferentProcessor_whenHandled_thenReportsIndependently() throws Exception {
-    ErrorReporter errorReporter = mock(ErrorReporter.class);
     ErrorHandler delegate = mock(ErrorHandler.class);
     ReportingErrorHandler handler =
         new ReportingErrorHandler(
@@ -80,7 +83,6 @@ class ReportingErrorHandlerTest {
 
   @Test
   void givenDifferentExceptionType_whenHandled_thenReportsIndependently() throws Exception {
-    ErrorReporter errorReporter = mock(ErrorReporter.class);
     ErrorHandler delegate = mock(ErrorHandler.class);
     ReportingErrorHandler handler =
         new ReportingErrorHandler(
@@ -94,7 +96,6 @@ class ReportingErrorHandlerTest {
 
   @Test
   void givenCooldownElapsed_whenHandled_thenReportsAgain() throws Exception {
-    ErrorReporter errorReporter = mock(ErrorReporter.class);
     ErrorHandler delegate = mock(ErrorHandler.class);
     Instant start = Instant.EPOCH;
     MutableClock clock = new MutableClock(start);
@@ -111,7 +112,6 @@ class ReportingErrorHandlerTest {
 
   @Test
   void givenDelegateThrows_whenHandled_thenExceptionPropagates() throws Exception {
-    ErrorReporter errorReporter = mock(ErrorReporter.class);
     ErrorHandler delegate = mock(ErrorHandler.class);
     RuntimeException failure = new RuntimeException("will abort segment");
     doThrow(failure).when(delegate).handleError(any());
@@ -126,7 +126,6 @@ class ReportingErrorHandlerTest {
 
   @Test
   void givenReportingThrows_whenHandled_thenDelegateIsStillInvoked() throws Exception {
-    ErrorReporter errorReporter = mock(ErrorReporter.class);
     doThrow(new RuntimeException("sentry unavailable"))
         .when(errorReporter)
         .report(anyString(), any());
@@ -143,7 +142,6 @@ class ReportingErrorHandlerTest {
 
   @Test
   void givenMultipleFailedEvents_whenHandled_thenReportsOnlyOnce() throws Exception {
-    ErrorReporter errorReporter = mock(ErrorReporter.class);
     ErrorHandler delegate = mock(ErrorHandler.class);
     ReportingErrorHandler handler =
         new ReportingErrorHandler(

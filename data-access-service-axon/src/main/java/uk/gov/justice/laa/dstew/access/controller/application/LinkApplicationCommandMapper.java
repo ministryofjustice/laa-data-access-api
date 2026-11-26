@@ -3,7 +3,7 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkType;
@@ -13,19 +13,10 @@ import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 
 /** Maps the generated link request to the command-side explicit-link contract. */
 @Component
+@RequiredArgsConstructor
 public class LinkApplicationCommandMapper {
 
   private final Clock clock;
-
-  /** Creates the mapper with the system UTC clock. */
-  @Autowired
-  public LinkApplicationCommandMapper() {
-    this(Clock.systemUTC());
-  }
-
-  LinkApplicationCommandMapper(Clock clock) {
-    this.clock = clock;
-  }
 
   /** Maps the source path identifier, target request identifier, and authenticated caller. */
   public LinkApplicationCommand toCommand(

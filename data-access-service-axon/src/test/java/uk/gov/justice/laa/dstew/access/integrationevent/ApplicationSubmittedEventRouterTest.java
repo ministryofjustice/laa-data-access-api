@@ -19,25 +19,35 @@ import org.axonframework.messaging.core.Metadata;
 import org.axonframework.messaging.core.unitofwork.ProcessingContext;
 import org.axonframework.messaging.core.unitofwork.ProcessingLifecycle;
 import org.axonframework.messaging.eventhandling.EventMessage;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.springframework.boot.test.system.CapturedOutput;
-import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 
-@ExtendWith(OutputCaptureExtension.class)
+@ExtendWith(MockitoExtension.class)
 class ApplicationSubmittedEventRouterTest {
 
   private static final Instant COMMITTED_AT = Instant.parse("2026-08-03T09:30:00Z");
+
+  @Mock private ErrorReporter errorReporter;
+  private final Clock clock = Clock.fixed(COMMITTED_AT, ZoneOffset.UTC);
+  private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+
+  @AfterEach
+  void closeMeterRegistry() {
+    meterRegistry.close();
+  }
 
   @Test
   void givenSubmittedApplicationCreated_whenCommitCompletes_thenPublishesThinIntegrationEvent() {
     RecordingPublisher publisher = new RecordingPublisher();
     ApplicationSubmittedEventRouter router =
-        new ApplicationSubmittedEventRouter(publisher, Clock.fixed(COMMITTED_AT, ZoneOffset.UTC));
+        new ApplicationSubmittedEventRouter(publisher, clock, meterRegistry, errorReporter);
     ProcessingLifecycle lifecycle = mock(ProcessingLifecycle.class);
     EventMessage message = eventMessage(Map.of("correlationId", "corr-2096"));
     ApplicationCreatedEvent event = createdEvent("APPLICATION_SUBMITTED");
@@ -69,10 +79,10 @@ class ApplicationSubmittedEventRouterTest {
   void givenApplicationCreatedInProgress_whenHandled_thenDoesNotSchedulePublication() {
     ApplicationSubmittedPublisher publisher = mock(ApplicationSubmittedPublisher.class);
     ApplicationSubmittedEventRouter router =
-        new ApplicationSubmittedEventRouter(publisher, Clock.fixed(COMMITTED_AT, ZoneOffset.UTC));
+        new ApplicationSubmittedEventRouter(publisher, clock, meterRegistry, errorReporter);
     ProcessingLifecycle lifecycle = mock(ProcessingLifecycle.class);
 
-    router.on(createdEvent("APPLICATION_IN_PROGRESS"), eventMessage(Map.of()), lifecycle);
+    router.on(createdEvent("APPLICATION_IN_PROGRESS"), mock(EventMessage.class), lifecycle);
 
     verify(lifecycle, never()).runOnAfterCommit(any());
     verify(publisher, never()).publish(any());
@@ -82,7 +92,7 @@ class ApplicationSubmittedEventRouterTest {
   void givenApplicationEntersSubmittedOnUpdate_whenCommitCompletes_thenPublishesCurrentVersion() {
     RecordingPublisher publisher = new RecordingPublisher();
     ApplicationSubmittedEventRouter router =
-        new ApplicationSubmittedEventRouter(publisher, Clock.fixed(COMMITTED_AT, ZoneOffset.UTC));
+        new ApplicationSubmittedEventRouter(publisher, clock, meterRegistry, errorReporter);
     ProcessingLifecycle lifecycle = mock(ProcessingLifecycle.class);
     UUID id = UUID.fromString("8c9e6c2e-4f1a-4e3a-9c2b-1a2b3c4d5e6f");
     ApplicationUpdatedEvent event =
@@ -112,27 +122,25 @@ class ApplicationSubmittedEventRouterTest {
   void givenUpdateRemainsSubmitted_whenHandled_thenDoesNotSchedulePublication() {
     ApplicationSubmittedPublisher publisher = mock(ApplicationSubmittedPublisher.class);
     ApplicationSubmittedEventRouter router =
-        new ApplicationSubmittedEventRouter(publisher, Clock.fixed(COMMITTED_AT, ZoneOffset.UTC));
+        new ApplicationSubmittedEventRouter(publisher, clock, meterRegistry, errorReporter);
     ProcessingLifecycle lifecycle = mock(ProcessingLifecycle.class);
     UUID id = UUID.randomUUID();
     ApplicationUpdatedEvent event =
         new ApplicationUpdatedEvent(
             id, 2L, 2L, "APPLICATION_SUBMITTED", "APPLICATION_SUBMITTED", COMMITTED_AT);
 
-    router.on(event, eventMessage(Map.of()), lifecycle);
+    router.on(event, mock(EventMessage.class), lifecycle);
 
     verify(lifecycle, never()).runOnAfterCommit(any());
     verify(publisher, never()).publish(any());
   }
 
   @Test
-  void givenPublishFailsAfterCommit_whenCallbackRuns_thenFailureIsLoggedAndNotPropagated(
-      CapturedOutput output) {
+  void givenPublishFailsAfterCommit_whenCallbackRuns_thenRecordsFailureWithoutPropagating() {
     ApplicationSubmittedPublisher publisher = mock(ApplicationSubmittedPublisher.class);
     doThrow(new IllegalStateException("SNS unavailable")).when(publisher).publish(any());
     ApplicationSubmittedEventRouter router =
-        new ApplicationSubmittedEventRouter(
-            publisher, Clock.fixed(COMMITTED_AT, ZoneOffset.UTC), new SimpleMeterRegistry());
+        new ApplicationSubmittedEventRouter(publisher, clock, meterRegistry, errorReporter);
     ProcessingLifecycle lifecycle = mock(ProcessingLifecycle.class);
     router.on(createdEvent("APPLICATION_SUBMITTED"), eventMessage(Map.of()), lifecycle);
     ArgumentCaptor<Consumer<ProcessingContext>> callback = consumerCaptor();
@@ -140,9 +148,13 @@ class ApplicationSubmittedEventRouterTest {
 
     callback.getValue().accept(mock(ProcessingContext.class));
 
-    assertThat(output)
-        .contains("Failed to publish ApplicationSubmitted event after commit")
-        .contains("SNS unavailable");
+    assertThat(
+            meterRegistry
+                .get("application.submitted.publication")
+                .tag("outcome", "failure")
+                .counter()
+                .count())
+        .isEqualTo(1);
   }
 
   @Test
@@ -150,13 +162,8 @@ class ApplicationSubmittedEventRouterTest {
     ApplicationSubmittedPublisher publisher = mock(ApplicationSubmittedPublisher.class);
     IllegalStateException failure = new IllegalStateException("SNS unavailable");
     doThrow(failure).when(publisher).publish(any());
-    ErrorReporter errorReporter = mock(ErrorReporter.class);
     ApplicationSubmittedEventRouter router =
-        new ApplicationSubmittedEventRouter(
-            publisher,
-            Clock.fixed(COMMITTED_AT, ZoneOffset.UTC),
-            new SimpleMeterRegistry(),
-            errorReporter);
+        new ApplicationSubmittedEventRouter(publisher, clock, meterRegistry, errorReporter);
     ProcessingLifecycle lifecycle = mock(ProcessingLifecycle.class);
     router.on(createdEvent("APPLICATION_SUBMITTED"), eventMessage(Map.of()), lifecycle);
     ArgumentCaptor<Consumer<ProcessingContext>> callback = consumerCaptor();
@@ -171,10 +178,9 @@ class ApplicationSubmittedEventRouterTest {
 
   @Test
   void givenPublicationCompletes_whenCallbackRuns_thenRecordsTheAttemptOutcome() {
-    SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
     ApplicationSubmittedEventRouter router =
         new ApplicationSubmittedEventRouter(
-            new RecordingPublisher(), Clock.fixed(COMMITTED_AT, ZoneOffset.UTC), meterRegistry);
+            new RecordingPublisher(), clock, meterRegistry, errorReporter);
     ProcessingLifecycle lifecycle = mock(ProcessingLifecycle.class);
     router.on(
         createdEvent("APPLICATION_SUBMITTED"),
