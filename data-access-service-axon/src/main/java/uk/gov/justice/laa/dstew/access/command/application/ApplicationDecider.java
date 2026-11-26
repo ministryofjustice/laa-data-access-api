@@ -20,6 +20,7 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
@@ -232,6 +233,12 @@ public final class ApplicationDecider {
     return List.of(
         new ApplicationDraftStartedEvent(
             applicationId, schemaVersion, fingerprint, occurredAt, officeCode));
+  }
+
+  /** Returns the {@link ApplicationDraftUpdatedEvent} recording a mutation of a draft body. */
+  public static ApplicationDraftUpdatedEvent decideDraftUpdated(
+      UUID applicationId, Instant occurredAt) {
+    return new ApplicationDraftUpdatedEvent(applicationId, occurredAt);
   }
 
   /**

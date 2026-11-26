@@ -528,6 +528,134 @@ paths:
         '404': { description: Application draft not found }
         '500': { description: Internal server error }
 
+  /api/v2/application-drafts:
+    post:
+      tags:
+        - application-drafts-v2
+      summary: Start or save an Application draft without contract validation
+      description: |
+        Stores the draft envelope and its metadata. The applicationContent is not validated
+        against the Application contract here; it is validated when the draft is submitted.
+      operationId: saveApplicationDraftV2
+      parameters:
+        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
+        - $ref: "../open-api-common/components.yml#/components/parameters/XSchemaVersion"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./components.yml#/components/schemas/CreateApplicationDraftV2Request"
+      responses:
+        '201':
+          description: Application draft created and projection readable
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "./components.yml#/components/schemas/SaveApplicationDraftV2Response"
+        '202':
+          description: Application draft created but projection not yet readable
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "./components.yml#/components/schemas/SaveApplicationDraftV2Response"
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '409': { description: Conflicting draft already exists for this Application ID }
+        '500': { description: Internal server error }
+
+  /api/v2/application-drafts/{applicationId}:
+    put:
+      tags:
+        - application-drafts-v2
+      summary: Replace the body of an in-progress Application draft
+      description: |
+        Replaces the draft envelope and metadata. The applicationContent is not validated against
+        the Application contract here; it is validated when the draft is submitted. Document
+        filenames already recorded on the draft are kept. The response returns the new
+        draftVersion.
+      operationId: updateApplicationDraftV2
+      parameters:
+        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./components.yml#/components/schemas/UpdateApplicationDraftV2Request"
+      responses:
+        '200':
+          description: Application draft updated
+          content:
+            application/json:
+              schema:
+                $ref: "./components.yml#/components/schemas/SaveApplicationDraftV2Response"
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: Application draft not found }
+        '500': { description: Internal server error }
+
+  /api/v2/application-drafts/{applicationId}/submit:
+    post:
+      tags:
+        - application-drafts-v2
+      summary: Submit an in-progress Application draft after validating its content
+      description: |
+        This command endpoint does not accept a request body. The draft's applicationContent is
+        validated against the Application contract, then promoted to the immutable Application
+        record. Envelope metadata is not included in the submitted Application.
+      operationId: submitApplicationDraftV2
+      parameters:
+        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Application draft submitted and projection readable
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "./components.yml#/components/schemas/SubmitApplicationDraftResponse"
+        '202':
+          description: Application draft submitted but projection not yet readable
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "./components.yml#/components/schemas/SubmitApplicationDraftResponse"
+        '400': { description: Draft content failed contract validation }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: Application draft not found }
+        '500': { description: Internal server error }
+
   /api/v0/applications/{id}/certificate:
     get:
       tags:

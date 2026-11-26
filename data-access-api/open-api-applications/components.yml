@@ -411,6 +411,67 @@ components:
           type: string
           format: date-time
 
+    SaveApplicationDraftV2Request:
+      type: object
+      required:
+        - status
+        - applicationContent
+        - laaReference
+      properties:
+        status:
+          $ref: "../open-api-common/components.yml#/components/schemas/ApplicationStatus"
+        applicationContent:
+          type: object
+          description: Application data accumulated so far on the draft, not contract-validated
+          additionalProperties: true
+        laaReference:
+          type: string
+          minLength: 1
+        potentialDuplicates:
+          type: array
+          description: List of potential duplicate applications
+          items:
+            $ref: "#/components/schemas/PotentialDuplicate"
+        metadata:
+          type: object
+          description: Envelope-level client state stored with the draft, not submitted
+          additionalProperties: true
+
+    CreateApplicationDraftV2Request:
+      allOf:
+        - type: object
+          required:
+            - id
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: The unique reference used to identify the application.
+        - $ref: "#/components/schemas/SaveApplicationDraftV2Request"
+
+    UpdateApplicationDraftV2Request:
+      allOf:
+        - $ref: "#/components/schemas/SaveApplicationDraftV2Request"
+
+    SaveApplicationDraftV2Response:
+      type: object
+      required:
+        - applicationId
+        - savedAt
+        - draftVersion
+      properties:
+        applicationId:
+          type: string
+          format: uuid
+        savedAt:
+          type: string
+          format: date-time
+        draftVersion:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Current optimistic-lock version of the draft after this write.
+
     ApplicationLinkType:
       type: string
       enum:
