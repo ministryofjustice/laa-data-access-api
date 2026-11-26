@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecider;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentUploadCommand;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerResource;
@@ -27,9 +26,9 @@ public class PriorAuthorityDocumentUploadCommandHandler {
   @RequireWriteAccess(resolver = OfficeCodeResourceWriteAccessResolver.class)
   public UUID handle(
       @AuthenticatedCallerResource PriorAuthorityDocumentUploadCommand command,
-      PriorAuthorityDraftStore draftStore,
       @InjectEntity(idProperty = "priorAuthorityId") @WriteAccessResolverResource
           PriorAuthorityAggregate priorAuthority,
+      PriorAuthorityDraftStore draftStore,
       EventAppender eventAppender) {
 
     requireDraftLifecycle(priorAuthority);
@@ -41,13 +40,18 @@ public class PriorAuthorityDocumentUploadCommandHandler {
       throw new ValidationException(List.of("Document ID already records an upload"));
     }
 
-    PriorAuthorityDataPayload existingDraft = requireDraft(command.priorAuthorityId(), draftStore);
-    PriorAuthorityDataPayload updatedPayload =
-        existingDraft.withDocumentFilename(command.documentId(), command.originalFilename());
+    var existingDraft =
+        priorAuthority
+            .getState()
+            .draft()
+            .orElseThrow(
+                () ->
+                    new ResourceNotFoundException(
+                        "Prior Authority draft not found: " + command.priorAuthorityId()));
     draftStore.upsert(
         command.priorAuthorityId(),
         existingDraft.applicationId(),
-        updatedPayload,
+        existingDraft.withDocumentFilename(command.documentId(), command.originalFilename()),
         existingDraft.serialisedRequest(),
         command.occurredAt());
     eventAppender.append(
@@ -60,15 +64,5 @@ public class PriorAuthorityDocumentUploadCommandHandler {
       throw new ValidationException(
           List.of("Documents can only be changed on a prior authority draft"));
     }
-  }
-
-  private static PriorAuthorityDataPayload requireDraft(
-      UUID priorAuthorityId, PriorAuthorityDraftStore draftStore) {
-    return draftStore
-        .find(priorAuthorityId)
-        .orElseThrow(
-            () ->
-                new ResourceNotFoundException(
-                    "Prior Authority draft not found: " + priorAuthorityId));
   }
 }

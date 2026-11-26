@@ -56,6 +56,8 @@ class PriorAuthorityDeciderTest {
     assertThat(event.schemaVersion()).isEqualTo(1);
     assertThat(event.occurredAt()).isEqualTo(OCCURRED_AT);
     assertThat(event.officeCode()).isEqualTo("1A001B");
+    assertThat(event.content().value()).isEqualTo(command.content());
+    assertThat(event.serialisedRequest().value()).isEqualTo("{}");
   }
 
   @Test
@@ -540,6 +542,7 @@ class PriorAuthorityDeciderTest {
     assertThat(event.checksum()).isEqualTo("abc123");
     assertThat(event.parentApplicationId()).isEqualTo(applicationId);
     assertThat(event.sourceService().value()).isEqualTo("CIVIL_APPLY");
+    assertThat(event.originalFilename().value()).isEqualTo("evidence.pdf");
     assertThat(event.toString()).doesNotContain("evidence.pdf");
   }
 
@@ -580,9 +583,14 @@ class PriorAuthorityDeciderTest {
   }
 
   @Test
-  void givenUpdateCommand_whenDecideDraftUpdated_thenMapsPointerFields() {
+  void givenUpdateCommand_whenDecideDraftUpdated_thenCarriesContentWithStartedType() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
+    PriorAuthorityState state = new PriorAuthorityState();
+    PriorAuthorityEvolve.apply(
+        state,
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId, applicationId, "EXPERT", 1, OCCURRED_AT, "1A001B"));
     UpdatePriorAuthorityDraftCommand command =
         new UpdatePriorAuthorityDraftCommand(
             priorAuthorityId,
@@ -594,10 +602,15 @@ class PriorAuthorityDeciderTest {
             CALLER);
 
     PriorAuthorityDraftUpdatedEvent event =
-        PriorAuthorityDecider.decideDraftUpdated(command, applicationId);
+        PriorAuthorityDecider.decideDraftUpdated(
+            command, state, PriorAuthorityDecider.updatedDraftContent(command, state));
 
     assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(event.parentApplicationId()).isEqualTo(applicationId);
     assertThat(event.occurredAt()).isEqualTo(OCCURRED_AT);
+    assertThat(event.content().value())
+        .isEqualTo(
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "need expert", null, null, null));
+    assertThat(event.serialisedRequest().value()).isEqualTo("{}");
   }
 }

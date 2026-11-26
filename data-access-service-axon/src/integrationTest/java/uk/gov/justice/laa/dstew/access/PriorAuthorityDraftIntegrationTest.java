@@ -24,7 +24,6 @@ import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
@@ -562,6 +561,45 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   @Test
+  void givenErasedLatestDraftEvent_whenSubmitted_thenReadCopyDoesNotResurrectTheDraft() {
+    UUID id =
+        saveDraft(
+            grantedApplication(),
+            PriorAuthorityType.DISBURSEMENT,
+            "Interpreter costs",
+            validDisbursementRequest());
+    String eventId =
+        jdbcTemplate.queryForObject(
+            "SELECT event_identifier FROM axon.domain_event_entry WHERE aggregate_identifier = ?"
+                + " AND payload_type = 'access.PriorAuthorityDraftStarted'",
+            String.class,
+            id.toString());
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT content -> 'content' ->> 'justification' FROM axon.event_content WHERE event_id = ?",
+                String.class,
+                eventId))
+        .isEqualTo("Interpreter costs");
+    assertThat(
+            jdbcTemplate.update(
+                "UPDATE axon.event_content SET content = '{}'::jsonb, erased_at = now()"
+                    + " WHERE event_id = ?",
+                eventId))
+        .isOne();
+    assertThat(draftRow(id)).isNotEmpty();
+    ResponseEntity<String> response =
+        restTemplate.postForEntity(submitUrl(id), new HttpEntity<>(null, headers()), String.class);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(eventCount(id)).isOne();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.prior_authority_data WHERE prior_authority_id = ?",
+                Integer.class,
+                id))
+        .isZero();
+  }
+
+  @Test
   void givenDraftPayloadWithNullNestedFields_whenSavePriorAuthorityDraft_thenAcceptsDraft() {
     UUID applicationId = grantedApplication();
     CreatePriorAuthorityDraftRequest request =
@@ -806,7 +844,7 @@ class PriorAuthorityDraftIntegrationTest {
     "true,true"
   })
   void givenUploadedDocument_whenDownloaded_thenStreamsContentWithOriginalFilename(
-      boolean submitted, boolean missingFilename) {
+      boolean submitted, boolean missingFilenameInDraftReadCopy) {
     UUID applicationId = grantedApplication();
     UUID priorAuthorityId =
         saveDraft(
@@ -819,7 +857,7 @@ class PriorAuthorityDraftIntegrationTest {
     UUID documentId = uploadDocument(priorAuthorityId, "evidence.pdf");
     awaitDocument(priorAuthorityId, documentId);
     updateDocumentType(priorAuthorityId, documentId);
-    if (missingFilename) {
+    if (missingFilenameInDraftReadCopy) {
       jdbcTemplate.update(
           "UPDATE axon.prior_authority_draft SET payload = jsonb_set(payload, '{documentFilenames}', '{}'::jsonb) WHERE prior_authority_id = ?",
           priorAuthorityId);
@@ -844,7 +882,8 @@ class PriorAuthorityDraftIntegrationTest {
     assertThat(response.getHeaders().getContentLength()).isEqualTo(content.length);
     assertThat(response.getHeaders().getContentDisposition().getType()).isEqualTo("attachment");
     assertThat(response.getHeaders().getContentDisposition().getFilename())
-        .isEqualTo(missingFilename ? documentId.toString() : "evidence.pdf");
+        .isEqualTo(
+            !submitted && missingFilenameInDraftReadCopy ? documentId.toString() : "evidence.pdf");
     assertThat(response.getHeaders().getFirst("X-Document-Uploaded-At")).isNotBlank();
     assertThat(response.getHeaders().getFirst("X-Document-Type")).isEqualTo("GATEWAY_EVIDENCE");
     assertThat(response.getBody()).containsExactly(content);
@@ -903,7 +942,8 @@ class PriorAuthorityDraftIntegrationTest {
     String eventContent = stored.get("content").toString();
     assertThat(objectMapper.readTree(eventContent).get("fileSuffix").asString()).isEqualTo(suffix);
     assertThat(eventPayload).doesNotContain(filename).doesNotContain("fileSuffix");
-    assertThat(eventContent).doesNotContain(filename);
+    assertThat(objectMapper.readTree(eventContent).get("originalFilename").asString())
+        .isEqualTo(filename);
     jdbcTemplate.update(
         "UPDATE axon.prior_authority_draft SET payload = jsonb_set(payload, '{documentFilenames}', '{}'::jsonb) WHERE prior_authority_id = ?",
         priorAuthorityId);
@@ -1115,33 +1155,17 @@ class PriorAuthorityDraftIntegrationTest {
     UUID priorAuthorityId = saveDraft(grantedApplication(), PriorAuthorityType.EXPERT, null, null);
     CyclicBarrier staleReads = new CyclicBarrier(2);
     AtomicInteger writeAttempts = new AtomicInteger();
-    AtomicInteger staleReadCount = new AtomicInteger();
-    AtomicBoolean gateDraftReads = new AtomicBoolean();
-    CyclicBarrier storedFiles = new CyclicBarrier(2);
     when(sdsService.saveEvidenceFile(any(), any(), any()))
-        .thenAnswer(
-            invocation -> {
-              storedFiles.await(10, TimeUnit.SECONDS);
-              gateDraftReads.set(true);
-              return new SdsUploadResult(null, null, "checksum");
-            });
+        .thenReturn(new SdsUploadResult(null, null, "checksum"));
     doAnswer(
             invocation -> {
-              writeAttempts.incrementAndGet();
+              if (writeAttempts.incrementAndGet() <= 2) {
+                staleReads.await(10, TimeUnit.SECONDS);
+              }
               return invocation.callRealMethod();
             })
         .when(draftStore)
         .upsert(any(), any(), any(), any(), any());
-    doAnswer(
-            invocation -> {
-              Object draft = invocation.callRealMethod();
-              if (gateDraftReads.get() && staleReadCount.incrementAndGet() <= 2) {
-                staleReads.await(10, TimeUnit.SECONDS);
-              }
-              return draft;
-            })
-        .when(draftStore)
-        .find(priorAuthorityId);
     int eventsBefore = eventCount(priorAuthorityId);
 
     List<ResponseEntity<String>> responses =

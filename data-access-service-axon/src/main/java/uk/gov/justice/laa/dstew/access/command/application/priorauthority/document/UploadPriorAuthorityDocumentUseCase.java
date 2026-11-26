@@ -2,12 +2,14 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority.docum
 
 import java.time.Instant;
 import java.util.UUID;
+import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.FindPriorAuthorityDraftQuery;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentUploadCommand;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDraftSummary;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ValidateApplicationGrantedCommand;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.document.DocumentUploadResult;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
@@ -18,16 +20,14 @@ import uk.gov.justice.laa.dstew.access.service.sds.SdsUploadResult;
 /** Uploads a prior-authority document to SDS and records its metadata against the draft. */
 @Component
 public class UploadPriorAuthorityDocumentUseCase {
-  private final PriorAuthorityDraftStore draftStore;
+  private final QueryGateway queryGateway;
   private final RetryingCommandDispatcher dispatcher;
   private final SdsService sdsService;
 
   /** Creates the use case with draft lookup, command dispatch, and SDS upload dependencies. */
   public UploadPriorAuthorityDocumentUseCase(
-      PriorAuthorityDraftStore draftStore,
-      RetryingCommandDispatcher dispatcher,
-      SdsService sdsService) {
-    this.draftStore = draftStore;
+      QueryGateway queryGateway, RetryingCommandDispatcher dispatcher, SdsService sdsService) {
+    this.queryGateway = queryGateway;
     this.dispatcher = dispatcher;
     this.sdsService = sdsService;
   }
@@ -37,13 +37,16 @@ public class UploadPriorAuthorityDocumentUseCase {
   public DocumentUploadResult execute(
       UUID priorAuthorityId, MultipartFile file, String sourceService, AuthenticatedCaller caller) {
     PriorAuthorityDocumentFormat format = PriorAuthorityDocumentFormat.validate(file);
-    var draft =
-        draftStore
-            .find(priorAuthorityId)
-            .orElseThrow(
-                () ->
-                    new ResourceNotFoundException(
-                        "Prior Authority %s not found".formatted(priorAuthorityId)));
+    PriorAuthorityDraftSummary draft =
+        queryGateway
+            .query(
+                new FindPriorAuthorityDraftQuery(priorAuthorityId),
+                PriorAuthorityDraftSummary.class)
+            .join();
+    if (draft == null || !draft.exists()) {
+      throw new ResourceNotFoundException(
+          "Prior Authority %s not found".formatted(priorAuthorityId));
+    }
     dispatcher.dispatch(new ValidateApplicationGrantedCommand(draft.applicationId()));
 
     UUID documentId = UUID.randomUUID();

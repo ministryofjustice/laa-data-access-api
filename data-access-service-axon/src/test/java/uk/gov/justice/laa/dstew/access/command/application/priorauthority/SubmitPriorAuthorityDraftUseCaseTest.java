@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
@@ -25,8 +27,6 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.query.ProjectionReadinessGateway;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthoritySubmittedByPriorAuthorityIdQuery;
@@ -41,7 +41,7 @@ class SubmitPriorAuthorityDraftUseCaseTest {
 
   @Mock private RetryingCommandDispatcher dispatcher;
   @Mock private ProjectionReadinessGateway projectionGateway;
-  @Mock private PriorAuthorityDraftStore draftStore;
+  @Mock private QueryGateway queryGateway;
 
   @InjectMocks private SubmitPriorAuthorityDraftUseCase useCase;
 
@@ -99,8 +99,11 @@ class SubmitPriorAuthorityDraftUseCaseTest {
   void givenDraftExists_whenSubmit_thenDispatchesValidationBeforeProjectionGateway() {
     SubmitPriorAuthorityDraftCommand command = stubCommand();
     UUID applicationId = UUID.randomUUID();
-    when(draftStore.find(command.priorAuthorityId()))
-        .thenReturn(Optional.of(stubDraftPayload(command.priorAuthorityId(), applicationId)));
+    when(queryGateway.query(
+            new FindPriorAuthorityDraftQuery(command.priorAuthorityId()),
+            PriorAuthorityDraftSummary.class))
+        .thenReturn(
+            CompletableFuture.completedFuture(new PriorAuthorityDraftSummary(applicationId, null)));
     when(projectionGateway.awaitProjection(any(), any())).thenReturn(true);
 
     useCase.submit(command);
@@ -113,7 +116,24 @@ class SubmitPriorAuthorityDraftUseCaseTest {
   @Test
   void givenNoDraftExists_whenSubmit_thenThrowsNotFoundBeforeDispatch() {
     SubmitPriorAuthorityDraftCommand command = stubCommand();
-    when(draftStore.find(command.priorAuthorityId())).thenReturn(Optional.empty());
+    when(queryGateway.query(
+            new FindPriorAuthorityDraftQuery(command.priorAuthorityId()),
+            PriorAuthorityDraftSummary.class))
+        .thenReturn(CompletableFuture.completedFuture(PriorAuthorityDraftSummary.NONE));
+
+    assertThatThrownBy(() -> useCase.submit(command))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("Prior Authority draft not found: " + command.priorAuthorityId());
+    verifyNoInteractions(dispatcher, projectionGateway);
+  }
+
+  @Test
+  void givenDraftQueryReturnsNull_whenSubmit_thenThrowsNotFoundBeforeDispatch() {
+    SubmitPriorAuthorityDraftCommand command = stubCommand();
+    when(queryGateway.query(
+            new FindPriorAuthorityDraftQuery(command.priorAuthorityId()),
+            PriorAuthorityDraftSummary.class))
+        .thenReturn(CompletableFuture.completedFuture(null));
 
     assertThatThrownBy(() -> useCase.submit(command))
         .isInstanceOf(ResourceNotFoundException.class)
@@ -125,8 +145,11 @@ class SubmitPriorAuthorityDraftUseCaseTest {
   void givenValidationFails_whenSubmit_thenPropagatesAndSkipsProjectionGateway() {
     SubmitPriorAuthorityDraftCommand command = stubCommand();
     UUID applicationId = UUID.randomUUID();
-    when(draftStore.find(command.priorAuthorityId()))
-        .thenReturn(Optional.of(stubDraftPayload(command.priorAuthorityId(), applicationId)));
+    when(queryGateway.query(
+            new FindPriorAuthorityDraftQuery(command.priorAuthorityId()),
+            PriorAuthorityDraftSummary.class))
+        .thenReturn(
+            CompletableFuture.completedFuture(new PriorAuthorityDraftSummary(applicationId, null)));
     ValidationException failure = new ValidationException(List.of("Application must be granted"));
     doThrow(failure)
         .when(dispatcher)
@@ -139,14 +162,13 @@ class SubmitPriorAuthorityDraftUseCaseTest {
   private SubmitPriorAuthorityDraftCommand stubCommand() {
     UUID priorAuthorityId = UUID.randomUUID();
     lenient()
-        .when(draftStore.find(priorAuthorityId))
-        .thenReturn(Optional.of(stubDraftPayload(priorAuthorityId, UUID.randomUUID())));
+        .when(
+            queryGateway.query(
+                new FindPriorAuthorityDraftQuery(priorAuthorityId),
+                PriorAuthorityDraftSummary.class))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new PriorAuthorityDraftSummary(UUID.randomUUID(), null)));
     return new SubmitPriorAuthorityDraftCommand(priorAuthorityId, Instant.now(), CALLER);
-  }
-
-  private static PriorAuthorityDataPayload stubDraftPayload(
-      UUID priorAuthorityId, UUID applicationId) {
-    return new PriorAuthorityDataPayload(
-        priorAuthorityId, applicationId, null, "{}", Instant.now());
   }
 }

@@ -12,12 +12,10 @@ upload, update, and delete routes have been removed. Axon Application uploads us
 - `SdsService` builds that object name identically for upload, download, and deletion.
 - The suffix is case-sensitive and comes from the original filename, not `contentType` or
   `documentType`. A classification change must not change the SDS key.
-- Upload events persist the non-sensitive suffix as `fileSuffix`. Aggregate state and projected
-  `DocumentMetadata` retain it independently of sensitive content. Null means a historical unknown
-  suffix; an empty string means a known extensionless upload.
-- Application upload events carry the full original filename as erasable event content, stored in
-  `axon.event_content` apart from the kept event fields. Prior Authority upload command handlers
-  persist it under `documentFilenames[documentId]` in sensitive draft content. Submission
+- Both upload events carry the case-sensitive `fileSuffix` and full original filename as erasable
+  content, stored in `axon.event_content` apart from the kept event fields. Null suffix means
+  unknown or erased; an empty string means a known extensionless upload. Prior Authority also
+  writes the filename under `documentFilenames[documentId]` in the synchronous draft read copy. Submission
   preserves the filenames in immutable content storage. Filenames do not appear in kept event
   fields or projected `DocumentMetadata`.
 - GET and delete prefer the recorded suffix even when the full filename is missing or differs.
@@ -43,9 +41,8 @@ cleanup is best-effort without automatic retry.
 ## Prior Authority concurrency and retries
 
 Draft-body saves and document upload, type update, and deletion append events tagged for the same
-`PriorAuthorityAggregate` stream. `PriorAuthorityDraftUpdatedEvent` now tags its existing owner ID,
-and the aggregate handles it without changing business state. The event advances stream concurrency,
-not the immutable content `dataVersion`, and contains no draft content or filenames.
+`PriorAuthorityAggregate` stream. A draft update replaces the body and raw request folded by the
+aggregate. It advances stream concurrency, not the immutable submitted `dataVersion`.
 
 The draft write and event append share the command transaction. If two commands read stale state,
 a competing stream append can reject one attempt and roll back its draft write.
@@ -62,7 +59,7 @@ persistence-only version does not add a client version parameter or a `409 Confl
 Internal command retry does not repeat SDS upload or make SDS cleanup transactional.
 
 This fix does not make queries immediately consistent, wait for deletion projection, or make
-repeated DELETE idempotent. It leaves the event JSON unchanged and does not retag historical stored
+repeated DELETE idempotent. It leaves the kept fields unchanged and does not retag historical stored
 events or recover previously lost content. See
 [Event evolution](event-evolution.md#prior-authority-draft-update-stream-tagging) for compatibility
 and [Conflicts and retries proposal](document-conflicts-and-retries-proposal.md) for deferred policies.
@@ -89,14 +86,15 @@ sequenceDiagram
     UseCase->>Command: Upload command including full original filename
     Command->>Command: Check draft lifecycle and unique document ID
     Command->>Events: Append upload event; filename and fileSuffix stored as erasable content
-    Note over Command,Events: PA writes the filename to its draft store in the same transaction instead
+    Note over Command,Events: PA also refreshes its synchronous draft read copy
     Events-->>Projection: Eventually project document metadata
     UseCase-->>HTTP: Shared upload result
     HTTP-->>Client: 201 Created
 ```
 
 The Application draft check is `ApplicationDraftExistsQuery`, answered by loading the aggregate; an
-erased draft counts as absent. Prior Authority still checks and writes its sensitive draft store.
+erased draft counts as absent. Prior Authority pre-checks its aggregate's open draft and keeps a
+synchronous sensitive draft copy for public reads.
 Application upload assigns `documentType` immediately. Prior Authority upload leaves it unset for
 the separate type-update endpoint. Full filename persistence already occurs during upload; the
 optional `fileSuffix` is now also persisted in both upload events. There is no suffix-normalisation
@@ -186,7 +184,7 @@ calling SDS. Replay does not upload, download, or delete files.
 sequenceDiagram
     participant Client
     participant UseCase as Delete use case
-    participant Draft as Sensitive draft store
+    participant Draft as Aggregate draft query
     participant Command as Command handler
     participant Events as Event store
     participant SDS
@@ -195,7 +193,7 @@ sequenceDiagram
     UseCase->>Draft: Find draft and capture historical filename fallback
     UseCase->>Command: Delete command with document ID and timestamp
     Command->>Command: Require draft and owned active document
-    Command->>Draft: Remove document filename
+    Command->>Command: Remove document filename from draft read copy
     Command->>Events: Append filename-free deletion event
     Note over Draft,Events: Commit logical deletion before external cleanup
     Command-->>UseCase: Command completed with document metadata and fileSuffix
@@ -236,7 +234,7 @@ not guarantees of this implementation.
   and idempotent replay of metadata events.
 - Download use-case and controller tests cover suffix-only lookup and attachment-name fallback.
 - Compatibility tests deserialize historical event and metadata JSON with unknown suffixes.
-- Aggregate tests deserialize the original draft-update JSON and apply its no-op handler before a
+- Aggregate tests deserialize the original draft-update JSON and apply its fold before a
   following document-type event, preserving identity, lifecycle, and document metadata.
 - PostgreSQL-backed draft tests verify persisted suffixes, deletion without a full filename,
   submitted downloads, ownership rejection, and logical deletion despite SDS cleanup failure.
