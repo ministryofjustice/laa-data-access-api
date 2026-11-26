@@ -196,16 +196,20 @@ class EventProcessorRecoveryInMemoryTest {
                             .size()
                         == pointers
                     && groupReadRepository.count() == 0);
-    assertThat(
-            restTemplate
-                .exchange(
-                    "/api/v0/applications/" + applicationId,
-                    HttpMethod.GET,
-                    new HttpEntity<>(headers),
-                    ApplicationResponse.class)
-                .getBody()
-                .getAutoGranted())
-        .isEqualTo(uk.gov.justice.laa.dstew.access.model.AutoGranted.MANUAL);
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .untilAsserted(
+            () ->
+                assertThat(
+                        restTemplate
+                            .exchange(
+                                "/api/v0/applications/" + applicationId,
+                                HttpMethod.GET,
+                                new HttpEntity<>(headers),
+                                ApplicationResponse.class)
+                            .getBody()
+                            .getAutoGranted())
+                    .isEqualTo(uk.gov.justice.laa.dstew.access.model.AutoGranted.MANUAL));
     await()
         .atMost(Duration.ofSeconds(5))
         .untilAsserted(

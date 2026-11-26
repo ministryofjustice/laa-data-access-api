@@ -13,7 +13,8 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ExpertFeeInformation {
-  private BigDecimal newFixedRateAmount;
-  private BigDecimal newHourlyRateAmount;
+  private BigDecimal grantedFixedRateAmount;
+  private BigDecimal grantedHourlyRateAmount;
   private TimeRequested grantedTime;
+  private BigDecimal grantedTotalAmount;
 }

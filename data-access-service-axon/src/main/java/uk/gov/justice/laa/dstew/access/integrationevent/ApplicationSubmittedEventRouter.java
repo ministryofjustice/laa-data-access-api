@@ -1,16 +1,15 @@
 package uk.gov.justice.laa.dstew.access.integrationevent;
 
 import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.Metrics;
 import java.time.Clock;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.core.unitofwork.ProcessingLifecycle;
 import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
@@ -24,6 +23,7 @@ import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 @ConditionalOnBean(ApplicationSubmittedPublisher.class)
 @Namespace("application-submitted-publisher")
 @ExcludeFromGeneratedCodeCoverage
+@RequiredArgsConstructor
 public class ApplicationSubmittedEventRouter {
 
   private static final Logger LOG = LoggerFactory.getLogger(ApplicationSubmittedEventRouter.class);
@@ -33,35 +33,6 @@ public class ApplicationSubmittedEventRouter {
   private final Clock clock;
   private final MeterRegistry meterRegistry;
   private final ErrorReporter errorReporter;
-
-  /** Creates the after-commit router using the system UTC clock. */
-  @Autowired
-  public ApplicationSubmittedEventRouter(
-      ApplicationSubmittedPublisher publisher,
-      MeterRegistry meterRegistry,
-      ErrorReporter errorReporter) {
-    this(publisher, Clock.systemUTC(), meterRegistry, errorReporter);
-  }
-
-  ApplicationSubmittedEventRouter(ApplicationSubmittedPublisher publisher, Clock clock) {
-    this(publisher, clock, Metrics.globalRegistry, new ErrorReporter());
-  }
-
-  ApplicationSubmittedEventRouter(
-      ApplicationSubmittedPublisher publisher, Clock clock, MeterRegistry meterRegistry) {
-    this(publisher, clock, meterRegistry, new ErrorReporter());
-  }
-
-  ApplicationSubmittedEventRouter(
-      ApplicationSubmittedPublisher publisher,
-      Clock clock,
-      MeterRegistry meterRegistry,
-      ErrorReporter errorReporter) {
-    this.publisher = publisher;
-    this.clock = clock;
-    this.meterRegistry = meterRegistry;
-    this.errorReporter = errorReporter;
-  }
 
   /** Schedules publication only for Applications created directly in submitted state. */
   @EventHandler

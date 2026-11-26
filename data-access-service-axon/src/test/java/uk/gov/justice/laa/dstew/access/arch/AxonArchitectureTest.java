@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.arch;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.Dependency;
@@ -17,23 +18,40 @@ import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
+import io.micrometer.core.instrument.Metrics;
+import java.time.Clock;
 import java.util.List;
 import org.axonframework.extension.spring.stereotype.EventSourced;
 import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetailsFactory;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.AddApplicationToLinkedGroupCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ChangeLinkedGroupLeadCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.EstablishLinkedApplicationGroupCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.RemoveApplicationFromLinkedGroupCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteProjection;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteRepository;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.DeletePriorAuthorityDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.AssignLinkedGroupWorkItemCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectWorkItemAssignmentCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectWorkItemUnassignmentCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.unassign.UnassignLinkedGroupWorkItemCommand;
+import uk.gov.justice.laa.dstew.access.config.ClockConfig;
+import uk.gov.justice.laa.dstew.access.config.SecondaryAuthorizationFilter;
+import uk.gov.justice.laa.dstew.access.controller.application.LinkApplicationCommandMapper;
+import uk.gov.justice.laa.dstew.access.controller.application.MakeApplicationLeadCommandMapper;
+import uk.gov.justice.laa.dstew.access.controller.application.UnlinkApplicationCommandMapper;
+import uk.gov.justice.laa.dstew.access.controller.application.UpdateApplicationCommandMapper;
+import uk.gov.justice.laa.dstew.access.integrationevent.ApplicationSubmittedEventRouter;
+import uk.gov.justice.laa.dstew.access.observability.AssessmentReconciliation;
+import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
+import uk.gov.justice.laa.dstew.access.observability.ReportingErrorHandler;
 
 class AxonArchitectureTest {
 
@@ -54,6 +72,45 @@ class AxonArchitectureTest {
       new ClassFileImporter()
           .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
           .importPackages("uk.gov.justice.laa.dstew.access");
+
+  @ParameterizedTest
+  @ValueSource(
+      classes = {
+        ApplicationSubmittedEventRouter.class,
+        AssessmentReconciliation.class,
+        ReportingErrorHandler.class,
+        SecondaryAuthorizationFilter.class,
+        PriorAuthorityDataStore.class,
+        DeletePriorAuthorityDocumentUseCase.class,
+        ApplicationCreationDetailsFactory.class,
+        LinkApplicationCommandMapper.class,
+        UnlinkApplicationCommandMapper.class,
+        MakeApplicationLeadCommandMapper.class,
+        UpdateApplicationCommandMapper.class
+      })
+  void injectedComponentsMustHaveOneConstructor(Class<?> component) {
+    assertThat(component.getDeclaredConstructors()).hasSize(1);
+  }
+
+  @Test
+  void onlyClockConfigurationMayCreateTheSystemUtcClock() {
+    noClasses()
+        .that()
+        .doNotHaveFullyQualifiedName(ClockConfig.class.getName())
+        .should()
+        .callMethod(Clock.class, "systemUTC")
+        .check(classes);
+  }
+
+  @Test
+  void componentsMustNotConstructErrorReporters() {
+    noClasses().should().callConstructor(ErrorReporter.class).check(classes);
+  }
+
+  @Test
+  void componentsMustNotUseTheGlobalMeterRegistry() {
+    noClasses().should().accessField(Metrics.class, "globalRegistry").check(classes);
+  }
 
   @Test
   void eventsMustNotDeclareEventTypedFields() {

@@ -1,8 +1,9 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority.document;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentDeleteCommand;
@@ -16,35 +17,13 @@ import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 
 /** Marks a prior-authority draft document deleted and then attempts SDS file deletion. */
 @Component
+@RequiredArgsConstructor
 public class DeletePriorAuthorityDocumentUseCase {
   private final PriorAuthorityDraftStore draftStore;
   private final RetryingCommandDispatcher dispatcher;
   private final SdsService sdsService;
   private final ErrorReporter errorReporter;
-
-  /**
-   * Convenience constructor retained for existing call sites/tests that do not need to verify
-   * Sentry reporting explicitly.
-   */
-  public DeletePriorAuthorityDocumentUseCase(
-      PriorAuthorityDraftStore draftStore,
-      RetryingCommandDispatcher dispatcher,
-      SdsService sdsService) {
-    this(draftStore, dispatcher, sdsService, new ErrorReporter());
-  }
-
-  /** Creates the use case with draft lookup, command dispatch, and SDS dependencies. */
-  @Autowired
-  public DeletePriorAuthorityDocumentUseCase(
-      PriorAuthorityDraftStore draftStore,
-      RetryingCommandDispatcher dispatcher,
-      SdsService sdsService,
-      ErrorReporter errorReporter) {
-    this.draftStore = draftStore;
-    this.dispatcher = dispatcher;
-    this.sdsService = sdsService;
-    this.errorReporter = errorReporter;
-  }
+  private final Clock clock;
 
   /** Records the deletion durably before attempting best-effort SDS deletion. */
   @AllowApiCaseworker
@@ -60,7 +39,7 @@ public class DeletePriorAuthorityDocumentUseCase {
     DocumentMetadata document =
         dispatcher.dispatch(
             new PriorAuthorityDocumentDeleteCommand(
-                priorAuthorityId, documentId, Instant.now(), caller),
+                priorAuthorityId, documentId, Instant.now(clock), caller),
             DocumentMetadata.class);
     String storageFilename =
         document.fileSuffix() == null ? originalFileName : documentId + document.fileSuffix();

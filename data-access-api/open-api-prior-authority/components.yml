@@ -79,30 +79,35 @@ components:
       type: object
       description: Optional apportionment details for the decision
       properties:
-        newClientShareAmount:
+        grantedClientShareAmount:
           type: number
-          description: New client share amount if applicable
+          description: Amount granted by the Caseworker as the client's share of a cost apportioned between parties, whether or not it differs from the amount requested.
 
     DisbursementMakePriorAuthorityDecisionRequest:
       type: object
       description: Optional disbursement details for the decision
       properties:
-        newAmount:
+        grantedAmount:
           type: number
-          description: New amount if applicable
+          description: The disbursement amount granted by the Caseworker as part of the decision, whether or not it differs from the amount requested.
 
     ExpertMakePriorAuthorityDecisionRequest:
       type: object
-      description: Optional expert details for the decision
+      description: Optional expert values granted by the Caseworker. Supply either a fixed or an hourly rate amount, not both.
       properties:
-        newFixedRateAmount:
+        grantedFixedRateAmount:
           type: number
-          description: New fixed rate amount if applicable
-        newHourlyRateAmount:
+          description: Fixed rate amount granted by the Caseworker as part of the decision, whether or not it differs from the amount requested. Only for fixed-rate expert fees; mutually exclusive with grantedHourlyRateAmount.
+        grantedHourlyRateAmount:
           type: number
-          description: New hourly rate amount if applicable
+          description: Hourly rate amount granted by the Caseworker as part of the decision, whether or not it differs from the amount requested. Only for hourly-rate expert fees; mutually exclusive with grantedFixedRateAmount.
         grantedTime:
           $ref: "#/components/schemas/DecisionTimeRequested"
+        grantedTotalAmount:
+          type: number
+          description: >-
+            Total amount granted by the Caseworker for the expert (fixed-rate or hourly-rate).
+            May differ from the Provider's originally requested totalAmount, which is unchanged.
 
     PriorAuthorityResponse:
       type: object
@@ -618,35 +623,46 @@ components:
           format: date-time
           description: Date granted if decision is GRANTED
         expert:
-          description: Expert fee details if applicable
+          description: Expert values granted by the Caseworker. Contains either a fixed or an hourly rate amount, not both.
           allOf:
             - $ref: "#/components/schemas/ExpertFeeInformation"
         disbursement:
-          description: Disbursement details if applicable
+          description: Optional disbursement value granted by the Caseworker
           allOf:
             - $ref: "#/components/schemas/DisbursementInformation"
         apportionment:
-          description: Apportionment details if applicable
+          description: Optional apportionment value granted by the Caseworker
           allOf:
-            - $ref: "#/components/schemas/Apportionment"
+            - $ref: "#/components/schemas/ApportionmentInformation"
 
     ExpertFeeInformation:
       type: object
-      description: Expert fee information for a prior authority decision
+      description: Expert values granted by the Caseworker. Contains either a fixed or an hourly rate amount, not both.
       properties:
-        newFixedRateAmount:
+        grantedFixedRateAmount:
           type: number
-          description: New fixed rate amount if applicable
-        newHourlyRateAmount:
+          description: Fixed rate amount granted by the Caseworker as part of the decision, whether or not it differs from the amount requested. Only for fixed-rate expert fees; mutually exclusive with grantedHourlyRateAmount.
+        grantedHourlyRateAmount:
           type: number
-          description: New hourly rate amount if applicable
+          description: Hourly rate amount granted by the Caseworker as part of the decision, whether or not it differs from the amount requested. Only for hourly-rate expert fees; mutually exclusive with grantedFixedRateAmount.
         grantedTime:
           $ref: "#/components/schemas/TimeRequested"
+        grantedTotalAmount:
+          type: number
+          description: Total amount granted by the Caseworker for the expert
 
     DisbursementInformation:
       type: object
-      description: Disbursement information for a prior authority decision
+      description: Optional disbursement value granted by the Caseworker
       properties:
-        newAmount:
+        grantedAmount:
           type: number
-          description: New disbursement amount if applicable
+          description: The disbursement amount granted by the Caseworker as part of the decision, whether or not it differs from the amount requested.
+
+    ApportionmentInformation:
+      type: object
+      description: Optional apportionment value granted by the Caseworker
+      properties:
+        grantedClientShareAmount:
+          type: number
+          description: Amount granted by the Caseworker as the client's share of a cost apportioned between parties, whether or not it differs from the amount requested.

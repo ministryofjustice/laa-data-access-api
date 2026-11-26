@@ -12,6 +12,7 @@ import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.MakePriorAuthorityDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.BillingType;
@@ -168,13 +169,46 @@ class PriorAuthorityDeciderTest {
             "expert.grantedTime is only permitted for EXPERT prior authorities with HOURLY billing");
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"HOURLY", "FIXED_RATE"})
+  void givenExpert_whenDecideDecisionWithGrantedTotalAmount_thenReturnsEvent(String billingType) {
+    PriorAuthorityState state = submittedState(UUID.randomUUID(), UUID.randomUUID(), 4L);
+    state.billingType = billingType;
+    MakePriorAuthorityDecisionCommand command =
+        decisionCommand(
+            state,
+            ExpertFeeInformation.builder().grantedTotalAmount(BigDecimal.valueOf(250)).build());
+
+    assertThat(PriorAuthorityDecider.decideDecision(state, command)).isPresent();
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"DISBURSEMENT", "COUNSEL"})
+  void givenNonExpert_whenDecideDecisionWithGrantedTotalAmount_thenThrowsValidation(
+      String priorAuthorityType) {
+    PriorAuthorityState state = submittedState(UUID.randomUUID(), UUID.randomUUID(), 4L);
+    state.priorAuthorityType = priorAuthorityType;
+    MakePriorAuthorityDecisionCommand command =
+        decisionCommand(
+            state,
+            ExpertFeeInformation.builder().grantedTotalAmount(BigDecimal.valueOf(250)).build());
+
+    assertThatThrownBy(() -> PriorAuthorityDecider.decideDecision(state, command))
+        .isInstanceOf(ValidationException.class)
+        .extracting(ValidationException.class::cast)
+        .extracting(ValidationException::errors)
+        .asInstanceOf(InstanceOfAssertFactories.LIST)
+        .containsExactly(
+            "expert.grantedTotalAmount is only permitted for EXPERT prior authorities");
+  }
+
   @Test
   void givenFixedRateExpertWithoutTimeOverride_whenDecideDecision_thenReturnsEvent() {
     PriorAuthorityState state = submittedState(UUID.randomUUID(), UUID.randomUUID(), 4L);
     state.billingType = BillingType.FIXED_RATE.name();
     MakePriorAuthorityDecisionCommand command =
         decisionCommand(
-            state, ExpertFeeInformation.builder().newFixedRateAmount(BigDecimal.TEN).build());
+            state, ExpertFeeInformation.builder().grantedFixedRateAmount(BigDecimal.TEN).build());
 
     Optional<PriorAuthorityDecisionMadeEvent> result =
         PriorAuthorityDecider.decideDecision(state, command);

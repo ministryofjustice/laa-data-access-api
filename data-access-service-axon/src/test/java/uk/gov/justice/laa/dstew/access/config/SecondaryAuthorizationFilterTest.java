@@ -2,7 +2,6 @@ package uk.gov.justice.laa.dstew.access.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import java.time.Instant;
@@ -10,6 +9,9 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.TestingAuthenticationToken;
@@ -20,7 +22,10 @@ import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 
+@ExtendWith(MockitoExtension.class)
 class SecondaryAuthorizationFilterTest {
+
+  @Mock private ErrorReporter errorReporter;
 
   @AfterEach
   void clearSecurityContext() {
@@ -41,7 +46,7 @@ class SecondaryAuthorizationFilterTest {
             .claim("LAA_ACCOUNTS", List.of("ABC123", "DEF456", "ABC123"))
             .build();
     SecondaryAuthorizationFilter filter =
-        new SecondaryAuthorizationFilter(token -> authorizationJwt);
+        new SecondaryAuthorizationFilter(token -> authorizationJwt, errorReporter);
     MockHttpServletRequest request = new MockHttpServletRequest();
     request.addHeader("X-Authorization", "x-authorization-token");
     AtomicBoolean chainInvoked = new AtomicBoolean();
@@ -73,7 +78,7 @@ class SecondaryAuthorizationFilterTest {
     Jwt authorizationJwt =
         jwt("x-authorization-token").claim("LAA_ACCOUNTS", List.of("ABC123")).build();
     SecondaryAuthorizationFilter filter =
-        new SecondaryAuthorizationFilter(token -> authorizationJwt);
+        new SecondaryAuthorizationFilter(token -> authorizationJwt, errorReporter);
     MockHttpServletRequest request = new MockHttpServletRequest();
     request.addHeader("X-Authorization", "x-authorization-token");
 
@@ -97,7 +102,7 @@ class SecondaryAuthorizationFilterTest {
             .claim("LAA_ACCOUNTS", List.of("ABC123"))
             .build();
     SecondaryAuthorizationFilter filter =
-        new SecondaryAuthorizationFilter(token -> authorizationJwt);
+        new SecondaryAuthorizationFilter(token -> authorizationJwt, errorReporter);
     MockHttpServletRequest request = new MockHttpServletRequest();
     request.addHeader("X-Authorization", "x-authorization-token");
     MockHttpServletResponse response = new MockHttpServletResponse();
@@ -117,7 +122,8 @@ class SecondaryAuthorizationFilterTest {
         new SecondaryAuthorizationFilter(
             token -> {
               throw new JwtException("invalid token");
-            });
+            },
+            errorReporter);
     MockHttpServletRequest request = new MockHttpServletRequest();
     request.addHeader("X-Authorization", "invalid-token");
     MockHttpServletResponse response = new MockHttpServletResponse();
@@ -132,7 +138,7 @@ class SecondaryAuthorizationFilterTest {
     SecurityContextHolder.getContext()
         .setAuthentication(new TestingAuthenticationToken("user", "credentials"));
     SecondaryAuthorizationFilter filter =
-        new SecondaryAuthorizationFilter(token -> jwt(token).build());
+        new SecondaryAuthorizationFilter(token -> jwt(token).build(), errorReporter);
     MockHttpServletRequest request = new MockHttpServletRequest();
     request.addHeader("X-Authorization", "x-authorization-token");
     MockHttpServletResponse response = new MockHttpServletResponse();
@@ -156,7 +162,7 @@ class SecondaryAuthorizationFilterTest {
       SecurityContextHolder.getContext()
           .setAuthentication(new JwtAuthenticationToken(oboJwt.build()));
       SecondaryAuthorizationFilter filter =
-          new SecondaryAuthorizationFilter(token -> authorizationJwt.build());
+          new SecondaryAuthorizationFilter(token -> authorizationJwt.build(), errorReporter);
       MockHttpServletRequest request = new MockHttpServletRequest();
       request.addHeader("X-Authorization", "x-authorization-token");
       MockHttpServletResponse response = new MockHttpServletResponse();
@@ -174,7 +180,7 @@ class SecondaryAuthorizationFilterTest {
     Jwt oboJwt = jwt("obo-token").build();
     SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(oboJwt));
     SecondaryAuthorizationFilter filter =
-        new SecondaryAuthorizationFilter(token -> jwt(token).build());
+        new SecondaryAuthorizationFilter(token -> jwt(token).build(), errorReporter);
     MockHttpServletRequest request = new MockHttpServletRequest();
     request.addHeader("X-Authorization", "x-authorization-token");
     AtomicBoolean chainInvoked = new AtomicBoolean();
@@ -196,12 +202,12 @@ class SecondaryAuthorizationFilterTest {
         Jwt.withTokenValue("obo-token")
             .header("alg", "none")
             .claim("oid", "entra-object-id")
-            .expiresAt(Instant.now().plusSeconds(300))
+            .expiresAt(Instant.EPOCH.plusSeconds(300))
             .build();
     SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(oboJwt));
     SecondaryAuthorizationFilter filter =
         new SecondaryAuthorizationFilter(
-            token -> jwt(token).claim("LAA_ACCOUNTS", List.of("ABC123")).build());
+            token -> jwt(token).claim("LAA_ACCOUNTS", List.of("ABC123")).build(), errorReporter);
     MockHttpServletRequest request = new MockHttpServletRequest();
     request.addHeader("X-Authorization", "x-authorization-token");
 
@@ -214,7 +220,7 @@ class SecondaryAuthorizationFilterTest {
   }
 
   private Jwt.Builder jwt(String tokenValue) {
-    Instant issuedAt = Instant.now();
+    Instant issuedAt = Instant.EPOCH;
     return Jwt.withTokenValue(tokenValue)
         .header("alg", "none")
         .subject("user")
@@ -236,7 +242,6 @@ class SecondaryAuthorizationFilterTest {
           }
         };
     SecurityContextHolder.getContext().setAuthentication(existingAuth);
-    ErrorReporter errorReporter = mock(ErrorReporter.class);
     SecondaryAuthorizationFilter filter =
         new SecondaryAuthorizationFilter(
             token -> jwt(token).claim("LAA_ACCOUNTS", List.of("ABC123")).build(), errorReporter);

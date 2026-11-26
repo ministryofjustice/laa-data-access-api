@@ -19,6 +19,11 @@ public class AxonEventProcessingConfig {
     this.reportingErrorHandler = reportingErrorHandler;
   }
 
+  @Bean("projectionErrorDelegate")
+  static PropagatingErrorHandler projectionErrorDelegate() {
+    return PropagatingErrorHandler.instance();
+  }
+
   @Bean
   EventProcessorDefinition applicationProjectionProcessor() {
     return pooledStreamingProcessor("application-projection");

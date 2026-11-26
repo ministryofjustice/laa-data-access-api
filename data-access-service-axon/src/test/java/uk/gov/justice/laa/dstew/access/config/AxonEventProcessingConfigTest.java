@@ -6,23 +6,26 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.time.Duration;
 import org.axonframework.extension.spring.config.EventProcessorDefinition;
 import org.axonframework.extension.spring.config.EventProcessorSettings;
 import org.axonframework.messaging.eventhandling.processing.errorhandling.PropagatingErrorHandler;
 import org.axonframework.messaging.eventhandling.processing.streaming.pooled.PooledStreamingEventProcessorConfiguration;
 import org.axonframework.messaging.eventhandling.processing.subscribing.SubscribingEventProcessorConfiguration;
 import org.junit.jupiter.api.Test;
-import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 import uk.gov.justice.laa.dstew.access.observability.ReportingErrorHandler;
 
 class AxonEventProcessingConfigTest {
 
-  private final ReportingErrorHandler reportingErrorHandler =
-      new ReportingErrorHandler(new ErrorReporter(), Duration.ofMinutes(5));
+  private final ReportingErrorHandler reportingErrorHandler = mock(ReportingErrorHandler.class);
 
   private final AxonEventProcessingConfig config =
       new AxonEventProcessingConfig(reportingErrorHandler);
+
+  @Test
+  void projectionErrorDelegateUsesPropagatingErrorHandler() {
+    assertThat(AxonEventProcessingConfig.projectionErrorDelegate())
+        .isSameAs(PropagatingErrorHandler.instance());
+  }
 
   @Test
   void priorAuthorityProjectionProcessorBeanUsesPooledStreamingWithCorrectNamespace() {
