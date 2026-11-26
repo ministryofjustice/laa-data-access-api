@@ -70,8 +70,7 @@ public class SubmitPriorAuthorityDraftCommandHandler {
   }
 
   private static String billingTypeOf(PriorAuthorityContent content) {
-    if (content == null
-        || content.expertDetails() == null
+    if (content.expertDetails() == null
         || content.expertDetails().expertCosts() == null
         || content.expertDetails().expertCosts().billingType() == null) {
       return null;

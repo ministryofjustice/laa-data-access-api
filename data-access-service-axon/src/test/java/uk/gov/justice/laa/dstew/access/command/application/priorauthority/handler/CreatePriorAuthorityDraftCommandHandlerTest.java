@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority.handl
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
@@ -150,6 +151,29 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
                 OCCURRED_AT,
                 null,
                 content));
+  }
+
+  @Test
+  void givenUnpersistedAggregate_whenHandle_thenCreatesDraft() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    CreatePriorAuthorityDraftCommand command =
+        new CreatePriorAuthorityDraftCommand(
+            priorAuthorityId,
+            UUID.randomUUID(),
+            new PriorAuthorityContent(
+                PriorAuthorityType.EXPERT, "Need urgent review", null, null, null),
+            1,
+            "PriorAuthority.json",
+            OCCURRED_AT,
+            CALLER);
+
+    when(existing.getPriorAuthorityId()).thenReturn(null);
+    when(application.isGranted()).thenReturn(true);
+
+    new CreatePriorAuthorityDraftCommandHandler()
+        .handle(command, existing, application, writeAccessPolicy, draftStore, eventAppender);
+
+    verify(eventAppender).append(any(PriorAuthorityDraftStartedEvent.class));
   }
 
   @Test

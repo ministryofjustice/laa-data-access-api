@@ -269,6 +269,8 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
   private static Stream<Arguments> contentsWithoutExpertBillingType() {
     return Stream.of(
         Arguments.of(
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Need review", null, null, null)),
+        Arguments.of(
             new PriorAuthorityContent(
                 PriorAuthorityType.EXPERT,
                 "Need review",

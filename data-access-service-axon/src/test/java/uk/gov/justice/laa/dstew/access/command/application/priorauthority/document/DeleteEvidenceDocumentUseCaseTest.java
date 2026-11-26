@@ -17,10 +17,13 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Stream;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
@@ -45,6 +48,11 @@ class DeleteEvidenceDocumentUseCaseTest {
 
   @Mock private QueryGateway queryGateway;
   @Mock private RetryingCommandDispatcher dispatcher;
+
+  private static Stream<Arguments> missingDrafts() {
+    return Stream.of(Arguments.of(PriorAuthorityDraftSummary.NONE), Arguments.of((Object) null));
+  }
+
   @Mock private SdsService sdsService;
 
   @ParameterizedTest
@@ -118,13 +126,15 @@ class DeleteEvidenceDocumentUseCaseTest {
     verify(errorReporter).report(org.mockito.ArgumentMatchers.anyString(), same(failure));
   }
 
-  @Test
-  void givenDraftMissing_whenExecute_thenThrowsNotFoundWithoutDeletingFromSds() {
+  @ParameterizedTest
+  @MethodSource("missingDrafts")
+  void givenDraftMissing_whenExecute_thenThrowsNotFoundWithoutDeletingFromSds(
+      PriorAuthorityDraftSummary missingDraft) {
     DeletePriorAuthorityDocumentUseCase useCase =
         new DeletePriorAuthorityDocumentUseCase(queryGateway, dispatcher, sdsService);
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
-    stubDraft(priorAuthorityId, documentId, PriorAuthorityDraftSummary.NONE);
+    stubDraft(priorAuthorityId, documentId, missingDraft);
 
     assertThatExceptionOfType(ResourceNotFoundException.class)
         .isThrownBy(() -> useCase.execute(priorAuthorityId, documentId, CALLER));

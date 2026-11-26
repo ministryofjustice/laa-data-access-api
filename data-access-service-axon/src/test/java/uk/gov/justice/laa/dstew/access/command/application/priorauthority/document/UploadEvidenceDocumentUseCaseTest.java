@@ -15,9 +15,13 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Stream;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -43,6 +47,10 @@ class UploadEvidenceDocumentUseCaseTest {
   @Mock private QueryGateway queryGateway;
   @Mock private RetryingCommandDispatcher dispatcher;
   @Mock private SdsService sdsService;
+
+  private static Stream<Arguments> missingDrafts() {
+    return Stream.of(Arguments.of(PriorAuthorityDraftSummary.NONE), Arguments.of((Object) null));
+  }
 
   @Test
   void givenDraftExists_whenExecute_thenValidatesApplicationAndDispatchesUploadCommand() {
@@ -94,15 +102,16 @@ class UploadEvidenceDocumentUseCaseTest {
                 CALLER));
   }
 
-  @Test
-  void givenDraftMissing_whenExecute_thenThrowsNotFound() {
+  @ParameterizedTest
+  @MethodSource("missingDrafts")
+  void givenDraftMissing_whenExecute_thenThrowsNotFound(PriorAuthorityDraftSummary missingDraft) {
     UploadPriorAuthorityDocumentUseCase useCase =
         new UploadPriorAuthorityDocumentUseCase(queryGateway, dispatcher, sdsService);
     UUID priorAuthorityId = UUID.randomUUID();
     MockMultipartFile file =
         new MockMultipartFile("file", "evidence.pdf", "application/pdf", "%PDF-content".getBytes());
 
-    stubDraft(priorAuthorityId, PriorAuthorityDraftSummary.NONE);
+    stubDraft(priorAuthorityId, missingDraft);
 
     assertThatExceptionOfType(ResourceNotFoundException.class)
         .isThrownBy(() -> useCase.execute(priorAuthorityId, file, "CIVIL_APPLY", CALLER));

@@ -18,9 +18,13 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Stream;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -44,6 +48,10 @@ class SubmitPriorAuthorityDraftUseCaseTest {
   @Mock private QueryGateway queryGateway;
 
   @InjectMocks private SubmitPriorAuthorityDraftUseCase useCase;
+
+  private static Stream<Arguments> missingDrafts() {
+    return Stream.of(Arguments.of(PriorAuthorityDraftSummary.NONE), Arguments.of((Object) null));
+  }
 
   @Test
   void givenCommand_whenProjectionConfirmed_thenReturnsTrue() {
@@ -113,13 +121,15 @@ class SubmitPriorAuthorityDraftUseCaseTest {
     order.verify(projectionGateway).awaitProjection(any(), any());
   }
 
-  @Test
-  void givenNoDraftExists_whenSubmit_thenThrowsNotFoundBeforeDispatch() {
+  @ParameterizedTest
+  @MethodSource("missingDrafts")
+  void givenNoDraftExists_whenSubmit_thenThrowsNotFoundBeforeDispatch(
+      PriorAuthorityDraftSummary missingDraft) {
     SubmitPriorAuthorityDraftCommand command = stubCommand();
     when(queryGateway.query(
             new FindPriorAuthorityDraftQuery(command.priorAuthorityId()),
             PriorAuthorityDraftSummary.class))
-        .thenReturn(CompletableFuture.completedFuture(PriorAuthorityDraftSummary.NONE));
+        .thenReturn(CompletableFuture.completedFuture(missingDraft));
 
     assertThatThrownBy(() -> useCase.submit(command))
         .isInstanceOf(ResourceNotFoundException.class)
