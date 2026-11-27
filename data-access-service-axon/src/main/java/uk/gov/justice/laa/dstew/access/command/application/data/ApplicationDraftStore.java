@@ -59,6 +59,16 @@ public class ApplicationDraftStore {
   }
 
   /**
+   * Retrieves the current optimistic-lock version of the draft row for an application.
+   *
+   * @param applicationId the application identifier
+   * @return the draft version, or {@link Optional#empty()} when no draft exists
+   */
+  public Optional<Long> findVersion(UUID applicationId) {
+    return repository.findById(applicationId).map(ApplicationDraft::getVersion);
+  }
+
+  /**
    * Deletes the draft row for an application, typically once it has been submitted.
    *
    * @param applicationId the application identifier

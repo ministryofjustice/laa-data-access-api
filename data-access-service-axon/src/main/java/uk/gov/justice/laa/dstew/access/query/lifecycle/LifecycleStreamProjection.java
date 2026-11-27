@@ -10,6 +10,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEve
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDissolvedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupLeadChangedEvent;
@@ -65,6 +66,11 @@ public class LifecycleStreamProjection {
 
   @EventHandler
   void on(ApplicationDraftStartedEvent event, EventMessage message) {
+    record(event, message);
+  }
+
+  @EventHandler
+  void on(ApplicationDraftUpdatedEvent event, EventMessage message) {
     record(event, message);
   }
 

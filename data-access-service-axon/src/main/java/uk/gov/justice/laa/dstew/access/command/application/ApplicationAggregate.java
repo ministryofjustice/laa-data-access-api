@@ -7,6 +7,7 @@ import org.axonframework.eventsourcing.annotation.reflection.EntityCreator;
 import org.axonframework.extension.spring.stereotype.EventSourced;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
@@ -49,6 +50,10 @@ public class ApplicationAggregate implements OfficeCodeOwned {
     ApplicationEvolve.apply(state, event);
     this.applicationId = state.applicationId;
   }
+
+  /** No state change; the event exists so draft writes advance the stream's concurrency gate. */
+  @EventSourcingHandler
+  void on(ApplicationDraftUpdatedEvent event) {}
 
   @EventSourcingHandler
   void on(ApplicationDecisionMadeEvent event) {
